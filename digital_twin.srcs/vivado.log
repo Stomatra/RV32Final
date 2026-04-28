@@ -695,3 +695,58 @@ Phase 3.4 Pipeline Register Optimization | Checksum: fdf81296
 Time (s): cpu = 00:07:53 ; elapsed = 00:07:01 . Memory (MB): peak = 3039.246 ; gain = 590.555
 
 Phase 3.5 Fast Optimization
+Phase 3.5 Fast Optimization | Checksum: c1732a4e
+
+Time (s): cpu = 00:08:29 ; elapsed = 00:07:25 . Memory (MB): peak = 3039.246 ; gain = 590.555
+
+Phase 3.6 Small Shape Detail Placement
+Phase 3.6 Small Shape Detail Placement | Checksum: 1ed0c1512
+
+Time (s): cpu = 00:08:34 ; elapsed = 00:07:30 . Memory (MB): peak = 3039.246 ; gain = 590.555
+
+Phase 3.7 Re-assign LUT pins
+Phase 3.7 Re-assign LUT pins | Checksum: 1f998a96c
+
+Time (s): cpu = 00:08:35 ; elapsed = 00:07:31 . Memory (MB): peak = 3039.246 ; gain = 590.555
+
+Phase 3.8 Pipeline Register Optimization
+Phase 3.8 Pipeline Register Optimization | Checksum: 13c462547
+
+Time (s): cpu = 00:08:35 ; elapsed = 00:07:32 . Memory (MB): peak = 3039.246 ; gain = 590.555
+
+Phase 3.9 Fast Optimization
+Phase 3.9 Fast Optimization | Checksum: c481f1f7
+
+Time (s): cpu = 00:09:14 ; elapsed = 00:07:58 . Memory (MB): peak = 3039.246 ; gain = 590.555
+Phase 3 Detail Placement | Checksum: c481f1f7
+
+Time (s): cpu = 00:09:15 ; elapsed = 00:07:59 . Memory (MB): peak = 3039.246 ; gain = 590.555
+
+Phase 4 Post Placement Optimization and Clean-Up
+
+Phase 4.1 Post Commit Optimization
+INFO: [Timing 38-35] Done setting XDC timing constraints.
+
+Phase 4.1.1 Post Placement Optimization
+Post Placement Optimization Initialization | Checksum: c1139395
+
+Phase 4.1.1.1 BUFG Insertion
+
+Starting Physical Synthesis Task
+
+Phase 1 Physical Synthesis Initialization
+INFO: [Physopt 32-721] Multithreading enabled for phys_opt_design using a maximum of 2 CPUs
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-2.029 | TNS=-89.133 |
+Phase 1 Physical Synthesis Initialization | Checksum: c3058b99
+
+Time (s): cpu = 00:00:10 ; elapsed = 00:00:08 . Memory (MB): peak = 3090.797 ; gain = 51.551
+INFO: [Place 46-33] Processed net student_top_inst/Core_cpu/u_rf/bbstub_locked, BUFG insertion was skipped due to placement/routing conflicts.
+INFO: [Place 46-56] BUFG insertion identified 1 candidate nets. Inserted BUFG: 0, Replicated BUFG Driver: 0, Skipped due to Placement/Routing Conflicts: 1, Skipped due to Timing Degradation: 0, Skipped due to netlist editing failed: 0.
+Ending Physical Synthesis Task | Checksum: c3058b99
+
+Time (s): cpu = 00:00:16 ; elapsed = 00:00:12 . Memory (MB): peak = 3091.980 ; gain = 52.734
+Phase 4.1.1.1 BUFG Insertion | Checksum: c1139395
+
+Time (s): cpu = 00:10:05 ; elapsed = 00:08:33 . Memory (MB): peak = 3091.980 ; gain = 643.289
+
+Phase 4.1.1.2 Post Placement Timing Optimization
