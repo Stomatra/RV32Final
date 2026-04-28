@@ -545,3 +545,191 @@ INFO: [Physopt 32-710] Processed net student_top_inst/Core_cpu/memwb_wdata[31]_i
 INFO: [Physopt 32-735] Processed net student_top_inst/Core_cpu/perip_rdata[15]. Optimization improves timing on the net.
 INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-1.633 | TNS=-86.703 |
 INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[10]. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-710] Processed net student_top_inst/Core_cpu/mem_wb_data[10]. Critical path length was reduced through logic transformation on cell student_top_inst/Core_cpu/memwb_wdata[10]_i_1_comp.
+INFO: [Physopt 32-735] Processed net student_top_inst/Core_cpu/memwb_wdata[15]_i_2_n_0. Optimization improves timing on the net.
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-1.631 | TNS=-86.624 |
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/perip_rdata[7]. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net twin_controller_inst/sw_reg[7]_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/mem_wb_data[24]. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-663] Processed net twin_controller_inst/virtual_sw[7].  Re-placed instance twin_controller_inst/sw_reg[7]
+INFO: [Physopt 32-735] Processed net twin_controller_inst/virtual_sw[7]. Optimization improves timing on the net.
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-1.628 | TNS=-86.564 |
+INFO: [Physopt 32-663] Processed net twin_controller_inst/D[7].  Re-placed instance twin_controller_inst/key_reg[7]
+INFO: [Physopt 32-735] Processed net twin_controller_inst/D[7]. Optimization improves timing on the net.
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-1.624 | TNS=-86.484 |
+INFO: [Physopt 32-81] Processed net twin_controller_inst/D[7]. Replicated 1 times.
+INFO: [Physopt 32-735] Processed net twin_controller_inst/D[7]. Optimization improves timing on the net.
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-1.620 | TNS=-86.305 |
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/bridge_inst/counter_inst/start01_out. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-710] Processed net student_top_inst/Core_cpu/bridge_inst/counter_inst/start01_out. Critical path length was reduced through logic transformation on cell student_top_inst/Core_cpu/start_i_5_comp.
+INFO: [Physopt 32-735] Processed net student_top_inst/Core_cpu/memwb_wdata[6]_i_4_n_0. Optimization improves timing on the net.
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-1.615 | TNS=-86.204 |
+INFO: [Physopt 32-702] Processed net twin_controller_inst/D[7]_repN. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/memwb_wdata[6]_i_13_n_0.  Re-placed instance student_top_inst/Core_cpu/memwb_wdata[6]_i_13
+INFO: [Physopt 32-735] Processed net student_top_inst/Core_cpu/memwb_wdata[6]_i_13_n_0. Optimization improves timing on the net.
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-1.615 | TNS=-86.202 |
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[6]_i_13_n_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/memwb_wdata[6]_i_21_n_0.  Re-placed instance student_top_inst/Core_cpu/memwb_wdata[6]_i_21
+INFO: [Physopt 32-735] Processed net student_top_inst/Core_cpu/memwb_wdata[6]_i_21_n_0. Optimization improves timing on the net.
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-1.615 | TNS=-86.201 |
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/memwb_wdata[6]_i_22_n_0.  Re-placed instance student_top_inst/Core_cpu/memwb_wdata[6]_i_22
+INFO: [Physopt 32-735] Processed net student_top_inst/Core_cpu/memwb_wdata[6]_i_22_n_0. Optimization improves timing on the net.
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-1.615 | TNS=-86.190 |
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/start_i_11_n_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/start_i_17_n_0.  Re-placed instance student_top_inst/Core_cpu/start_i_17
+INFO: [Physopt 32-735] Processed net student_top_inst/Core_cpu/start_i_17_n_0. Optimization improves timing on the net.
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-1.615 | TNS=-86.187 |
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[6]_i_10_n_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[6]_i_19_n_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-134] Processed net student_top_inst/Core_cpu/memwb_wdata[4]_i_9_n_0. Rewiring did not optimize the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[4]_i_9_n_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-710] Processed net student_top_inst/Core_cpu/memwb_wdata[4]_i_9_n_0. Critical path length was reduced through logic transformation on cell student_top_inst/Core_cpu/memwb_wdata[4]_i_9_comp.
+INFO: [Physopt 32-735] Processed net student_top_inst/Core_cpu/memwb_wdata[4]_i_18_n_0. Optimization improves timing on the net.
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-1.615 | TNS=-86.184 |
+INFO: [Physopt 32-710] Processed net student_top_inst/Core_cpu/start_i_11_n_0. Critical path length was reduced through logic transformation on cell student_top_inst/Core_cpu/start_i_11_comp.
+INFO: [Physopt 32-735] Processed net student_top_inst/Core_cpu/start_i_17_n_0. Optimization improves timing on the net.
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-1.615 | TNS=-86.176 |
+INFO: [Physopt 32-608] Optimized 1 net.  Swapped 2 pins.
+INFO: [Physopt 32-735] Processed net student_top_inst/Core_cpu/memwb_wdata[6]_i_21_n_0. Optimization improves timing on the net.
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-1.615 | TNS=-86.168 |
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/start_i_19_n_0.  Re-placed instance student_top_inst/Core_cpu/start_i_19
+INFO: [Physopt 32-735] Processed net student_top_inst/Core_cpu/start_i_19_n_0. Optimization improves timing on the net.
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-1.615 | TNS=-86.154 |
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[4]_i_18_n_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/start_reg. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/perip_addr_32[26]. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[24]. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net pll_inst/inst/clk_out1_pll. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[31]_i_2_n_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/perip_rdata[7]. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net twin_controller_inst/sw_reg[7]_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/mem_wb_data[24]. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net twin_controller_inst/D[7]_repN. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/bridge_inst/counter_inst/start. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net pll_inst/inst/clk_out2_pll. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/bridge_inst/counter_inst/start01_out. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[6]_i_10_n_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[6]_i_19_n_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[4]_i_9_n_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[4]_i_18_n_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/start_reg. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/perip_addr_32[26]. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-1.615 | TNS=-86.154 |
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.074 . Memory (MB): peak = 3320.469 ; gain = 0.000
+Phase 3 Critical Path Optimization | Checksum: 1741ce1dc
+
+Time (s): cpu = 00:02:15 ; elapsed = 00:01:32 . Memory (MB): peak = 3320.469 ; gain = 6.703
+
+Phase 4 Critical Path Optimization
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-1.615 | TNS=-86.154 |
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[24]. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net pll_inst/inst/clk_out1_pll. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[31]_i_2_n_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/perip_rdata[7]. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net twin_controller_inst/sw_reg[7]_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/mem_wb_data[24]. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net twin_controller_inst/D[7]_repN. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/bridge_inst/counter_inst/start. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net pll_inst/inst/clk_out2_pll. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/bridge_inst/counter_inst/start01_out. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[6]_i_10_n_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[6]_i_19_n_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-134] Processed net student_top_inst/Core_cpu/memwb_wdata[4]_i_9_n_0. Rewiring did not optimize the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[4]_i_9_n_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[4]_i_18_n_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/start_reg. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/perip_addr_32[26]. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[24]. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net pll_inst/inst/clk_out1_pll. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[31]_i_2_n_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/perip_rdata[7]. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net twin_controller_inst/sw_reg[7]_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/mem_wb_data[24]. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net twin_controller_inst/D[7]_repN. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/bridge_inst/counter_inst/start. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net pll_inst/inst/clk_out2_pll. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/bridge_inst/counter_inst/start01_out. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[6]_i_10_n_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[6]_i_19_n_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[4]_i_9_n_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/memwb_wdata[4]_i_18_n_0. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/start_reg. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-702] Processed net student_top_inst/Core_cpu/perip_addr_32[26]. Optimizations did not improve timing on the net.
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-1.615 | TNS=-86.154 |
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.051 . Memory (MB): peak = 3320.469 ; gain = 0.000
+Phase 4 Critical Path Optimization | Checksum: 1741ce1dc
+
+Time (s): cpu = 00:02:59 ; elapsed = 00:02:01 . Memory (MB): peak = 3320.469 ; gain = 6.703
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.045 . Memory (MB): peak = 3320.469 ; gain = 0.000
+INFO: [Physopt 32-603] Post Physical Optimization Timing Summary | WNS=-1.615 | TNS=-86.154 |
+
+Summary of Physical Synthesis Optimizations
+============================================
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+|  Optimization   |  WNS Gain (ns)  |  TNS Gain (ns)  |  Added Cells  |  Removed Cells  |  Optimized Cells/Nets  |  Dont Touch  |  Iterations  |  Elapsed   |
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+|  DSP Register   |          0.000  |          0.000  |            0  |              0  |                     0  |           0  |           1  |  00:00:00  |
+|  Critical Path  |          0.046  |          0.957  |            1  |              0  |                    15  |           0  |           2  |  00:01:45  |
+|  Total          |          0.046  |          0.957  |            1  |              0  |                    15  |           0  |           3  |  00:01:46  |
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.044 . Memory (MB): peak = 3320.469 ; gain = 0.000
+Ending Physical Synthesis Task | Checksum: 17a85d241
+
+Time (s): cpu = 00:03:04 ; elapsed = 00:02:05 . Memory (MB): peak = 3320.469 ; gain = 6.703
+INFO: [Common 17-83] Releasing license: Implementation
+219 Infos, 0 Warnings, 0 Critical Warnings and 0 Errors encountered.
+phys_opt_design completed successfully
+phys_opt_design: Time (s): cpu = 00:03:46 ; elapsed = 00:02:33 . Memory (MB): peak = 3320.469 ; gain = 220.074
+INFO: [Timing 38-480] Writing timing data to binary archive.
+Write ShapeDB Complete: Time (s): cpu = 00:00:01 ; elapsed = 00:00:00.252 . Memory (MB): peak = 3320.469 ; gain = 0.000
+Wrote PlaceDB: Time (s): cpu = 00:00:07 ; elapsed = 00:00:03 . Memory (MB): peak = 3320.469 ; gain = 0.000
+Wrote PulsedLatchDB: Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 3320.469 ; gain = 0.000
+Writing XDEF routing.
+Writing XDEF routing logical nets.
+Writing XDEF routing special nets.
+Wrote RouteStorage: Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.082 . Memory (MB): peak = 3320.469 ; gain = 0.000
+Wrote Netlist Cache: Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.059 . Memory (MB): peak = 3320.469 ; gain = 0.000
+Wrote Device Cache: Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.006 . Memory (MB): peak = 3320.469 ; gain = 0.000
+Write Physdb Complete: Time (s): cpu = 00:00:07 ; elapsed = 00:00:04 . Memory (MB): peak = 3320.469 ; gain = 0.000
+INFO: [Common 17-1381] The checkpoint 'd:/digital_twin/digital_twin/digital_twin.runs/impl_1/top_physopt.dcp' has been generated.
+write_checkpoint: Time (s): cpu = 00:00:12 ; elapsed = 00:00:10 . Memory (MB): peak = 3320.469 ; gain = 0.000
+Command: route_design
+Attempting to get a license for feature 'Implementation' and/or device 'xc7k325t'
+INFO: [Common 17-349] Got license for feature 'Implementation' and/or device 'xc7k325t'
+INFO: [DRC 23-27] Running DRC with 2 threads
+INFO: [Vivado_Tcl 4-198] DRC finished with 0 Errors
+INFO: [Vivado_Tcl 4-199] Please refer to the DRC report (report_drc) for more information.
+Running DRC as a precondition to command route_design
+INFO: [DRC 23-27] Running DRC with 2 threads
+INFO: [Vivado_Tcl 4-198] DRC finished with 0 Errors
+INFO: [Vivado_Tcl 4-199] Please refer to the DRC report (report_drc) for more information.
+
+
+Starting Routing Task
+INFO: [Route 35-254] Multithreading enabled for route_design using a maximum of 8 CPUs
+
+Phase 1 Build RT Design
+Checksum: PlaceDB: 699d0213 ConstDB: 0 ShapeSum: 41c40777 RouteDB: 0
+Post Restoration Checksum: NetGraph: 77d182da | NumContArr: 83daa845 | Constraints: c2a8fa9d | Timing: c2a8fa9d
+Phase 1 Build RT Design | Checksum: 280fe2059
+
+Time (s): cpu = 00:01:03 ; elapsed = 00:00:34 . Memory (MB): peak = 3320.469 ; gain = 0.000
+
+Phase 2 Router Initialization
+
+Phase 2.1 Fix Topology Constraints
+Phase 2.1 Fix Topology Constraints | Checksum: 280fe2059
+
+Time (s): cpu = 00:01:03 ; elapsed = 00:00:34 . Memory (MB): peak = 3320.469 ; gain = 0.000
+
+Phase 2.2 Pre Route Cleanup
+Phase 2.2 Pre Route Cleanup | Checksum: 280fe2059
+
+Time (s): cpu = 00:01:04 ; elapsed = 00:00:34 . Memory (MB): peak = 3320.469 ; gain = 0.000
+ Number of Nodes with overlaps = 0
+
+Phase 2.3 Update Timing
