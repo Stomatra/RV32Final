@@ -1,0 +1,4 @@
+# 忽略 Verilog 仿真波形文件（超大临时文件）
+*.vcd
+# 精准忽略该目录下的所有波形文件
+digital_twin.srcs/sim_iverilog/*.vcd

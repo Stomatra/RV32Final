@@ -1,0 +1,5 @@
+Time resolution is 1 ps
+WARNING: This core is supplied with a behavioral model. To model cycle-accurate behavior you must run timing simulation.
+WARNING: This core is supplied with a behavioral model. To model cycle-accurate behavior you must run timing simulation.
+[TB] Reset released at 190.0 ns
+[TB] Timer started at 22790.0 ns pc=80000364 seg=93e3f8fe3f

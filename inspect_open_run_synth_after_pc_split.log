@@ -1,0 +1,52 @@
+#-----------------------------------------------------------
+# Vivado v2023.2 (64-bit)
+# SW Build 4029153 on Fri Oct 13 20:14:34 MDT 2023
+# IP Build 4028589 on Sat Oct 14 00:45:43 MDT 2023
+# SharedData Build 4025554 on Tue Oct 10 17:18:54 MDT 2023
+# Start of session at: Tue Apr 28 11:24:50 2026
+# Process ID: 8808
+# Current directory: D:/digital_twin/digital_twin/digital_twin.srcs
+# Command line: vivado.exe -mode batch -notrace -log d:\digital_twin\digital_twin\inspect_open_run_synth_after_pc_split.log -journal d:\digital_twin\digital_twin\inspect_open_run_synth_after_pc_split.jou -source d:\digital_twin\digital_twin\inspect_open_run_synth.tcl
+# Log file: d:/digital_twin/digital_twin/inspect_open_run_synth_after_pc_split.log
+# Journal file: d:\digital_twin\digital_twin\inspect_open_run_synth_after_pc_split.jou
+# Running On: YukiRin, OS: Windows, CPU Frequency: 3194 MHz, CPU Physical cores: 16, Host memory: 47089 MB
+#-----------------------------------------------------------
+source {d:\digital_twin\digital_twin\inspect_open_run_synth.tcl} -notrace
+Scanning sources...
+Finished scanning sources
+INFO: [IP_Flow 19-234] Refreshing IP repositories
+INFO: [IP_Flow 19-1704] No user IP repositories specified
+INFO: [IP_Flow 19-2313] Loaded Vivado IP repository 'D:/Xilinx/Vivado/2023.2/data/ip'.
+open_project: Time (s): cpu = 00:00:06 ; elapsed = 00:00:06 . Memory (MB): peak = 577.559 ; gain = 193.883
+Design is defaulting to impl run constrset: constrs_1
+Design is defaulting to synth run part: xc7k325tffg900-2
+INFO: [Device 21-403] Loading part xc7k325tffg900-2
+INFO: [Project 1-454] Reading design checkpoint 'd:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll.dcp' for cell 'pll_inst'
+INFO: [Project 1-454] Reading design checkpoint 'd:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/IROM/IROM.dcp' for cell 'student_top_inst/Mem_IROM'
+INFO: [Project 1-454] Reading design checkpoint 'd:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/DRAM/DRAM.dcp' for cell 'student_top_inst/bridge_inst/dram_driver_inst/Mem_DRAM'
+Netlist sorting complete. Time (s): cpu = 00:00:01 ; elapsed = 00:00:00.178 . Memory (MB): peak = 1065.918 ; gain = 0.000
+INFO: [Netlist 29-17] Analyzing 10848 Unisim elements for replacement
+INFO: [Netlist 29-28] Unisim Transformation completed in 4 CPU seconds
+INFO: [Project 1-479] Netlist was created with Vivado 2023.2
+INFO: [Project 1-570] Preparing netlist for logic optimization
+Parsing XDC File [d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll_board.xdc] for cell 'pll_inst/inst'
+Finished Parsing XDC File [d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll_board.xdc] for cell 'pll_inst/inst'
+Parsing XDC File [d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll.xdc] for cell 'pll_inst/inst'
+INFO: [Timing 38-35] Done setting XDC timing constraints. [d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll.xdc:54]
+INFO: [Timing 38-2] Deriving generated clocks [d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll.xdc:54]
+get_clocks: Time (s): cpu = 00:00:11 ; elapsed = 00:00:10 . Memory (MB): peak = 2029.281 ; gain = 708.980
+Finished Parsing XDC File [d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll.xdc] for cell 'pll_inst/inst'
+Parsing XDC File [d:/digital_twin/digital_twin/digital_twin.srcs/constrs_1/new/digital_twin.xdc]
+Finished Parsing XDC File [d:/digital_twin/digital_twin/digital_twin.srcs/constrs_1/new/digital_twin.xdc]
+INFO: [Opt 31-138] Pushed 0 inverter(s) to 0 load pin(s).
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.052 . Memory (MB): peak = 2029.621 ; gain = 0.000
+INFO: [Project 1-111] Unisim Transformation Summary:
+  A total of 8192 instances were transformed.
+  RAM256X1S => RAM256X1S (MUXF7(x2), MUXF8, RAMS64E(x4)): 8192 instances
+
+open_run: Time (s): cpu = 00:00:29 ; elapsed = 00:00:29 . Memory (MB): peak = 2029.621 ; gain = 1452.062
+INFO: [Timing 38-35] Done setting XDC timing constraints.
+INFO: [Timing 38-91] UpdateTimingParams: Speed grade: -2, Delay Type: min_max.
+INFO: [Timing 38-191] Multithreading enabled for timing update using a maximum of 2 CPUs
+report_timing_summary: Time (s): cpu = 00:00:31 ; elapsed = 00:00:19 . Memory (MB): peak = 2471.062 ; gain = 423.762
+INFO: [Common 17-206] Exiting Vivado at Tue Apr 28 11:25:52 2026...
