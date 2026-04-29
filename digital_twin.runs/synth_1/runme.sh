@@ -25,7 +25,7 @@ else
 fi
 export LD_LIBRARY_PATH
 
-HD_PWD='d:/digital_twin/digital_twin/digital_twin.runs/synth_1'
+HD_PWD='D:/digital_twin/digital_twin/digital_twin.runs/synth_1'
 cd "$HD_PWD"
 
 HD_LOG=runme.log

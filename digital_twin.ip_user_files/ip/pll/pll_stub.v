@@ -2,10 +2,10 @@
 // Copyright 2022-2023 Advanced Micro Devices, Inc. All Rights Reserved.
 // --------------------------------------------------------------------------------
 // Tool Version: Vivado v.2023.2 (win64) Build 4029153 Fri Oct 13 20:14:34 MDT 2023
-// Date        : Tue Apr 28 18:54:22 2026
+// Date        : Thu Apr 30 10:02:39 2026
 // Host        : YukiRin running 64-bit major release  (build 9200)
-// Command     : write_verilog -force -mode synth_stub
-//               d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll_stub.v
+// Command     : write_verilog -force -mode synth_stub -rename_top pll -prefix
+//               pll_ pll_stub.v
 // Design      : pll
 // Purpose     : Stub declaration of top-level module interface
 // Device      : xc7k325tffg900-2

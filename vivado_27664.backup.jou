@@ -1,0 +1,18 @@
+#-----------------------------------------------------------
+# Vivado v2023.2 (64-bit)
+# SW Build 4029153 on Fri Oct 13 20:14:34 MDT 2023
+# IP Build 4028589 on Sat Oct 14 00:45:43 MDT 2023
+# SharedData Build 4025554 on Tue Oct 10 17:18:54 MDT 2023
+# Start of session at: Fri May  1 11:11:42 2026
+# Process ID: 27664
+# Current directory: D:/digital_twin/digital_twin
+# Command line: vivado.exe -mode batch -source run_sim_tb_mycpu.tcl
+# Log file: D:/digital_twin/digital_twin/vivado.log
+# Journal file: D:/digital_twin/digital_twin\vivado.jou
+# Running On: YukiRin, OS: Windows, CPU Frequency: 3194 MHz, CPU Physical cores: 16, Host memory: 47089 MB
+#-----------------------------------------------------------
+source run_sim_tb_mycpu.tcl
+open_wave_config d:/digital_twin/digital_twin/digital_twin.srcs/sim_1/imports/JYD2025_Contest-rv32i-error/tb_uart_behav.wcfg
+open_wave_config d:/digital_twin/digital_twin/digital_twin.srcs/sim_1/imports/JYD2025_Contest-rv32i-error/tb_top_behav.wcfg
+open_wave_config d:/digital_twin/digital_twin/digital_twin.srcs/sim_1/imports/JYD2025_Contest-rv32i-error/tb_myCPU_behav.wcfg
+source tb_myCPU.tcl

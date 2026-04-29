@@ -151,3 +151,7 @@ set_property PACKAGE_PIN AJ29 [get_ports { virtual_seg[31] }]
 set_property IOSTANDARD LVCMOS18 [get_ports { virtual_seg[31] }]
 set_property PACKAGE_PIN AK26 [get_ports { virtual_seg[30] }]
 set_property IOSTANDARD LVCMOS18 [get_ports { virtual_seg[30] }]
+
+set_clock_groups -asynchronous \
+	-group [get_clocks clk_out1_pll] \
+	-group [get_clocks clk_out2_pll]

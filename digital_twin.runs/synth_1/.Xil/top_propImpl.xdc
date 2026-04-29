@@ -1,4 +1,4 @@
-set_property SRC_FILE_INFO {cfile:d:/digital_twin/digital_twin/digital_twin.srcs/constrs_1/new/digital_twin.xdc rfile:../../../digital_twin.srcs/constrs_1/new/digital_twin.xdc id:1} [current_design]
+set_property SRC_FILE_INFO {cfile:D:/digital_twin/digital_twin/digital_twin.srcs/constrs_1/new/digital_twin.xdc rfile:../../../digital_twin.srcs/constrs_1/new/digital_twin.xdc id:1} [current_design]
 set_property src_info {type:XDC file:1 line:1 export:INPUT save:INPUT read:READ} [current_design]
 set_property PACKAGE_PIN D18 [get_ports i_uart_rx]
 set_property src_info {type:XDC file:1 line:3 export:INPUT save:INPUT read:READ} [current_design]
@@ -151,3 +151,5 @@ set_property src_info {type:XDC file:1 line:150 export:INPUT save:INPUT read:REA
 set_property PACKAGE_PIN AJ29 [get_ports { virtual_seg[31] }]
 set_property src_info {type:XDC file:1 line:152 export:INPUT save:INPUT read:READ} [current_design]
 set_property PACKAGE_PIN AK26 [get_ports { virtual_seg[30] }]
+set_property src_info {type:XDC file:1 line:155 export:INPUT save:INPUT read:READ} [current_design]
+set_clock_groups -asynchronous -group [get_clocks clk_out1_pll] -group [get_clocks clk_out2_pll]

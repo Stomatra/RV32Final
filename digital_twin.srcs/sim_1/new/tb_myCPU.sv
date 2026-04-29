@@ -75,13 +75,13 @@ module tb_myCPU;
         end else begin
             if (!timer_started && uut.bridge_inst.counter_inst.start) begin
                 timer_started <= 1'b1;
-                $display("[TB] Timer started at %0.1f ns pc=%h seg=%h", $realtime, uut.pc, virtual_seg);
+                $display("[TB] Timer started at %0.1f ns pc=%h seg=%h", $realtime, uut.Core_cpu.pc_q, virtual_seg);
             end
 
             if (timer_started && !benchmark_done && !uut.bridge_inst.counter_inst.start) begin
                 benchmark_done <= 1'b1;
                 $display("[TB] Benchmark finished at %0.1f ns", $realtime);
-                $display("[TB] Summary cycles=%0d pc=%h led=%h seg=%h cnt_ms=%0d", cycle_count, uut.pc, virtual_led, virtual_seg, uut.bridge_inst.counter_inst.cnt_ms);
+                $display("[TB] Summary cycles=%0d pc=%h led=%h seg=%h cnt_ms=%0d", cycle_count, uut.Core_cpu.pc_q, virtual_led, virtual_seg, uut.bridge_inst.counter_inst.cnt_ms);
                 $finish;
             end
         end
@@ -90,7 +90,7 @@ module tb_myCPU;
     initial begin
         #TIMEOUT_NS;
         $display("[TB] Timeout at %0.1f ns", $realtime);
-        $display("[TB] Summary cycles=%0d pc=%h led=%h seg=%h cnt_ms=%0d timer_started=%0d", cycle_count, uut.pc, virtual_led, virtual_seg, uut.bridge_inst.counter_inst.cnt_ms, timer_started);
+        $display("[TB] Summary cycles=%0d pc=%h led=%h seg=%h cnt_ms=%0d timer_started=%0d", cycle_count, uut.Core_cpu.pc_q, virtual_led, virtual_seg, uut.bridge_inst.counter_inst.cnt_ms, timer_started);
         $finish;
     end
 endmodule

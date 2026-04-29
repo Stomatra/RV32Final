@@ -31,27 +31,19 @@ module dram_driver(
 );
     localparam int DRAM_DEPTH = 65536;
 
-    logic [15:0] dram_addr;
-    logic [ 1:0] offset;
-    logic [31:0] dram_rdata_raw, dout;
+	logic [15:0] dram_addr;
+	logic [ 1:0] offset;
 	logic [7:0] lane0_wdata, lane1_wdata, lane2_wdata, lane3_wdata;
 	logic       lane0_wen, lane1_wen, lane2_wen, lane3_wen;
     integer init_index;
 
-    (* ram_style = "distributed" *) logic [7:0] dram_lane0 [0:DRAM_DEPTH - 1];
-    (* ram_style = "distributed" *) logic [7:0] dram_lane1 [0:DRAM_DEPTH - 1];
-    (* ram_style = "distributed" *) logic [7:0] dram_lane2 [0:DRAM_DEPTH - 1];
-    (* ram_style = "distributed" *) logic [7:0] dram_lane3 [0:DRAM_DEPTH - 1];
+    (* ram_style = "block" *) logic [7:0] dram_lane0 [0:DRAM_DEPTH - 1];
+    (* ram_style = "block" *) logic [7:0] dram_lane1 [0:DRAM_DEPTH - 1];
+    (* ram_style = "block" *) logic [7:0] dram_lane2 [0:DRAM_DEPTH - 1];
+    (* ram_style = "block" *) logic [7:0] dram_lane3 [0:DRAM_DEPTH - 1];
 
     assign dram_addr = perip_addr[17:2];
     assign offset = perip_addr[1:0];
-    assign perip_rdata = dout;
-	assign dram_rdata_raw = {
-		dram_lane3[dram_addr],
-		dram_lane2[dram_addr],
-		dram_lane1[dram_addr],
-		dram_lane0[dram_addr]
-	};
 
 	initial begin
 		for (init_index = 0; init_index < DRAM_DEPTH; init_index = init_index + 1) begin
@@ -76,27 +68,6 @@ module dram_driver(
 		dram_lane2[16'd7] = 8'h00;
 		dram_lane3[16'd7] = 8'hff;
 	end
-
-    // dram_rdata_raw process, lh lb
-    always_comb begin
-        dout = 32'h0;
-        unique case (perip_mask)
-            2'b00: // lb/lbu
-                unique case (offset)
-                    2'b00:  dout = {24'b0, dram_rdata_raw[7:0]};
-                    2'b01:  dout = {24'b0, dram_rdata_raw[15:8]};
-                    2'b10:  dout = {24'b0, dram_rdata_raw[23:16]};
-                    2'b11:  dout = {24'b0, dram_rdata_raw[31:24]};
-                endcase
-            2'b01: // lh/lhu
-                unique case (offset[1])
-                    1'b0:  dout = {24'b0, dram_rdata_raw[15:0]};
-                    1'b1:  dout = {24'b0, dram_rdata_raw[31:16]};
-                endcase
-            2'b10: dout = dram_rdata_raw;
-            default: dout = 32'h0;
-        endcase
-    end
 
     always_comb begin
 		lane0_wdata = perip_wdata[7:0];
@@ -150,18 +121,13 @@ module dram_driver(
 		end
     end
 
+    // BRAM synchronous read/write — perip_rdata valid 1 cycle after address
     always_ff @(posedge clk) begin
-		if (lane0_wen) begin
-			dram_lane0[dram_addr] <= lane0_wdata;
-		end
-		if (lane1_wen) begin
-			dram_lane1[dram_addr] <= lane1_wdata;
-		end
-		if (lane2_wen) begin
-			dram_lane2[dram_addr] <= lane2_wdata;
-		end
-		if (lane3_wen) begin
-			dram_lane3[dram_addr] <= lane3_wdata;
-		end
+        if (lane0_wen) dram_lane0[dram_addr] <= lane0_wdata;
+        if (lane1_wen) dram_lane1[dram_addr] <= lane1_wdata;
+        if (lane2_wen) dram_lane2[dram_addr] <= lane2_wdata;
+        if (lane3_wen) dram_lane3[dram_addr] <= lane3_wdata;
+        perip_rdata <= {dram_lane3[dram_addr], dram_lane2[dram_addr],
+                        dram_lane1[dram_addr], dram_lane0[dram_addr]};
     end
 endmodule

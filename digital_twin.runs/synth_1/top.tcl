@@ -4,7 +4,7 @@
 
 set TIME_start [clock seconds] 
 namespace eval ::optrace {
-  variable script "d:/digital_twin/digital_twin/digital_twin.runs/synth_1/top.tcl"
+  variable script "D:/digital_twin/digital_twin/digital_twin.runs/synth_1/top.tcl"
   variable category "vivado_synth"
 }
 
@@ -70,6 +70,7 @@ proc create_report { reportName command } {
   }
 }
 OPTRACE "synth_1" START { ROLLUP_AUTO }
+set_msg_config  -id {Route 35-}  -suppress 
 OPTRACE "Creating in-memory project" START { }
 create_project -in_memory -part xc7k325tffg900-2
 
@@ -77,8 +78,8 @@ set_param project.singleFileAddWarning.threshold 0
 set_param project.compositeFile.enableAutoGeneration 0
 set_param synth.vivado.isSynthRun true
 set_msg_config -source 4 -id {IP_Flow 19-2162} -severity warning -new_severity info
-set_property webtalk.parent_dir d:/digital_twin/digital_twin/digital_twin.cache/wt [current_project]
-set_property parent.project_path d:/digital_twin/digital_twin/digital_twin.xpr [current_project]
+set_property webtalk.parent_dir D:/digital_twin/digital_twin/digital_twin.cache/wt [current_project]
+set_property parent.project_path D:/digital_twin/digital_twin/digital_twin.xpr [current_project]
 set_property XPM_LIBRARIES XPM_CDC [current_project]
 set_property default_lib xil_defaultlib [current_project]
 set_property target_language Verilog [current_project]
@@ -86,28 +87,28 @@ set_property ip_output_repo d:/digital_twin/digital_twin/digital_twin.cache/ip [
 set_property ip_cache_permissions {read write} [current_project]
 OPTRACE "Creating in-memory project" END { }
 OPTRACE "Adding files" START { }
-add_files d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/test_src/dram.coe
-add_files d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/test_src/irom.coe
+add_files D:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/test_src/dram.coe
+add_files D:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/test_src/irom.coe
 read_verilog -library xil_defaultlib -sv {
-  d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/ALU.sv
-  d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/defines.sv
-  d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/IMMGEN.sv
-  d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/RF.sv
-  d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/counter.sv
-  d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/display_seg.sv
-  d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/dram_driver.sv
-  d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/myCPU.sv
-  d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/perip_bridge.sv
-  d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/seg7.sv
-  d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/student_top.sv
-  d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/twin_controller.sv
-  d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/uart.sv
-  d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/top.sv
+  D:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/ALU.sv
+  D:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/defines.sv
+  D:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/IMMGEN.sv
+  D:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/RF.sv
+  D:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/counter.sv
+  D:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/display_seg.sv
+  D:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/dram_driver.sv
+  D:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/myCPU.sv
+  D:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/perip_bridge.sv
+  D:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/seg7.sv
+  D:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/student_top.sv
+  D:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/twin_controller.sv
+  D:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/uart.sv
+  D:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/top.sv
 }
-read_ip -quiet d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/ip/IROM/IROM.xci
+read_ip -quiet D:/digital_twin/digital_twin/digital_twin.srcs/sources_1/ip/IROM/IROM.xci
 set_property used_in_implementation false [get_files -all d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/IROM/IROM_ooc.xdc]
 
-read_ip -quiet d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/ip/pll_1/pll.xci
+read_ip -quiet D:/digital_twin/digital_twin/digital_twin.srcs/sources_1/ip/pll_1/pll.xci
 set_property used_in_implementation false [get_files -all d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll_board.xdc]
 set_property used_in_implementation false [get_files -all d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll.xdc]
 set_property used_in_implementation false [get_files -all d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll_ooc.xdc]
@@ -121,8 +122,8 @@ OPTRACE "Adding files" END { }
 foreach dcp [get_files -quiet -all -filter file_type=="Design\ Checkpoint"] {
   set_property used_in_implementation false $dcp
 }
-read_xdc d:/digital_twin/digital_twin/digital_twin.srcs/constrs_1/new/digital_twin.xdc
-set_property used_in_implementation false [get_files d:/digital_twin/digital_twin/digital_twin.srcs/constrs_1/new/digital_twin.xdc]
+read_xdc D:/digital_twin/digital_twin/digital_twin.srcs/constrs_1/new/digital_twin.xdc
+set_property used_in_implementation false [get_files D:/digital_twin/digital_twin/digital_twin.srcs/constrs_1/new/digital_twin.xdc]
 
 set_param ips.enableIPCacheLiteLoad 1
 close [open __synthesis_is_running__ w]

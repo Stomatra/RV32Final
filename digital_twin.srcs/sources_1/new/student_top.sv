@@ -37,7 +37,6 @@ module student_top#(
 );
 
     // IROM
-    logic [31:0] pc;
     logic [11:0] inst_addr;
     logic [31:0] instruction;
 
@@ -46,15 +45,12 @@ module student_top#(
     logic perip_wen;
     logic [1:0] perip_mask;
 
-    // 16KB = 2^12 * 32bit
-    assign inst_addr = pc[13:2];
-
     myCPU Core_cpu (
         .cpu_rst            (w_clk_rst),
         .cpu_clk            (w_cpu_clk),
 
         // Interface to IROM
-        .irom_addr          (pc),             
+        .irom_addr          (inst_addr),      
         .irom_data          (instruction),   
 
         // Interface to DRAM & periphera

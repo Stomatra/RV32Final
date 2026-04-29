@@ -21,29 +21,86 @@
 
 
 module counter(
-    input  logic         clk,
+    input  logic         cpu_clk,
+    input  logic         cnt_clk,
     input  logic         rst,
 
     input  logic [31:0]  perip_wdata,
     input  logic         cnt_wen,
     output logic [31:0]  perip_rdata
 );
+    localparam START_CMD = 32'h8000_0000;
+    localparam STOP_CMD  = 32'hFFFF_FFFF;
 
     logic [15:0] cnt_1ms;
     logic [31:0] cnt_ms;
+    logic [31:0] cnt_ms_gray;
     logic start;
+    logic cmd_toggle_cpu;
+    logic cmd_value_cpu;
+    logic cmd_toggle_seen;
+    logic cmd_write_valid;
 
-    always_ff @(posedge clk) begin
+    (* ASYNC_REG = "TRUE" *) logic        cmd_toggle_sync1;
+    (* ASYNC_REG = "TRUE" *) logic        cmd_toggle_sync2;
+    (* ASYNC_REG = "TRUE" *) logic        cmd_value_sync1;
+    (* ASYNC_REG = "TRUE" *) logic        cmd_value_sync2;
+    (* ASYNC_REG = "TRUE" *) logic [31:0] cnt_ms_gray_sync1;
+    (* ASYNC_REG = "TRUE" *) logic [31:0] cnt_ms_gray_sync2;
+
+    function automatic logic [31:0] gray_to_binary(input logic [31:0] gray_value);
+        integer bit_idx;
+        begin
+            gray_to_binary[31] = gray_value[31];
+            for (bit_idx = 30; bit_idx >= 0; bit_idx = bit_idx - 1) begin
+                gray_to_binary[bit_idx] = gray_to_binary[bit_idx + 1] ^ gray_value[bit_idx];
+            end
+        end
+    endfunction
+
+    assign cmd_write_valid = cnt_wen && ((perip_wdata == START_CMD) || (perip_wdata == STOP_CMD));
+    assign cnt_ms_gray = cnt_ms ^ (cnt_ms >> 1);
+    assign perip_rdata = gray_to_binary(cnt_ms_gray_sync2);
+
+    always_ff @(posedge cpu_clk or posedge rst) begin
         if (rst) begin
-            start <= 0;
-        end else if (cnt_wen & perip_wdata == 32'h8000_0000) begin
-            start <= 1;
-        end else if (cnt_wen & perip_wdata == 32'hFFFF_FFFF) begin
-            start <= 0;
+            cmd_toggle_cpu <= 1'b0;
+            cmd_value_cpu <= 1'b0;
+            cnt_ms_gray_sync1 <= 32'h0;
+            cnt_ms_gray_sync2 <= 32'h0;
+        end else begin
+            cnt_ms_gray_sync1 <= cnt_ms_gray;
+            cnt_ms_gray_sync2 <= cnt_ms_gray_sync1;
+
+            if (cmd_write_valid) begin
+                cmd_toggle_cpu <= ~cmd_toggle_cpu;
+                cmd_value_cpu <= (perip_wdata == START_CMD);
+            end
         end
     end
 
-    always_ff @(posedge clk) begin
+    always_ff @(posedge cnt_clk or posedge rst) begin
+        if (rst) begin
+            cmd_toggle_sync1 <= 1'b0;
+            cmd_toggle_sync2 <= 1'b0;
+            cmd_value_sync1 <= 1'b0;
+            cmd_value_sync2 <= 1'b0;
+            cmd_toggle_seen <= 1'b0;
+            start <= 1'b0;
+        end else begin
+            cmd_toggle_sync1 <= cmd_toggle_cpu;
+            cmd_toggle_sync2 <= cmd_toggle_sync1;
+            cmd_value_sync1 <= cmd_value_cpu;
+            cmd_value_sync2 <= cmd_value_sync1;
+
+            if (cmd_toggle_sync2 != cmd_toggle_seen) begin
+                cmd_toggle_seen <= cmd_toggle_sync2;
+                start <= cmd_value_sync2;
+            end
+        end
+    end
+
+    always_ff @(posedge cnt_clk or posedge rst) begin
         if (rst) begin
             cnt_1ms <= 0;
         end else if (start) begin
@@ -57,14 +114,12 @@ module counter(
         end
     end
 
-    always_ff @(posedge clk) begin
+    always_ff @(posedge cnt_clk or posedge rst) begin
         if (rst) begin
             cnt_ms <= 0;
         end else if (start && cnt_1ms == 49999) begin
             cnt_ms <= cnt_ms + 1;
         end
     end
-
-    assign perip_rdata = cnt_ms;
 
 endmodule

@@ -17,7 +17,7 @@ module tb_myCPU_core;
 
     logic        cpu_clk;
     logic        cpu_rst;
-    logic [31:0] irom_addr;
+    logic [11:0] irom_addr;
     logic [31:0] irom_data;
     logic [31:0] perip_addr;
     logic        perip_wen;
@@ -42,6 +42,7 @@ module tb_myCPU_core;
     logic [31:0] dram_read_data;
     logic [31:0] mmio_read_data;
     logic [31:0] cycle_count;
+    logic [31:0] fetch_pc;
 
     string irom_mem_path;
     string dram_mem_path;
@@ -63,6 +64,8 @@ module tb_myCPU_core;
         .perip_wdata(perip_wdata),
         .perip_rdata(perip_rdata)
     );
+
+    assign fetch_pc = {RESET_PC[31:14], irom_addr, 2'b00};
 
     function automatic logic [31:0] dram_read_mux(
         input logic [31:0] word,
@@ -177,7 +180,7 @@ module tb_myCPU_core;
         end
         #timeout_ns;
         $display("[TB] Timeout at %0.1f ns", $realtime);
-        $display("[TB] Summary cycles=%0d pc=%h led=%h seg=%h cnt_ms=%0d", cycle_count, irom_addr, led_reg, seg_reg, cnt_ms);
+        $display("[TB] Summary cycles=%0d pc=%h led=%h seg=%h cnt_ms=%0d", cycle_count, fetch_pc, led_reg, seg_reg, cnt_ms);
         $finish;
     end
 
@@ -189,7 +192,7 @@ module tb_myCPU_core;
         end
     end
 
-    assign irom_data = irom_mem[irom_addr[13:2]];
+    assign irom_data = irom_mem[irom_addr];
     assign dram_word = ((perip_addr >= DRAM_ADDR_START) && (perip_addr <= DRAM_ADDR_END)) ? dram_mem[perip_addr[17:2]] : 32'h0;
     assign dram_read_data = dram_read_mux(dram_word, perip_mask, perip_addr[1:0]);
 

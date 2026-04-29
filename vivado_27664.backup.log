@@ -1,0 +1,162 @@
+#-----------------------------------------------------------
+# Vivado v2023.2 (64-bit)
+# SW Build 4029153 on Fri Oct 13 20:14:34 MDT 2023
+# IP Build 4028589 on Sat Oct 14 00:45:43 MDT 2023
+# SharedData Build 4025554 on Tue Oct 10 17:18:54 MDT 2023
+# Start of session at: Fri May  1 11:11:42 2026
+# Process ID: 27664
+# Current directory: D:/digital_twin/digital_twin
+# Command line: vivado.exe -mode batch -source run_sim_tb_mycpu.tcl
+# Log file: D:/digital_twin/digital_twin/vivado.log
+# Journal file: D:/digital_twin/digital_twin\vivado.jou
+# Running On: YukiRin, OS: Windows, CPU Frequency: 3194 MHz, CPU Physical cores: 16, Host memory: 47089 MB
+#-----------------------------------------------------------
+source run_sim_tb_mycpu.tcl
+# open_project {d:/digital_twin/digital_twin/digital_twin.xpr}
+Scanning sources...
+Finished scanning sources
+INFO: [IP_Flow 19-234] Refreshing IP repositories
+INFO: [IP_Flow 19-1704] No user IP repositories specified
+INFO: [IP_Flow 19-2313] Loaded Vivado IP repository 'D:/Xilinx/Vivado/2023.2/data/ip'.
+open_project: Time (s): cpu = 00:00:06 ; elapsed = 00:00:10 . Memory (MB): peak = 578.301 ; gain = 194.371
+# set_property top tb_myCPU [get_filesets sim_1]
+# launch_simulation -simset sim_1 -mode behavioral
+Command: launch_simulation  -simset sim_1 -mode behavioral
+INFO: [Vivado 12-12493] Simulation top is 'tb_myCPU'
+WARNING: [Vivado 12-13340] Unable to auto find GCC executables from simulator install path! (path not set)
+INFO: [Vivado 12-5698] Checking validity of IPs in the design for the 'XSim' simulator...
+INFO: [Vivado 12-5682] Launching behavioral simulation in 'd:/digital_twin/digital_twin/digital_twin.sim/sim_1/behav/xsim'
+INFO: [Vivado 12-4795] Using compiled simulation libraries for IPs
+INFO: [SIM-utils-51] Simulation object is 'sim_1'
+INFO: [SIM-utils-72] Using boost library from 'D:/Xilinx/Vivado/2023.2/tps/boost_1_72_0'
+INFO: [USF-XSim-7] Finding pre-compiled libraries...
+INFO: [USF-XSim-11] File 'D:/Xilinx/Vivado/2023.2/data/xsim/xsim.ini' copied to run dir:'d:/digital_twin/digital_twin/digital_twin.sim/sim_1/behav/xsim'
+INFO: [SIM-utils-54] Inspecting design source files for 'tb_myCPU' in fileset 'sim_1'...
+INFO: [SIM-utils-43] Exported 'd:/digital_twin/digital_twin/digital_twin.sim/sim_1/behav/xsim/DRAM.mif'
+INFO: [SIM-utils-43] Exported 'd:/digital_twin/digital_twin/digital_twin.sim/sim_1/behav/xsim/dram.coe'
+INFO: [SIM-utils-43] Exported 'd:/digital_twin/digital_twin/digital_twin.sim/sim_1/behav/xsim/IROM.mif'
+INFO: [SIM-utils-43] Exported 'd:/digital_twin/digital_twin/digital_twin.sim/sim_1/behav/xsim/irom.coe'
+INFO: [USF-XSim-97] Finding global include files...
+INFO: [USF-XSim-98] Fetching design files from 'sim_1'...
+INFO: [USF-XSim-2] XSim::Compile design
+INFO: [USF-XSim-61] Executing 'COMPILE and ANALYZE' step in 'd:/digital_twin/digital_twin/digital_twin.sim/sim_1/behav/xsim'
+"xvlog --incr --relax -L uvm -prj tb_myCPU_vlog.prj"
+INFO: [VRFC 10-2263] Analyzing Verilog file "d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/IROM/sim/IROM.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module IROM
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/ALU.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module ALU
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/IMMGEN.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module IMMGEN
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/RF.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module RF
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/counter.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module counter
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/display_seg.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module display_seg
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/dram_driver.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module dram_driver
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/myCPU.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module myCPU
+INFO: [VRFC 10-311] analyzing module mycpu_rv32_decode
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/perip_bridge.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module perip_bridge
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/seg7.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module seg7
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/student_top.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module student_top
+INFO: [VRFC 10-2263] Analyzing SystemVerilog file "d:/digital_twin/digital_twin/digital_twin.srcs/sim_1/new/tb_myCPU.sv" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module tb_myCPU
+INFO: [VRFC 10-2263] Analyzing Verilog file "d:/digital_twin/digital_twin/digital_twin.sim/sim_1/behav/xsim/glbl.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module glbl
+INFO: [USF-XSim-69] 'compile' step finished in '2' seconds
+INFO: [USF-XSim-3] XSim::Elaborate design
+INFO: [USF-XSim-61] Executing 'ELABORATE' step in 'd:/digital_twin/digital_twin/digital_twin.sim/sim_1/behav/xsim'
+"xelab --incr --debug typical --relax --mt 2 -L xil_defaultlib -L dist_mem_gen_v8_0_14 -L uvm -L unisims_ver -L unimacro_ver -L secureip -L xpm --snapshot tb_myCPU_behav xil_defaultlib.tb_myCPU xil_defaultlib.glbl -log elaborate.log"
+Vivado Simulator v2023.2
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+Copyright 2022-2023 Advanced Micro Devices, Inc. All Rights Reserved.
+Running: D:/Xilinx/Vivado/2023.2/bin/unwrapped/win64.o/xelab.exe --incr --debug typical --relax --mt 2 -L xil_defaultlib -L dist_mem_gen_v8_0_14 -L uvm -L unisims_ver -L unimacro_ver -L secureip -L xpm --snapshot tb_myCPU_behav xil_defaultlib.tb_myCPU xil_defaultlib.glbl -log elaborate.log 
+Using 2 slave threads.
+Starting static elaboration
+Pass Through NonSizing Optimizer
+WARNING: [VRFC 10-3091] actual bit length 12 differs from formal bit length 32 for port 'irom_addr' [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/student_top.sv:53]
+Completed static elaboration
+Starting simulation data flow analysis
+Completed simulation data flow analysis
+Time Resolution for simulation is 1ps
+Compiling module xil_defaultlib.mycpu_rv32_decode
+Compiling module xil_defaultlib.IMMGEN
+Compiling module xil_defaultlib.RF
+Compiling module xil_defaultlib.ALU
+Compiling module xil_defaultlib.myCPU
+Compiling module dist_mem_gen_v8_0_14.dist_mem_gen_v8_0_14(C_FAMILY="k...
+Compiling module xil_defaultlib.IROM
+Compiling module xil_defaultlib.seg7
+Compiling module xil_defaultlib.display_seg
+Compiling module xil_defaultlib.dram_driver
+Compiling module xil_defaultlib.counter
+Compiling module xil_defaultlib.perip_bridge
+Compiling module xil_defaultlib.student_top
+Compiling module xil_defaultlib.tb_myCPU
+Compiling module xil_defaultlib.glbl
+Built simulation snapshot tb_myCPU_behav
+run_program: Time (s): cpu = 00:00:00 ; elapsed = 00:00:06 . Memory (MB): peak = 591.430 ; gain = 0.000
+INFO: [USF-XSim-69] 'elaborate' step finished in '6' seconds
+INFO: [USF-XSim-4] XSim::Simulate design
+INFO: [USF-XSim-61] Executing 'SIMULATE' step in 'd:/digital_twin/digital_twin/digital_twin.sim/sim_1/behav/xsim'
+INFO: [USF-XSim-98] *** Running xsim
+   with args "tb_myCPU_behav -key {Behavioral:sim_1:Functional:tb_myCPU} -tclbatch {tb_myCPU.tcl} -view {d:/digital_twin/digital_twin/digital_twin.srcs/sim_1/imports/JYD2025_Contest-rv32i-error/tb_uart_behav.wcfg} -view {d:/digital_twin/digital_twin/digital_twin.srcs/sim_1/imports/JYD2025_Contest-rv32i-error/tb_top_behav.wcfg} -view {d:/digital_twin/digital_twin/digital_twin.srcs/sim_1/imports/JYD2025_Contest-rv32i-error/tb_myCPU_behav.wcfg} -log {simulate.log}"
+INFO: [USF-XSim-8] Loading simulator feature
+Time resolution is 1 ps
+open_wave_config d:/digital_twin/digital_twin/digital_twin.srcs/sim_1/imports/JYD2025_Contest-rv32i-error/tb_uart_behav.wcfg
+WARNING: Simulation object /tb_uart/clk was not found in the design.
+WARNING: Simulation object /tb_uart/rst_n was not found in the design.
+WARNING: Simulation object /tb_uart/rx was not found in the design.
+WARNING: Simulation object /tb_uart/rx_ready was not found in the design.
+WARNING: Simulation object /tb_uart/rx_data was not found in the design.
+WARNING: Simulation object /tb_uart/tx was not found in the design.
+WARNING: Simulation object /tb_uart/tx_start was not found in the design.
+WARNING: Simulation object /tb_uart/tx_data was not found in the design.
+WARNING: Simulation object /tb_uart/tx_busy was not found in the design.
+WARNING: Simulation object /tb_uart/BIT_PERIOD was not found in the design.
+open_wave_config d:/digital_twin/digital_twin/digital_twin.srcs/sim_1/imports/JYD2025_Contest-rv32i-error/tb_top_behav.wcfg
+WARNING: Simulation object /tb_top/clk was not found in the design.
+WARNING: Simulation object /tb_top/serial_rx was not found in the design.
+WARNING: Simulation object /tb_top/uut/uart_inst/rx was not found in the design.
+WARNING: Simulation object /tb_top/uut/uart_inst/rx_ready was not found in the design.
+WARNING: Simulation object /tb_top/uut/uart_inst/rx_data was not found in the design.
+WARNING: Simulation object /tb_top/uut/uart_inst/rx_ready was not found in the design.
+WARNING: Simulation object /tb_top/uut/uart_inst/rx_bit_cnt was not found in the design.
+WARNING: Simulation object /tb_top/uut/uart_inst/tx was not found in the design.
+WARNING: Simulation object /tb_top/serial_tx was not found in the design.
+WARNING: Simulation object /tb_top/uut/uart_inst/tx_busy was not found in the design.
+WARNING: Simulation object /tb_top/uut/uart_inst/tx_data was not found in the design.
+WARNING: Simulation object /tb_top/uut/twin_controller_inst/current_state was not found in the design.
+WARNING: Simulation object /tb_top/uut/twin_controller_inst/tx_busy was not found in the design.
+WARNING: Simulation object /tb_top/uut/twin_controller_inst/tx_start_next was not found in the design.
+WARNING: Simulation object /tb_top/uut/twin_controller_inst/send_cnt was not found in the design.
+WARNING: Simulation object /tb_top/uut/twin_controller_inst/status_buffer was not found in the design.
+WARNING: Simulation object /tb_top/uut/twin_controller_inst/tx_start was not found in the design.
+WARNING: Simulation object /tb_top/uut/twin_controller_inst/tx_data was not found in the design.
+WARNING: Simulation object /tb_top/uut/student_top_inst/w_clk_50Mhz was not found in the design.
+WARNING: Simulation object /tb_top/uut/student_top_inst/w_clk_rst was not found in the design.
+WARNING: Simulation object /tb_top/uut/student_top_inst/virtual_key was not found in the design.
+WARNING: Simulation object /tb_top/uut/student_top_inst/virtual_sw was not found in the design.
+WARNING: Simulation object /tb_top/uut/student_top_inst/virtual_led was not found in the design.
+WARNING: Simulation object /tb_top/uut/student_top_inst/virtual_seg was not found in the design.
+WARNING: Simulation object /tb_top/uut/student_top_inst/seg_driver/count was not found in the design.
+WARNING: Simulation object /tb_top/uut/student_top_inst/seg_driver/ans was not found in the design.
+open_wave_config d:/digital_twin/digital_twin/digital_twin.srcs/sim_1/imports/JYD2025_Contest-rv32i-error/tb_myCPU_behav.wcfg
+WARNING: Simulation object /tb_myCPU/uut/pc was not found in the design.
+WARNING: Simulation object /tb_myCPU/uut/bridge_inst/dram_driver_inst/dram_rdata_raw was not found in the design.
+WARNING: Simulation object /tb_myCPU/uut/bridge_inst/dram_driver_inst/dout was not found in the design.
+source tb_myCPU.tcl
+## current_wave_config
+WARNING: This core is supplied with a behavioral model. To model cycle-accurate behavior you must run timing simulation.
+[TB] Reset released at 190.0 ns
+INFO: [USF-XSim-96] XSim completed. Design snapshot 'tb_myCPU_behav' loaded.
+INFO: [USF-XSim-97] XSim simulation ran for 30us
+launch_simulation: Time (s): cpu = 00:00:01 ; elapsed = 00:00:14 . Memory (MB): peak = 601.691 ; gain = 23.391
+# close_project
+# exit
+INFO: [Common 17-206] Exiting Vivado at Fri May  1 11:12:17 2026...

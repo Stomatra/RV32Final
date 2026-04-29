@@ -1,0 +1,1432 @@
+
+****** Vivado v2023.2 (64-bit)
+  **** SW Build 4029153 on Fri Oct 13 20:14:34 MDT 2023
+  **** IP Build 4028589 on Sat Oct 14 00:45:43 MDT 2023
+  **** SharedData Build 4025554 on Tue Oct 10 17:18:54 MDT 2023
+    ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+    ** Copyright 2022-2023 Advanced Micro Devices, Inc. All Rights Reserved.
+
+source {d:\digital_twin\digital_twin\retarget_cpu_clk_impl_ultra.tcl}
+# if {[llength $argv] != 1} {
+#     puts "Usage: vivado -mode batch -source retarget_cpu_clk_impl_ultra.tcl -tclargs <freq_mhz>"
+#     exit 1
+# }
+# set target_freq [lindex $argv 0]
+# set freq_tag [regsub -all {\.} $target_freq {p}]
+# proc cleanup_run_markers {run_name} {
+#     set run_dir [file normalize [format {d:/digital_twin/digital_twin/digital_twin.runs/%s} $run_name]]
+#     foreach pattern {
+#         .stop.rst
+#         .vivado.begin.rst
+#         .vivado.end.rst
+#         .vivado.error.rst
+#         __synthesis_is_running__
+#         __implementation_is_running__
+#     } {
+#         foreach stale_file [glob -nocomplain -directory $run_dir $pattern] {
+#             catch {file delete -force $stale_file}
+#         }
+#     }
+# }
+# proc wait_for_checkpoint {run_name checkpoint_name running_marker timeout_ms} {
+#     set run_dir [file normalize [format {d:/digital_twin/digital_twin/digital_twin.runs/%s} $run_name]]
+#     set checkpoint_path [file join $run_dir $checkpoint_name]
+#     set running_path [file join $run_dir $running_marker]
+#     set deadline [expr {[clock milliseconds] + $timeout_ms}]
+# 
+#     while {1} {
+#         if {[file exists $checkpoint_path] && ![file exists $running_path]} {
+#             return
+#         }
+#         if {[clock milliseconds] >= $deadline} {
+#             error [format {Timed out waiting for %s/%s to complete} $run_name $checkpoint_name]
+#         }
+#         after 1000
+#     }
+# }
+# open_project {d:/digital_twin/digital_twin/digital_twin.xpr}
+Scanning sources...
+Finished scanning sources
+INFO: [IP_Flow 19-234] Refreshing IP repositories
+INFO: [IP_Flow 19-1704] No user IP repositories specified
+INFO: [IP_Flow 19-2313] Loaded Vivado IP repository 'D:/Xilinx/Vivado/2023.2/data/ip'.
+open_project: Time (s): cpu = 00:00:11 ; elapsed = 00:00:12 . Memory (MB): peak = 577.273 ; gain = 191.855
+# set pll_ip [get_ips pll]
+# if {[llength $pll_ip] != 1} {
+#     puts "ERROR: expected exactly one IP named pll"
+#     close_project
+#     exit 1
+# }
+# set pll_xci [get_files {d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/ip/pll_1/pll.xci}]
+# if {[llength $pll_xci] != 1} {
+#     puts "ERROR: expected active pll_1 xci file"
+#     close_project
+#     exit 1
+# }
+# upgrade_ip $pll_ip
+WARNING: [Coretcl 2-1042] No IP was identified for upgrade.
+# set_property -dict [list CONFIG.CLKOUT2_REQUESTED_OUT_FREQ $target_freq] $pll_ip
+# reset_target all $pll_xci
+# generate_target all $pll_xci
+INFO: [IP_Flow 19-1686] Generating 'Instantiation Template' target for IP 'pll'...
+INFO: [IP_Flow 19-1686] Generating 'Synthesis' target for IP 'pll'...
+INFO: [IP_Flow 19-1686] Generating 'Simulation' target for IP 'pll'...
+INFO: [IP_Flow 19-1686] Generating 'Implementation' target for IP 'pll'...
+INFO: [IP_Flow 19-1686] Generating 'Change Log' target for IP 'pll'...
+# export_ip_user_files -of_objects $pll_xci -no_script -sync -force -quiet
+# if {[llength [get_runs pll_synth_1]] == 0} {
+#     create_ip_run $pll_xci
+# }
+# cleanup_run_markers pll_synth_1
+# reset_run pll_synth_1
+# launch_runs pll_synth_1 -jobs 2
+INFO: [IP_Flow 19-6924] IPCACHE: Running cache check for IP inst: pll
+INFO: [IP_Flow 19-6922] IPCACHE: Exporting cached entry 4cfb155cc9c6653b to dir: d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll
+INFO: [IP_Flow 19-6928] IPCACHE: copied cached file d:/digital_twin/digital_twin/digital_twin.cache/ip/2023.2/4/c/4cfb155cc9c6653b/pll.dcp to d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll.dcp.
+INFO: [IP_Flow 19-6926] IPCACHE: added file to list for BOM: d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll.dcp
+INFO: [IP_Flow 19-6928] IPCACHE: copied cached file d:/digital_twin/digital_twin/digital_twin.cache/ip/2023.2/4/c/4cfb155cc9c6653b/pll_sim_netlist.v to d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll_sim_netlist.v.
+INFO: [IP_Flow 19-6926] IPCACHE: added file to list for BOM: d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll_sim_netlist.v
+INFO: [IP_Flow 19-6928] IPCACHE: copied cached file d:/digital_twin/digital_twin/digital_twin.cache/ip/2023.2/4/c/4cfb155cc9c6653b/pll_sim_netlist.vhdl to d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll_sim_netlist.vhdl.
+INFO: [IP_Flow 19-6926] IPCACHE: added file to list for BOM: d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll_sim_netlist.vhdl
+INFO: [IP_Flow 19-6928] IPCACHE: copied cached file d:/digital_twin/digital_twin/digital_twin.cache/ip/2023.2/4/c/4cfb155cc9c6653b/pll_stub.v to d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll_stub.v.
+INFO: [IP_Flow 19-6926] IPCACHE: added file to list for BOM: d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll_stub.v
+INFO: [IP_Flow 19-6928] IPCACHE: copied cached file d:/digital_twin/digital_twin/digital_twin.cache/ip/2023.2/4/c/4cfb155cc9c6653b/pll_stub.vhdl to d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll_stub.vhdl.
+INFO: [IP_Flow 19-6926] IPCACHE: added file to list for BOM: d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll_stub.vhdl
+INFO: [IP_Flow 19-4993] Using cached IP synthesis design for IP pll, cache-ID = 4cfb155cc9c6653b; cache size = 48.699 MB.
+INFO: [Vivado 12-4149] The synthesis checkpoint for IP 'd:/digital_twin/digital_twin/digital_twin.srcs/sources_1/ip/pll_1/pll.xci' is already up-to-date
+[Wed Apr 29 10:17:59 2026] Launched pll_synth_1...
+Run output will be captured here: d:/digital_twin/digital_twin/digital_twin.runs/pll_synth_1/runme.log
+# wait_on_run pll_synth_1
+[Wed Apr 29 10:17:59 2026] Waiting for pll_synth_1 to finish...
+
+
+*** Running vivado
+    with args -log pll.vds -m64 -product Vivado -mode batch -messageDb vivado.pb -notrace -source pll.tcl
+
+
+
+****** Vivado v2023.2 (64-bit)
+  **** SW Build 4029153 on Fri Oct 13 20:14:34 MDT 2023
+  **** IP Build 4028589 on Sat Oct 14 00:45:43 MDT 2023
+  **** SharedData Build 4025554 on Tue Oct 10 17:18:54 MDT 2023
+    ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+    ** Copyright 2022-2023 Advanced Micro Devices, Inc. All Rights Reserved.
+
+source pll.tcl -notrace
+create_project: Time (s): cpu = 00:00:10 ; elapsed = 00:00:12 . Memory (MB): peak = 567.562 ; gain = 183.238
+INFO: [IP_Flow 19-6924] IPCACHE: Running cache check for IP inst: pll
+INFO: [IP_Flow 19-6922] IPCACHE: Exporting cached entry 4cfb155cc9c6653b to dir: d:/digital_twin/digital_twin/digital_twin.runs/pll_synth_1
+INFO: [IP_Flow 19-6928] IPCACHE: copied cached file d:/digital_twin/digital_twin/digital_twin.cache/ip/2023.2/4/c/4cfb155cc9c6653b/pll.dcp to d:/digital_twin/digital_twin/digital_twin.runs/pll_synth_1/pll.dcp.
+INFO: [IP_Flow 19-6928] IPCACHE: copied cached file d:/digital_twin/digital_twin/digital_twin.cache/ip/2023.2/4/c/4cfb155cc9c6653b/pll_sim_netlist.v to d:/digital_twin/digital_twin/digital_twin.runs/pll_synth_1/pll_sim_netlist.v.
+INFO: [IP_Flow 19-6928] IPCACHE: copied cached file d:/digital_twin/digital_twin/digital_twin.cache/ip/2023.2/4/c/4cfb155cc9c6653b/pll_sim_netlist.vhdl to d:/digital_twin/digital_twin/digital_twin.runs/pll_synth_1/pll_sim_netlist.vhdl.
+INFO: [IP_Flow 19-6928] IPCACHE: copied cached file d:/digital_twin/digital_twin/digital_twin.cache/ip/2023.2/4/c/4cfb155cc9c6653b/pll_stub.v to d:/digital_twin/digital_twin/digital_twin.runs/pll_synth_1/pll_stub.v.
+INFO: [IP_Flow 19-6928] IPCACHE: copied cached file d:/digital_twin/digital_twin/digital_twin.cache/ip/2023.2/4/c/4cfb155cc9c6653b/pll_stub.vhdl to d:/digital_twin/digital_twin/digital_twin.runs/pll_synth_1/pll_stub.vhdl.
+INFO: [IP_Flow 19-4838] Using cached IP synthesis design for IP pll, cache-ID = 4cfb155cc9c6653b.
+INFO: [Common 17-206] Exiting Vivado at Wed Apr 29 10:18:22 2026...
+[Wed Apr 29 10:18:24 2026] pll_synth_1 finished
+wait_on_runs: Time (s): cpu = 00:00:01 ; elapsed = 00:00:25 . Memory (MB): peak = 592.395 ; gain = 0.000
+# update_compile_order -fileset sources_1
+# cleanup_run_markers synth_1
+# reset_run synth_1
+# launch_runs synth_1 -jobs 2
+[Wed Apr 29 10:18:24 2026] Launched synth_1...
+Run output will be captured here: d:/digital_twin/digital_twin/digital_twin.runs/synth_1/runme.log
+# wait_on_run synth_1
+[Wed Apr 29 10:18:24 2026] Waiting for synth_1 to finish...
+
+
+*** Running vivado
+    with args -log top.vds -m64 -product Vivado -mode batch -messageDb vivado.pb -notrace -source top.tcl
+
+
+
+****** Vivado v2023.2 (64-bit)
+  **** SW Build 4029153 on Fri Oct 13 20:14:34 MDT 2023
+  **** IP Build 4028589 on Sat Oct 14 00:45:43 MDT 2023
+  **** SharedData Build 4025554 on Tue Oct 10 17:18:54 MDT 2023
+    ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+    ** Copyright 2022-2023 Advanced Micro Devices, Inc. All Rights Reserved.
+
+source top.tcl -notrace
+create_project: Time (s): cpu = 00:00:10 ; elapsed = 00:00:12 . Memory (MB): peak = 566.516 ; gain = 183.156
+Command: synth_design -top top -part xc7k325tffg900-2
+Starting synth_design
+Attempting to get a license for feature 'Synthesis' and/or device 'xc7k325t'
+INFO: [Common 17-349] Got license for feature 'Synthesis' and/or device 'xc7k325t'
+INFO: [Device 21-403] Loading part xc7k325tffg900-2
+INFO: [Synth 8-7079] Multithreading enabled for synth_design using a maximum of 2 processes.
+INFO: [Synth 8-7078] Launching helper process for spawning children vivado processes
+INFO: [Synth 8-7075] Helper process launched with PID 32956
+---------------------------------------------------------------------------------
+Starting RTL Elaboration : Time (s): cpu = 00:00:09 ; elapsed = 00:00:10 . Memory (MB): peak = 1469.656 ; gain = 438.266
+---------------------------------------------------------------------------------
+INFO: [Synth 8-6157] synthesizing module 'top' [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/top.sv:23]
+INFO: [Synth 8-6157] synthesizing module 'pll' [d:/digital_twin/digital_twin/digital_twin.runs/synth_1/.Xil/Vivado-1556-YukiRin/realtime/pll_stub.v:6]
+INFO: [Synth 8-6155] done synthesizing module 'pll' (0#1) [d:/digital_twin/digital_twin/digital_twin.runs/synth_1/.Xil/Vivado-1556-YukiRin/realtime/pll_stub.v:6]
+INFO: [Synth 8-6157] synthesizing module 'uart' [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/uart.sv:22]
+	Parameter CLK_FREQ bound to: 50000000 - type: integer 
+	Parameter BAUD_RATE bound to: 9600 - type: integer 
+INFO: [Synth 8-226] default block is never used [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/uart.sv:72]
+INFO: [Synth 8-155] case statement is not full and has no default [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/uart.sv:147]
+INFO: [Synth 8-6155] done synthesizing module 'uart' (0#1) [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/uart.sv:22]
+INFO: [Synth 8-6157] synthesizing module 'twin_controller' [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/twin_controller.sv:23]
+INFO: [Synth 8-226] default block is never used [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/twin_controller.sv:64]
+INFO: [Synth 8-6155] done synthesizing module 'twin_controller' (0#1) [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/twin_controller.sv:23]
+INFO: [Synth 8-6157] synthesizing module 'student_top' [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/student_top.sv:23]
+INFO: [Synth 8-6157] synthesizing module 'myCPU' [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/myCPU.sv:3]
+INFO: [Synth 8-6157] synthesizing module 'mycpu_rv32_decode' [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/myCPU.sv:723]
+INFO: [Synth 8-6155] done synthesizing module 'mycpu_rv32_decode' (0#1) [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/myCPU.sv:723]
+INFO: [Synth 8-6157] synthesizing module 'IMMGEN' [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/IMMGEN.sv:23]
+	Parameter DATAWIDTH bound to: 32 - type: integer 
+INFO: [Synth 8-6155] done synthesizing module 'IMMGEN' (0#1) [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/IMMGEN.sv:23]
+INFO: [Synth 8-6157] synthesizing module 'RF' [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/RF.sv:22]
+	Parameter ADDR_WIDTH bound to: 5 - type: integer 
+	Parameter DATAWIDTH bound to: 32 - type: integer 
+INFO: [Synth 8-6155] done synthesizing module 'RF' (0#1) [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/RF.sv:22]
+INFO: [Synth 8-6157] synthesizing module 'ALU' [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/ALU.sv:22]
+	Parameter DATAWIDTH bound to: 32 - type: integer 
+INFO: [Synth 8-294] found qualifier unique on case statement: implementing as parallel_case [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/ALU.sv:66]
+INFO: [Synth 8-6155] done synthesizing module 'ALU' (0#1) [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/ALU.sv:22]
+INFO: [Synth 8-226] default block is never used [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/myCPU.sv:342]
+INFO: [Synth 8-226] default block is never used [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/myCPU.sv:362]
+INFO: [Synth 8-294] found qualifier unique on case statement: implementing as parallel_case [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/myCPU.sv:492]
+INFO: [Synth 8-294] found qualifier unique on case statement: implementing as parallel_case [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/myCPU.sv:498]
+INFO: [Synth 8-294] found qualifier unique on case statement: implementing as parallel_case [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/myCPU.sv:504]
+INFO: [Synth 8-294] found qualifier unique on case statement: implementing as parallel_case [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/myCPU.sv:510]
+INFO: [Synth 8-294] found qualifier unique on case statement: implementing as parallel_case [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/myCPU.sv:620]
+INFO: [Synth 8-294] found qualifier unique on case statement: implementing as parallel_case [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/myCPU.sv:622]
+INFO: [Synth 8-294] found qualifier unique on case statement: implementing as parallel_case [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/myCPU.sv:638]
+INFO: [Synth 8-294] found qualifier unique on case statement: implementing as parallel_case [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/myCPU.sv:682]
+INFO: [Synth 8-294] found qualifier unique on case statement: implementing as parallel_case [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/myCPU.sv:684]
+INFO: [Synth 8-294] found qualifier unique on case statement: implementing as parallel_case [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/myCPU.sv:700]
+INFO: [Synth 8-6155] done synthesizing module 'myCPU' (0#1) [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/imports/new/myCPU.sv:3]
+INFO: [Synth 8-6157] synthesizing module 'IROM' [d:/digital_twin/digital_twin/digital_twin.runs/synth_1/.Xil/Vivado-1556-YukiRin/realtime/IROM_stub.v:6]
+INFO: [Synth 8-6155] done synthesizing module 'IROM' (0#1) [d:/digital_twin/digital_twin/digital_twin.runs/synth_1/.Xil/Vivado-1556-YukiRin/realtime/IROM_stub.v:6]
+INFO: [Synth 8-6157] synthesizing module 'perip_bridge' [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/perip_bridge.sv:22]
+INFO: [Synth 8-6157] synthesizing module 'display_seg' [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/display_seg.sv:23]
+INFO: [Synth 8-6157] synthesizing module 'seg7' [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/seg7.sv:23]
+INFO: [Synth 8-226] default block is never used [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/seg7.sv:29]
+INFO: [Synth 8-6155] done synthesizing module 'seg7' (0#1) [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/seg7.sv:23]
+INFO: [Synth 8-6155] done synthesizing module 'display_seg' (0#1) [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/display_seg.sv:23]
+INFO: [Synth 8-6157] synthesizing module 'dram_driver' [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/dram_driver.sv:23]
+INFO: [Synth 8-294] found qualifier unique on case statement: implementing as parallel_case [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/dram_driver.sv:84]
+INFO: [Synth 8-294] found qualifier unique on case statement: implementing as parallel_case [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/dram_driver.sv:107]
+INFO: [Synth 8-6155] done synthesizing module 'dram_driver' (0#1) [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/dram_driver.sv:23]
+INFO: [Synth 8-6157] synthesizing module 'counter' [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/counter.sv:23]
+INFO: [Synth 8-6155] done synthesizing module 'counter' (0#1) [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/counter.sv:23]
+INFO: [Synth 8-6155] done synthesizing module 'perip_bridge' (0#1) [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/perip_bridge.sv:22]
+INFO: [Synth 8-6155] done synthesizing module 'student_top' (0#1) [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/student_top.sv:23]
+INFO: [Synth 8-6155] done synthesizing module 'top' (0#1) [d:/digital_twin/digital_twin/digital_twin.srcs/sources_1/new/top.sv:23]
+---------------------------------------------------------------------------------
+Finished RTL Elaboration : Time (s): cpu = 00:00:21 ; elapsed = 00:00:24 . Memory (MB): peak = 1715.633 ; gain = 684.242
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Handling Custom Attributes
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Handling Custom Attributes : Time (s): cpu = 00:00:21 ; elapsed = 00:00:24 . Memory (MB): peak = 1715.633 ; gain = 684.242
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished RTL Optimization Phase 1 : Time (s): cpu = 00:00:21 ; elapsed = 00:00:24 . Memory (MB): peak = 1715.633 ; gain = 684.242
+---------------------------------------------------------------------------------
+Netlist sorting complete. Time (s): cpu = 00:00:01 ; elapsed = 00:00:00.074 . Memory (MB): peak = 1715.633 ; gain = 0.000
+INFO: [Project 1-570] Preparing netlist for logic optimization
+
+Processing XDC Constraints
+Initializing timing engine
+Parsing XDC File [d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/IROM/IROM/IROM_in_context.xdc] for cell 'student_top_inst/Mem_IROM'
+Finished Parsing XDC File [d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/IROM/IROM/IROM_in_context.xdc] for cell 'student_top_inst/Mem_IROM'
+Parsing XDC File [d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll/pll_in_context.xdc] for cell 'pll_inst'
+Finished Parsing XDC File [d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll/pll_in_context.xdc] for cell 'pll_inst'
+Parsing XDC File [d:/digital_twin/digital_twin/digital_twin.srcs/constrs_1/new/digital_twin.xdc]
+WARNING: [Vivado 12-627] No clocks matched 'clk_out1_pll'. [d:/digital_twin/digital_twin/digital_twin.srcs/constrs_1/new/digital_twin.xdc:155]
+INFO: [Vivado 12-626] No clocks found. Please use 'create_clock' or 'create_generated_clock' command to create clocks. [d:/digital_twin/digital_twin/digital_twin.srcs/constrs_1/new/digital_twin.xdc:155]
+WARNING: [Vivado 12-627] No clocks matched 'clk_out2_pll'. [d:/digital_twin/digital_twin/digital_twin.srcs/constrs_1/new/digital_twin.xdc:155]
+INFO: [Vivado 12-626] No clocks found. Please use 'create_clock' or 'create_generated_clock' command to create clocks. [d:/digital_twin/digital_twin/digital_twin.srcs/constrs_1/new/digital_twin.xdc:155]
+CRITICAL WARNING: [Vivado 12-4739] set_clock_groups:No valid object(s) found for '-group [get_clocks clk_out1_pll]'. [d:/digital_twin/digital_twin/digital_twin.srcs/constrs_1/new/digital_twin.xdc:155]
+Resolution: Check if the specified object(s) exists in the current design. If it does, ensure that the correct design hierarchy was specified for the object. If you are working with clocks, make sure create_clock was used to create the clock object before it is referenced.
+CRITICAL WARNING: [Vivado 12-4739] set_clock_groups:No valid object(s) found for '-group '. [d:/digital_twin/digital_twin/digital_twin.srcs/constrs_1/new/digital_twin.xdc:155]
+Resolution: Check if the specified object(s) exists in the current design. If it does, ensure that the correct design hierarchy was specified for the object. If you are working with clocks, make sure create_clock was used to create the clock object before it is referenced.
+CRITICAL WARNING: [Vivado 12-4739] set_clock_groups:No valid object(s) found for '-group [get_clocks clk_out2_pll]'. [d:/digital_twin/digital_twin/digital_twin.srcs/constrs_1/new/digital_twin.xdc:155]
+Resolution: Check if the specified object(s) exists in the current design. If it does, ensure that the correct design hierarchy was specified for the object. If you are working with clocks, make sure create_clock was used to create the clock object before it is referenced.
+CRITICAL WARNING: [Vivado 12-4739] set_clock_groups:No valid object(s) found for '-group '. [d:/digital_twin/digital_twin/digital_twin.srcs/constrs_1/new/digital_twin.xdc:155]
+Resolution: Check if the specified object(s) exists in the current design. If it does, ensure that the correct design hierarchy was specified for the object. If you are working with clocks, make sure create_clock was used to create the clock object before it is referenced.
+Finished Parsing XDC File [d:/digital_twin/digital_twin/digital_twin.srcs/constrs_1/new/digital_twin.xdc]
+WARNING: [Project 1-498] One or more constraints failed evaluation while reading constraint file [d:/digital_twin/digital_twin/digital_twin.srcs/constrs_1/new/digital_twin.xdc] and the design contains unresolved black boxes. These constraints will be read post-synthesis (as long as their source constraint file is marked as used_in_implementation) and should be applied correctly then. You should review the constraints listed in the file [.Xil/top_propImpl.xdc] and check the run log file to verify that these constraints were correctly applied.
+INFO: [Project 1-236] Implementation specific constraints were found while reading constraint file [d:/digital_twin/digital_twin/digital_twin.srcs/constrs_1/new/digital_twin.xdc]. These constraints will be ignored for synthesis but will be used in implementation. Impacted constraints are listed in the file [.Xil/top_propImpl.xdc].
+Resolution: To avoid this warning, move constraints listed in [.Xil/top_propImpl.xdc] to another XDC file and exclude this new file from synthesis with the used_in_synthesis property (File Properties dialog in GUI) and re-run elaboration/synthesis.
+Completed Processing XDC Constraints
+
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.001 . Memory (MB): peak = 1814.270 ; gain = 0.000
+INFO: [Project 1-111] Unisim Transformation Summary:
+No Unisim elements were transformed.
+
+The system cannot find the path specified.
+Constraint Validation Runtime : Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.024 . Memory (MB): peak = 1814.270 ; gain = 0.000
+---------------------------------------------------------------------------------
+Finished Constraint Validation : Time (s): cpu = 00:00:35 ; elapsed = 00:00:40 . Memory (MB): peak = 1814.270 ; gain = 782.879
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Loading Part and Timing Information
+---------------------------------------------------------------------------------
+Loading part: xc7k325tffg900-2
+---------------------------------------------------------------------------------
+Finished Loading Part and Timing Information : Time (s): cpu = 00:00:35 ; elapsed = 00:00:40 . Memory (MB): peak = 1814.270 ; gain = 782.879
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Applying 'set_property' XDC Constraints
+---------------------------------------------------------------------------------
+Applied set_property IO_BUFFER_TYPE = NONE for i_sys_clk_n. (constraint file  d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll/pll_in_context.xdc, line 4).
+Applied set_property CLOCK_BUFFER_TYPE = NONE for i_sys_clk_n. (constraint file  d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll/pll_in_context.xdc, line 5).
+Applied set_property IO_BUFFER_TYPE = NONE for i_sys_clk_p. (constraint file  d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll/pll_in_context.xdc, line 6).
+Applied set_property CLOCK_BUFFER_TYPE = NONE for i_sys_clk_p. (constraint file  d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll/pll_in_context.xdc, line 7).
+Applied set_property KEEP_HIERARCHY = SOFT for student_top_inst/Mem_IROM. (constraint file  auto generated constraint).
+Applied set_property KEEP_HIERARCHY = SOFT for pll_inst. (constraint file  auto generated constraint).
+---------------------------------------------------------------------------------
+Finished applying 'set_property' XDC Constraints : Time (s): cpu = 00:00:36 ; elapsed = 00:00:40 . Memory (MB): peak = 1814.270 ; gain = 782.879
+---------------------------------------------------------------------------------
+INFO: [Synth 8-802] inferred FSM for state register 'rx_state_reg' in module 'uart'
+INFO: [Synth 8-802] inferred FSM for state register 'tx_state_reg' in module 'uart'
+---------------------------------------------------------------------------------------------------
+                   State |                     New Encoding |                Previous Encoding 
+---------------------------------------------------------------------------------------------------
+                  iSTATE |                               00 |                               00
+                 iSTATE0 |                               01 |                               01
+                 iSTATE1 |                               10 |                               10
+                 iSTATE2 |                               11 |                               11
+---------------------------------------------------------------------------------------------------
+INFO: [Synth 8-3354] encoded FSM with state register 'rx_state_reg' using encoding 'sequential' in module 'uart'
+---------------------------------------------------------------------------------------------------
+                   State |                     New Encoding |                Previous Encoding 
+---------------------------------------------------------------------------------------------------
+                  iSTATE |                                0 |                             0000
+                 iSTATE0 |                                1 |                             0001
+---------------------------------------------------------------------------------------------------
+INFO: [Synth 8-3354] encoded FSM with state register 'tx_state_reg' using encoding 'sequential' in module 'uart'
+---------------------------------------------------------------------------------
+Finished RTL Optimization Phase 2 : Time (s): cpu = 00:00:38 ; elapsed = 00:00:43 . Memory (MB): peak = 1814.270 ; gain = 782.879
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start RTL Component Statistics 
+---------------------------------------------------------------------------------
+Detailed RTL Component Info : 
++---Adders : 
+	   3 Input   33 Bit       Adders := 1     
+	   2 Input   32 Bit       Adders := 4     
+	   2 Input   16 Bit       Adders := 1     
+	   2 Input   13 Bit       Adders := 3     
+	   2 Input    5 Bit       Adders := 2     
+	   2 Input    4 Bit       Adders := 2     
++---XORs : 
+	   2 Input     32 Bit         XORs := 2     
+	   2 Input      1 Bit         XORs := 32    
++---Registers : 
+	               64 Bit    Registers := 3     
+	               40 Bit    Registers := 2     
+	               32 Bit    Registers := 51    
+	               16 Bit    Registers := 2     
+	               13 Bit    Registers := 2     
+	               10 Bit    Registers := 1     
+	                8 Bit    Registers := 28    
+	                5 Bit    Registers := 7     
+	                4 Bit    Registers := 3     
+	                3 Bit    Registers := 3     
+	                2 Bit    Registers := 8     
+	                1 Bit    Registers := 34    
++---RAMs : 
+	             512K Bit	(65536 X 8 bit)          RAMs := 4     
++---Muxes : 
+	   2 Input   64 Bit        Muxes := 2     
+	   2 Input   32 Bit        Muxes := 21    
+	   3 Input   32 Bit        Muxes := 5     
+	   4 Input   32 Bit        Muxes := 3     
+	   2 Input   16 Bit        Muxes := 3     
+	   2 Input   13 Bit        Muxes := 4     
+	   4 Input   13 Bit        Muxes := 1     
+	   2 Input   10 Bit        Muxes := 1     
+	   2 Input    8 Bit        Muxes := 9     
+	   4 Input    8 Bit        Muxes := 4     
+	   2 Input    5 Bit        Muxes := 2     
+	   4 Input    4 Bit        Muxes := 1     
+	   2 Input    4 Bit        Muxes := 8     
+	   8 Input    4 Bit        Muxes := 2     
+	  10 Input    4 Bit        Muxes := 1     
+	   2 Input    3 Bit        Muxes := 1     
+	   4 Input    2 Bit        Muxes := 2     
+	  10 Input    2 Bit        Muxes := 2     
+	   2 Input    2 Bit        Muxes := 7     
+	  11 Input    2 Bit        Muxes := 2     
+	   3 Input    2 Bit        Muxes := 3     
+	   2 Input    1 Bit        Muxes := 57    
+	   4 Input    1 Bit        Muxes := 7     
+	   3 Input    1 Bit        Muxes := 1     
+	  10 Input    1 Bit        Muxes := 6     
+	   7 Input    1 Bit        Muxes := 4     
+---------------------------------------------------------------------------------
+Finished RTL Component Statistics 
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Part Resource Summary
+---------------------------------------------------------------------------------
+Part Resources:
+DSPs: 840 (col length:140)
+BRAMs: 890 (col length: RAMB18 140 RAMB36 70)
+---------------------------------------------------------------------------------
+Finished Part Resource Summary
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Cross Boundary and Area Optimization
+---------------------------------------------------------------------------------
+WARNING: [Synth 8-7080] Parallel synthesis criteria is not met
+---------------------------------------------------------------------------------
+Finished Cross Boundary and Area Optimization : Time (s): cpu = 00:01:15 ; elapsed = 00:01:28 . Memory (MB): peak = 1814.270 ; gain = 782.879
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start ROM, RAM, DSP, Shift Register and Retiming Reporting
+---------------------------------------------------------------------------------
+
+Block RAM: Preliminary Mapping Report (see note below)
++------------+--------------------------------------------------------------+------------------------+---+---+------------------------+---+---+------------------+--------+--------+
+|Module Name | RTL Object                                                   | PORT A (Depth x Width) | W | R | PORT B (Depth x Width) | W | R | Ports driving FF | RAMB18 | RAMB36 | 
++------------+--------------------------------------------------------------+------------------------+---+---+------------------------+---+---+------------------+--------+--------+
+|top         | student_top_inst/bridge_inst/dram_driver_inst/dram_lane0_reg | 64 K x 8(READ_FIRST)   | W | R |                        |   |   | Port A           | 0      | 16     | 
+|top         | student_top_inst/bridge_inst/dram_driver_inst/dram_lane1_reg | 64 K x 8(READ_FIRST)   | W | R |                        |   |   | Port A           | 0      | 16     | 
+|top         | student_top_inst/bridge_inst/dram_driver_inst/dram_lane2_reg | 64 K x 8(READ_FIRST)   | W | R |                        |   |   | Port A           | 0      | 16     | 
+|top         | student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg | 64 K x 8(READ_FIRST)   | W | R |                        |   |   | Port A           | 0      | 16     | 
++------------+--------------------------------------------------------------+------------------------+---+---+------------------------+---+---+------------------+--------+--------+
+
+Note: The table above is a preliminary report that shows the Block RAMs at the current stage of the synthesis flow. Some Block RAMs may be reimplemented as non Block RAM primitives later in the synthesis flow. Multiple instantiated Block RAMs are reported only once. 
+---------------------------------------------------------------------------------
+Finished ROM, RAM, DSP, Shift Register and Retiming Reporting
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Applying XDC Timing Constraints
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Applying XDC Timing Constraints : Time (s): cpu = 00:01:25 ; elapsed = 00:01:40 . Memory (MB): peak = 1814.270 ; gain = 782.879
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Timing Optimization
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Timing Optimization : Time (s): cpu = 00:02:38 ; elapsed = 00:03:07 . Memory (MB): peak = 1925.492 ; gain = 894.102
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start ROM, RAM, DSP, Shift Register and Retiming Reporting
+---------------------------------------------------------------------------------
+
+Block RAM: Final Mapping Report
++------------+--------------------------------------------------------------+------------------------+---+---+------------------------+---+---+------------------+--------+--------+
+|Module Name | RTL Object                                                   | PORT A (Depth x Width) | W | R | PORT B (Depth x Width) | W | R | Ports driving FF | RAMB18 | RAMB36 | 
++------------+--------------------------------------------------------------+------------------------+---+---+------------------------+---+---+------------------+--------+--------+
+|top         | student_top_inst/bridge_inst/dram_driver_inst/dram_lane0_reg | 64 K x 8(READ_FIRST)   | W | R |                        |   |   | Port A           | 0      | 16     | 
+|top         | student_top_inst/bridge_inst/dram_driver_inst/dram_lane1_reg | 64 K x 8(READ_FIRST)   | W | R |                        |   |   | Port A           | 0      | 16     | 
+|top         | student_top_inst/bridge_inst/dram_driver_inst/dram_lane2_reg | 64 K x 8(READ_FIRST)   | W | R |                        |   |   | Port A           | 0      | 16     | 
+|top         | student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg | 64 K x 8(READ_FIRST)   | W | R |                        |   |   | Port A           | 0      | 16     | 
++------------+--------------------------------------------------------------+------------------------+---+---+------------------------+---+---+------------------+--------+--------+
+
+---------------------------------------------------------------------------------
+Finished ROM, RAM, DSP, Shift Register and Retiming Reporting
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Technology Mapping
+---------------------------------------------------------------------------------
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane0_reg_1_0 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane0_reg_1_1 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane0_reg_1_2 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane0_reg_1_3 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane0_reg_1_4 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane0_reg_1_5 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane0_reg_1_6 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane0_reg_1_7 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane1_reg_1_0 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane1_reg_1_1 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane1_reg_1_2 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane1_reg_1_3 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane1_reg_1_4 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane1_reg_1_5 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane1_reg_1_6 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane1_reg_1_7 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane2_reg_1_0 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane2_reg_1_1 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane2_reg_1_2 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane2_reg_1_3 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane2_reg_1_4 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane2_reg_1_5 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane2_reg_1_6 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane2_reg_1_7 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg_1_0 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg_1_1 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg_1_2 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg_1_3 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg_1_4 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg_1_5 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg_1_6 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg_1_7 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+---------------------------------------------------------------------------------
+Finished Technology Mapping : Time (s): cpu = 00:02:41 ; elapsed = 00:03:10 . Memory (MB): peak = 1925.492 ; gain = 894.102
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start IO Insertion
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Flattening Before IO Insertion
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Flattening Before IO Insertion
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Final Netlist Cleanup
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Final Netlist Cleanup
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished IO Insertion : Time (s): cpu = 00:02:49 ; elapsed = 00:03:19 . Memory (MB): peak = 1926.977 ; gain = 895.586
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Renaming Generated Instances
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Renaming Generated Instances : Time (s): cpu = 00:02:49 ; elapsed = 00:03:19 . Memory (MB): peak = 1926.977 ; gain = 895.586
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Rebuilding User Hierarchy
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Rebuilding User Hierarchy : Time (s): cpu = 00:02:50 ; elapsed = 00:03:20 . Memory (MB): peak = 1926.977 ; gain = 895.586
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Renaming Generated Ports
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Renaming Generated Ports : Time (s): cpu = 00:02:50 ; elapsed = 00:03:20 . Memory (MB): peak = 1926.977 ; gain = 895.586
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Handling Custom Attributes
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Handling Custom Attributes : Time (s): cpu = 00:02:50 ; elapsed = 00:03:20 . Memory (MB): peak = 1926.977 ; gain = 895.586
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Renaming Generated Nets
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Renaming Generated Nets : Time (s): cpu = 00:02:50 ; elapsed = 00:03:20 . Memory (MB): peak = 1926.977 ; gain = 895.586
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Writing Synthesis Report
+---------------------------------------------------------------------------------
+
+Report BlackBoxes: 
++------+--------------+----------+
+|      |BlackBox name |Instances |
++------+--------------+----------+
+|1     |pll           |         1|
+|2     |IROM          |         1|
++------+--------------+----------+
+
+Report Cell Usage: 
++------+---------+------+
+|      |Cell     |Count |
++------+---------+------+
+|1     |IROM     |     1|
+|2     |pll      |     1|
+|3     |CARRY4   |    65|
+|4     |LUT1     |     7|
+|5     |LUT2     |   152|
+|6     |LUT3     |   188|
+|7     |LUT4     |   301|
+|8     |LUT5     |   354|
+|9     |LUT6     |  1346|
+|10    |MUXF7    |   273|
+|11    |MUXF8    |   136|
+|12    |RAMB36E1 |    64|
+|21    |FDCE     |  2234|
+|22    |FDPE     |    20|
+|23    |FDRE     |   131|
+|24    |IBUF     |     1|
+|25    |OBUF     |    73|
++------+---------+------+
+---------------------------------------------------------------------------------
+Finished Writing Synthesis Report : Time (s): cpu = 00:02:50 ; elapsed = 00:03:20 . Memory (MB): peak = 1926.977 ; gain = 895.586
+---------------------------------------------------------------------------------
+Synthesis finished with 0 errors, 0 critical warnings and 1 warnings.
+Synthesis Optimization Runtime : Time (s): cpu = 00:02:25 ; elapsed = 00:03:16 . Memory (MB): peak = 1926.977 ; gain = 796.949
+Synthesis Optimization Complete : Time (s): cpu = 00:02:51 ; elapsed = 00:03:21 . Memory (MB): peak = 1926.977 ; gain = 895.586
+INFO: [Project 1-571] Translating synthesized netlist
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.137 . Memory (MB): peak = 1939.035 ; gain = 0.000
+INFO: [Netlist 29-17] Analyzing 538 Unisim elements for replacement
+INFO: [Netlist 29-28] Unisim Transformation completed in 0 CPU seconds
+INFO: [Project 1-570] Preparing netlist for logic optimization
+INFO: [Opt 31-138] Pushed 0 inverter(s) to 0 load pin(s).
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.003 . Memory (MB): peak = 1946.688 ; gain = 0.000
+INFO: [Project 1-111] Unisim Transformation Summary:
+No Unisim elements were transformed.
+
+The system cannot find the path specified.
+Synth Design complete | Checksum: 60a2b600
+INFO: [Common 17-83] Releasing license: Synthesis
+104 Infos, 4 Warnings, 4 Critical Warnings and 0 Errors encountered.
+synth_design completed successfully
+synth_design: Time (s): cpu = 00:03:02 ; elapsed = 00:03:36 . Memory (MB): peak = 1946.688 ; gain = 1365.559
+INFO: [runtcl-6] Synthesis results are not added to the cache due to CRITICAL_WARNING
+Write ShapeDB Complete: Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.016 . Memory (MB): peak = 1946.688 ; gain = 0.000
+INFO: [Common 17-1381] The checkpoint 'd:/digital_twin/digital_twin/digital_twin.runs/synth_1/top.dcp' has been generated.
+INFO: [runtcl-4] Executing : report_utilization -file top_utilization_synth.rpt -pb top_utilization_synth.pb
+INFO: [Common 17-206] Exiting Vivado at Wed Apr 29 10:22:26 2026...
+[Wed Apr 29 10:22:31 2026] synth_1 finished
+wait_on_runs: Time (s): cpu = 00:00:00 ; elapsed = 00:04:07 . Memory (MB): peak = 592.395 ; gain = 0.000
+# wait_for_checkpoint synth_1 top.dcp __synthesis_is_running__ 1800000
+# open_run synth_1
+Design is defaulting to impl run constrset: constrs_1
+Design is defaulting to synth run part: xc7k325tffg900-2
+INFO: [Device 21-403] Loading part xc7k325tffg900-2
+INFO: [Project 1-454] Reading design checkpoint 'd:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll.dcp' for cell 'pll_inst'
+INFO: [Project 1-454] Reading design checkpoint 'd:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/IROM/IROM.dcp' for cell 'student_top_inst/Mem_IROM'
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.058 . Memory (MB): peak = 1077.504 ; gain = 0.000
+INFO: [Netlist 29-17] Analyzing 1084 Unisim elements for replacement
+INFO: [Netlist 29-28] Unisim Transformation completed in 0 CPU seconds
+INFO: [Project 1-479] Netlist was created with Vivado 2023.2
+INFO: [Project 1-570] Preparing netlist for logic optimization
+Parsing XDC File [d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll_board.xdc] for cell 'pll_inst/inst'
+Finished Parsing XDC File [d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll_board.xdc] for cell 'pll_inst/inst'
+Parsing XDC File [d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll.xdc] for cell 'pll_inst/inst'
+INFO: [Timing 38-35] Done setting XDC timing constraints. [d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll.xdc:54]
+INFO: [Timing 38-2] Deriving generated clocks [d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll.xdc:54]
+get_clocks: Time (s): cpu = 00:00:13 ; elapsed = 00:00:14 . Memory (MB): peak = 1820.781 ; gain = 620.812
+Finished Parsing XDC File [d:/digital_twin/digital_twin/digital_twin.gen/sources_1/ip/pll/pll.xdc] for cell 'pll_inst/inst'
+Parsing XDC File [d:/digital_twin/digital_twin/digital_twin.srcs/constrs_1/new/digital_twin.xdc]
+Finished Parsing XDC File [d:/digital_twin/digital_twin/digital_twin.srcs/constrs_1/new/digital_twin.xdc]
+INFO: [Opt 31-138] Pushed 0 inverter(s) to 0 load pin(s).
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.002 . Memory (MB): peak = 1820.781 ; gain = 0.000
+INFO: [Project 1-111] Unisim Transformation Summary:
+No Unisim elements were transformed.
+
+The system cannot find the path specified.
+open_run: Time (s): cpu = 00:00:23 ; elapsed = 00:00:29 . Memory (MB): peak = 1820.781 ; gain = 1228.387
+# opt_design -directive Explore
+Command: opt_design -directive Explore
+INFO: [Vivado_Tcl 4-136] Directive used for opt_design is: Explore
+Attempting to get a license for feature 'Implementation' and/or device 'xc7k325t'
+INFO: [Common 17-349] Got license for feature 'Implementation' and/or device 'xc7k325t'
+Running DRC as a precondition to command opt_design
+
+Starting DRC Task
+INFO: [DRC 23-27] Running DRC with 2 threads
+INFO: [Project 1-461] DRC finished with 0 Errors
+INFO: [Project 1-462] Please refer to the DRC report (report_drc) for more information.
+
+Time (s): cpu = 00:00:02 ; elapsed = 00:00:01 . Memory (MB): peak = 1820.781 ; gain = 0.000
+
+Starting Logic Optimization Task
+
+Phase 1 Initialization
+
+Phase 1.1 Core Generation And Design Setup
+Phase 1.1 Core Generation And Design Setup | Checksum: 12de53b7f
+
+Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.004 . Memory (MB): peak = 2099.129 ; gain = 0.000
+
+Phase 1.2 Setup Constraints And Sort Netlist
+Phase 1.2 Setup Constraints And Sort Netlist | Checksum: 12de53b7f
+
+Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.012 . Memory (MB): peak = 2099.129 ; gain = 0.000
+Phase 1 Initialization | Checksum: 12de53b7f
+
+Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.014 . Memory (MB): peak = 2099.129 ; gain = 0.000
+
+Phase 2 Timer Update And Timing Data Collection
+
+Phase 2.1 Timer Update
+INFO: [Timing 38-35] Done setting XDC timing constraints.
+Phase 2.1 Timer Update | Checksum: 12de53b7f
+
+Time (s): cpu = 00:00:01 ; elapsed = 00:00:00.600 . Memory (MB): peak = 2193.008 ; gain = 93.879
+
+Phase 2.2 Timing Data Collection
+Phase 2.2 Timing Data Collection | Checksum: 12de53b7f
+
+Time (s): cpu = 00:00:01 ; elapsed = 00:00:00.623 . Memory (MB): peak = 2193.008 ; gain = 93.879
+Phase 2 Timer Update And Timing Data Collection | Checksum: 12de53b7f
+
+Time (s): cpu = 00:00:01 ; elapsed = 00:00:00.625 . Memory (MB): peak = 2193.008 ; gain = 93.879
+
+Phase 3 Retarget
+INFO: [Opt 31-1566] Pulled 1 inverters resulting in an inversion of 2 pins
+INFO: [Opt 31-138] Pushed 0 inverter(s) to 0 load pin(s).
+INFO: [Opt 31-49] Retargeted 0 cell(s).
+Phase 3 Retarget | Checksum: 125f05504
+
+Time (s): cpu = 00:00:01 ; elapsed = 00:00:00.770 . Memory (MB): peak = 2193.008 ; gain = 93.879
+Retarget | Checksum: 125f05504
+INFO: [Opt 31-389] Phase Retarget created 0 cells and removed 1 cells
+INFO: [Opt 31-1021] In phase Retarget, 1 netlist objects are constrained preventing optimization. Please run opt_design with -debug_log to get more detail. 
+
+Phase 4 Constant propagation
+INFO: [Opt 31-138] Pushed 0 inverter(s) to 0 load pin(s).
+Phase 4 Constant propagation | Checksum: aa2501d1
+
+Time (s): cpu = 00:00:02 ; elapsed = 00:00:00.852 . Memory (MB): peak = 2193.008 ; gain = 93.879
+Constant propagation | Checksum: aa2501d1
+INFO: [Opt 31-389] Phase Constant propagation created 0 cells and removed 0 cells
+
+Phase 5 Sweep
+Phase 5 Sweep | Checksum: 7f959c2b
+
+Time (s): cpu = 00:00:02 ; elapsed = 00:00:00.992 . Memory (MB): peak = 2193.008 ; gain = 93.879
+Sweep | Checksum: 7f959c2b
+INFO: [Opt 31-389] Phase Sweep created 32 cells and removed 0 cells
+
+Phase 6 BUFG optimization
+Phase 6 BUFG optimization | Checksum: 7f959c2b
+
+Time (s): cpu = 00:00:02 ; elapsed = 00:00:01 . Memory (MB): peak = 2193.008 ; gain = 93.879
+BUFG optimization | Checksum: 7f959c2b
+INFO: [Opt 31-662] Phase BUFG optimization created 0 cells of which 0 are BUFGs and removed 0 cells.
+
+Phase 7 Shift Register Optimization
+INFO: [Opt 31-1064] SRL Remap converted 0 SRLs to 0 registers and converted 0 registers of register chains to 0 SRLs
+Phase 7 Shift Register Optimization | Checksum: 7f959c2b
+
+Time (s): cpu = 00:00:02 ; elapsed = 00:00:01 . Memory (MB): peak = 2193.008 ; gain = 93.879
+Shift Register Optimization | Checksum: 7f959c2b
+INFO: [Opt 31-389] Phase Shift Register Optimization created 0 cells and removed 0 cells
+INFO: [Opt 31-1555] control_set_opt supports Versal devices only, and device 7k325t is unsupported
+
+Phase 8 Post Processing Netlist
+Phase 8 Post Processing Netlist | Checksum: 7f959c2b
+
+Time (s): cpu = 00:00:02 ; elapsed = 00:00:01 . Memory (MB): peak = 2193.008 ; gain = 93.879
+Post Processing Netlist | Checksum: 7f959c2b
+INFO: [Opt 31-389] Phase Post Processing Netlist created 0 cells and removed 0 cells
+
+Phase 9 Finalization
+
+Phase 9.1 Finalizing Design Cores and Updating Shapes
+Phase 9.1 Finalizing Design Cores and Updating Shapes | Checksum: 18626b610
+
+Time (s): cpu = 00:00:02 ; elapsed = 00:00:01 . Memory (MB): peak = 2193.008 ; gain = 93.879
+
+Phase 9.2 Verifying Netlist Connectivity
+
+Starting Connectivity Check Task
+
+Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.021 . Memory (MB): peak = 2193.008 ; gain = 0.000
+Phase 9.2 Verifying Netlist Connectivity | Checksum: 18626b610
+
+Time (s): cpu = 00:00:02 ; elapsed = 00:00:01 . Memory (MB): peak = 2193.008 ; gain = 93.879
+Phase 9 Finalization | Checksum: 18626b610
+
+Time (s): cpu = 00:00:02 ; elapsed = 00:00:01 . Memory (MB): peak = 2193.008 ; gain = 93.879
+Opt_design Change Summary
+=========================
+
+
+-------------------------------------------------------------------------------------------------------------------------
+|  Phase                        |  #Cells created  |  #Cells Removed  |  #Constrained objects preventing optimizations  |
+-------------------------------------------------------------------------------------------------------------------------
+|  Retarget                     |               0  |               1  |                                              1  |
+|  Constant propagation         |               0  |               0  |                                              0  |
+|  Sweep                        |              32  |               0  |                                              0  |
+|  BUFG optimization            |               0  |               0  |                                              0  |
+|  Shift Register Optimization  |               0  |               0  |                                              0  |
+|  Post Processing Netlist      |               0  |               0  |                                              0  |
+-------------------------------------------------------------------------------------------------------------------------
+
+
+Ending Logic Optimization Task | Checksum: 18626b610
+
+Time (s): cpu = 00:00:02 ; elapsed = 00:00:01 . Memory (MB): peak = 2193.008 ; gain = 93.879
+INFO: [Constraints 18-11670] Building netlist checker database with flags, 0x8
+Done building netlist checker database: Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.002 . Memory (MB): peak = 2193.008 ; gain = 0.000
+
+Starting Netlist Obfuscation Task
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.003 . Memory (MB): peak = 2193.008 ; gain = 0.000
+Ending Netlist Obfuscation Task | Checksum: 18626b610
+
+Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.005 . Memory (MB): peak = 2193.008 ; gain = 0.000
+INFO: [Common 17-83] Releasing license: Implementation
+21 Infos, 0 Warnings, 0 Critical Warnings and 0 Errors encountered.
+opt_design completed successfully
+opt_design: Time (s): cpu = 00:00:09 ; elapsed = 00:00:08 . Memory (MB): peak = 2193.008 ; gain = 372.227
+# place_design -directive ExtraPostPlacementOpt
+Command: place_design -directive ExtraPostPlacementOpt
+Attempting to get a license for feature 'Implementation' and/or device 'xc7k325t'
+INFO: [Common 17-349] Got license for feature 'Implementation' and/or device 'xc7k325t'
+INFO: [Common 17-83] Releasing license: Implementation
+INFO: [DRC 23-27] Running DRC with 2 threads
+INFO: [Vivado_Tcl 4-198] DRC finished with 0 Errors
+INFO: [Vivado_Tcl 4-199] Please refer to the DRC report (report_drc) for more information.
+Running DRC as a precondition to command place_design
+INFO: [DRC 23-27] Running DRC with 2 threads
+INFO: [Vivado_Tcl 4-198] DRC finished with 0 Errors, 21 Warnings
+INFO: [Vivado_Tcl 4-199] Please refer to the DRC report (report_drc) for more information.
+INFO: [Place 46-5] The placer was invoked with the 'ExtraPostPlacementOpt' directive.
+INFO: [Place 30-611] Multithreading enabled for place_design using a maximum of 2 CPUs
+
+Starting Placer Task
+
+Phase 1 Placer Initialization
+
+Phase 1.1 Placer Initialization Netlist Sorting
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.003 . Memory (MB): peak = 2193.008 ; gain = 0.000
+Phase 1.1 Placer Initialization Netlist Sorting | Checksum: ae9d15d3
+
+Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.013 . Memory (MB): peak = 2193.008 ; gain = 0.000
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.002 . Memory (MB): peak = 2193.008 ; gain = 0.000
+
+Phase 1.2 IO Placement/ Clock Placement/ Build Placer Device
+INFO: [Timing 38-35] Done setting XDC timing constraints.
+Phase 1.2 IO Placement/ Clock Placement/ Build Placer Device | Checksum: 4c57ff88
+
+Time (s): cpu = 00:00:01 ; elapsed = 00:00:01 . Memory (MB): peak = 2193.008 ; gain = 0.000
+
+Phase 1.3 Build Placer Netlist Model
+Phase 1.3 Build Placer Netlist Model | Checksum: 4d37bfad
+
+Time (s): cpu = 00:00:05 ; elapsed = 00:00:04 . Memory (MB): peak = 2193.008 ; gain = 0.000
+
+Phase 1.4 Constrain Clocks/Macros
+Phase 1.4 Constrain Clocks/Macros | Checksum: 4d37bfad
+
+Time (s): cpu = 00:00:05 ; elapsed = 00:00:04 . Memory (MB): peak = 2193.008 ; gain = 0.000
+Phase 1 Placer Initialization | Checksum: 4d37bfad
+
+Time (s): cpu = 00:00:05 ; elapsed = 00:00:04 . Memory (MB): peak = 2193.008 ; gain = 0.000
+
+Phase 2 Global Placement
+
+Phase 2.1 Floorplanning
+Phase 2.1 Floorplanning | Checksum: 6f80d3af
+
+Time (s): cpu = 00:00:06 ; elapsed = 00:00:05 . Memory (MB): peak = 2193.008 ; gain = 0.000
+
+Phase 2.2 Update Timing before SLR Path Opt
+Phase 2.2 Update Timing before SLR Path Opt | Checksum: d0b877f1
+
+Time (s): cpu = 00:00:07 ; elapsed = 00:00:06 . Memory (MB): peak = 2193.008 ; gain = 0.000
+
+Phase 2.3 Post-Processing in Floorplanning
+Phase 2.3 Post-Processing in Floorplanning | Checksum: d0b877f1
+
+Time (s): cpu = 00:00:07 ; elapsed = 00:00:06 . Memory (MB): peak = 2193.008 ; gain = 0.000
+
+Phase 2.4 Global Placement Core
+
+Phase 2.4.1 UpdateTiming Before Physical Synthesis
+Phase 2.4.1 UpdateTiming Before Physical Synthesis | Checksum: 1d5d04f81
+
+Time (s): cpu = 00:00:40 ; elapsed = 00:00:30 . Memory (MB): peak = 2193.008 ; gain = 0.000
+
+Phase 2.4.2 Physical Synthesis In Placer
+INFO: [Physopt 32-1035] Found 22 LUTNM shape to break, 61 LUT instances to create LUTNM shape
+INFO: [Physopt 32-1044] Break lutnm for timing: one critical 4, two critical 18, total 22, new lutff created 0
+INFO: [Physopt 32-1138] End 1 Pass. Optimized 50 nets or LUTs. Breaked 22 LUTs, combined 28 existing LUTs and moved 0 existing LUT
+INFO: [Physopt 32-76] Pass 1. Identified 6 candidate nets for fanout optimization.
+INFO: [Physopt 32-81] Processed net student_top_inst/Core_cpu/D[0]. Replicated 7 times.
+INFO: [Physopt 32-81] Processed net student_top_inst/Core_cpu/D[11]. Replicated 7 times.
+INFO: [Physopt 32-81] Processed net student_top_inst/Core_cpu/D[6]. Replicated 7 times.
+INFO: [Physopt 32-81] Processed net student_top_inst/Core_cpu/D[1]. Replicated 7 times.
+INFO: [Physopt 32-81] Processed net student_top_inst/Core_cpu/D[5]. Replicated 7 times.
+INFO: [Physopt 32-81] Processed net student_top_inst/Core_cpu/D[2]. Replicated 7 times.
+INFO: [Physopt 32-232] Optimized 6 nets. Created 42 new instances.
+INFO: [Physopt 32-775] End 1 Pass. Optimized 6 nets or cells. Created 42 new cells, deleted 0 existing cell and moved 0 existing cell
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.030 . Memory (MB): peak = 2193.008 ; gain = 0.000
+INFO: [Physopt 32-46] Identified 9 candidate nets for critical-cell optimization.
+INFO: [Physopt 32-232] Optimized 0 net. Created 0 new instance.
+INFO: [Physopt 32-775] End 1 Pass. Optimized 0 net or cell. Created 0 new cell, deleted 0 existing cell and moved 0 existing cell
+INFO: [Physopt 32-456] No candidate cells for DSP register optimization found in the design.
+INFO: [Physopt 32-775] End 2 Pass. Optimized 0 net or cell. Created 0 new cell, deleted 0 existing cell and moved 0 existing cell
+INFO: [Physopt 32-1123] No candidate cells found for Shift Register to Pipeline optimization
+INFO: [Physopt 32-775] End 2 Pass. Optimized 0 net or cell. Created 0 new cell, deleted 0 existing cell and moved 0 existing cell
+INFO: [Physopt 32-1401] No candidate cells found for Shift Register optimization.
+INFO: [Physopt 32-677] No candidate cells for Shift Register optimization found in the design
+INFO: [Physopt 32-775] End 1 Pass. Optimized 0 net or cell. Created 0 new cell, deleted 0 existing cell and moved 0 existing cell
+INFO: [Physopt 32-526] No candidate cells for BRAM register optimization found in the design
+INFO: [Physopt 32-775] End 1 Pass. Optimized 0 net or cell. Created 0 new cell, deleted 0 existing cell and moved 0 existing cell
+INFO: [Physopt 32-846] No candidate cells for URAM register optimization found in the design
+INFO: [Physopt 32-775] End 1 Pass. Optimized 0 net or cell. Created 0 new cell, deleted 0 existing cell and moved 0 existing cell
+INFO: [Physopt 32-846] No candidate cells for URAM register optimization found in the design
+INFO: [Physopt 32-775] End 1 Pass. Optimized 0 net or cell. Created 0 new cell, deleted 0 existing cell and moved 0 existing cell
+INFO: [Physopt 32-949] No candidate nets found for dynamic/static region interface net replication
+INFO: [Physopt 32-775] End 1 Pass. Optimized 0 net or cell. Created 0 new cell, deleted 0 existing cell and moved 0 existing cell
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.004 . Memory (MB): peak = 2193.008 ; gain = 0.000
+
+Summary of Physical Synthesis Optimizations
+============================================
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+|  Optimization                                     |  Added Cells  |  Removed Cells  |  Optimized Cells/Nets  |  Dont Touch  |  Iterations  |  Elapsed   |
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+|  LUT Combining                                    |           22  |             28  |                    50  |           0  |           1  |  00:00:00  |
+|  Retime                                           |            0  |              0  |                     0  |           0  |           1  |  00:00:00  |
+|  Very High Fanout                                 |           42  |              0  |                     6  |           0  |           1  |  00:00:02  |
+|  Critical Cell                                    |            0  |              0  |                     0  |           0  |           1  |  00:00:00  |
+|  DSP Register                                     |            0  |              0  |                     0  |           0  |           1  |  00:00:00  |
+|  Shift Register to Pipeline                       |            0  |              0  |                     0  |           0  |           1  |  00:00:00  |
+|  Shift Register                                   |            0  |              0  |                     0  |           0  |           1  |  00:00:00  |
+|  BRAM Register                                    |            0  |              0  |                     0  |           0  |           1  |  00:00:00  |
+|  URAM Register                                    |            0  |              0  |                     0  |           0  |           1  |  00:00:00  |
+|  Dynamic/Static Region Interface Net Replication  |            0  |              0  |                     0  |           0  |           1  |  00:00:00  |
+|  Total                                            |           64  |             28  |                    56  |           0  |          10  |  00:00:02  |
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+Phase 2.4.2 Physical Synthesis In Placer | Checksum: 12036a80d
+
+Time (s): cpu = 00:00:44 ; elapsed = 00:00:33 . Memory (MB): peak = 2193.008 ; gain = 0.000
+Phase 2.4 Global Placement Core | Checksum: e7cda93c
+
+Time (s): cpu = 00:00:44 ; elapsed = 00:00:34 . Memory (MB): peak = 2193.008 ; gain = 0.000
+Phase 2 Global Placement | Checksum: e7cda93c
+
+Time (s): cpu = 00:00:45 ; elapsed = 00:00:34 . Memory (MB): peak = 2193.008 ; gain = 0.000
+
+Phase 3 Detail Placement
+
+Phase 3.1 Commit Multi Column Macros
+Phase 3.1 Commit Multi Column Macros | Checksum: b7ee047e
+
+Time (s): cpu = 00:00:46 ; elapsed = 00:00:35 . Memory (MB): peak = 2193.008 ; gain = 0.000
+
+Phase 3.2 Commit Most Macros & LUTRAMs
+Phase 3.2 Commit Most Macros & LUTRAMs | Checksum: 8e9d1839
+
+Time (s): cpu = 00:00:48 ; elapsed = 00:00:36 . Memory (MB): peak = 2193.008 ; gain = 0.000
+
+Phase 3.3 Area Swap Optimization
+Phase 3.3 Area Swap Optimization | Checksum: a0439ee0
+
+Time (s): cpu = 00:00:48 ; elapsed = 00:00:36 . Memory (MB): peak = 2193.008 ; gain = 0.000
+
+Phase 3.4 Pipeline Register Optimization
+Phase 3.4 Pipeline Register Optimization | Checksum: 10f36b714
+
+Time (s): cpu = 00:00:48 ; elapsed = 00:00:36 . Memory (MB): peak = 2193.008 ; gain = 0.000
+
+Phase 3.5 Fast Optimization
+Phase 3.5 Fast Optimization | Checksum: 16041d519
+
+Time (s): cpu = 00:00:56 ; elapsed = 00:00:45 . Memory (MB): peak = 2193.008 ; gain = 0.000
+
+Phase 3.6 Small Shape Detail Placement
+Phase 3.6 Small Shape Detail Placement | Checksum: 1b8a69b74
+
+Time (s): cpu = 00:01:00 ; elapsed = 00:00:51 . Memory (MB): peak = 2193.008 ; gain = 0.000
+
+Phase 3.7 Re-assign LUT pins
+Phase 3.7 Re-assign LUT pins | Checksum: 187d41c08
+
+Time (s): cpu = 00:01:01 ; elapsed = 00:00:51 . Memory (MB): peak = 2193.008 ; gain = 0.000
+
+Phase 3.8 Pipeline Register Optimization
+Phase 3.8 Pipeline Register Optimization | Checksum: 11850b829
+
+Time (s): cpu = 00:01:01 ; elapsed = 00:00:52 . Memory (MB): peak = 2193.008 ; gain = 0.000
+
+Phase 3.9 Fast Optimization
+Phase 3.9 Fast Optimization | Checksum: 63395750
+
+Time (s): cpu = 00:01:15 ; elapsed = 00:01:07 . Memory (MB): peak = 2193.008 ; gain = 0.000
+Phase 3 Detail Placement | Checksum: 63395750
+
+Time (s): cpu = 00:01:15 ; elapsed = 00:01:07 . Memory (MB): peak = 2193.008 ; gain = 0.000
+
+Phase 4 Post Placement Optimization and Clean-Up
+
+Phase 4.1 Post Commit Optimization
+INFO: [Timing 38-35] Done setting XDC timing constraints.
+
+Phase 4.1.1 Post Placement Optimization
+Post Placement Optimization Initialization | Checksum: 14f8ed999
+
+Phase 4.1.1.1 BUFG Insertion
+
+Starting Physical Synthesis Task
+
+Phase 1 Physical Synthesis Initialization
+INFO: [Physopt 32-721] Multithreading enabled for phys_opt_design using a maximum of 2 CPUs
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-2.394 | TNS=-331.444 |
+Phase 1 Physical Synthesis Initialization | Checksum: 1339425f5
+
+Time (s): cpu = 00:00:01 ; elapsed = 00:00:00.582 . Memory (MB): peak = 2241.152 ; gain = 0.000
+INFO: [Place 46-33] Processed net student_top_inst/Core_cpu/u_rf/bbstub_locked, BUFG insertion was skipped due to placement/routing conflicts.
+INFO: [Place 46-56] BUFG insertion identified 1 candidate nets. Inserted BUFG: 0, Replicated BUFG Driver: 0, Skipped due to Placement/Routing Conflicts: 1, Skipped due to Timing Degradation: 0, Skipped due to netlist editing failed: 0.
+Ending Physical Synthesis Task | Checksum: 1339425f5
+
+Time (s): cpu = 00:00:02 ; elapsed = 00:00:01 . Memory (MB): peak = 2241.152 ; gain = 0.000
+Phase 4.1.1.1 BUFG Insertion | Checksum: 14f8ed999
+
+Time (s): cpu = 00:01:21 ; elapsed = 00:01:11 . Memory (MB): peak = 2241.152 ; gain = 48.145
+
+Phase 4.1.1.2 Post Placement Timing Optimization
+INFO: [Place 30-746] Post Placement Timing Summary WNS=-1.961. For the most accurate timing information please run report_timing.
+Phase 4.1.1.2 Post Placement Timing Optimization | Checksum: 1a38c53c1
+
+Time (s): cpu = 00:03:00 ; elapsed = 00:03:00 . Memory (MB): peak = 2241.152 ; gain = 48.145
+
+Time (s): cpu = 00:03:00 ; elapsed = 00:03:00 . Memory (MB): peak = 2241.152 ; gain = 48.145
+Phase 4.1 Post Commit Optimization | Checksum: 1a38c53c1
+
+Time (s): cpu = 00:03:00 ; elapsed = 00:03:00 . Memory (MB): peak = 2241.152 ; gain = 48.145
+Post Placement Optimization Initialization | Checksum: 267f721ad
+
+Starting Physical Synthesis Task
+
+Phase 1 Physical Synthesis Initialization
+INFO: [Physopt 32-721] Multithreading enabled for phys_opt_design using a maximum of 2 CPUs
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-2.174 | TNS=-274.664 |
+Phase 1 Physical Synthesis Initialization | Checksum: 1dd27ed77
+
+Time (s): cpu = 00:00:01 ; elapsed = 00:00:00.544 . Memory (MB): peak = 2246.727 ; gain = 0.000
+INFO: [Place 46-33] Processed net student_top_inst/Core_cpu/u_rf/bbstub_locked, BUFG insertion was skipped due to placement/routing conflicts.
+INFO: [Place 46-56] BUFG insertion identified 1 candidate nets. Inserted BUFG: 0, Replicated BUFG Driver: 0, Skipped due to Placement/Routing Conflicts: 1, Skipped due to Timing Degradation: 0, Skipped due to netlist editing failed: 0.
+Ending Physical Synthesis Task | Checksum: 1dd27ed77
+
+Time (s): cpu = 00:00:02 ; elapsed = 00:00:01 . Memory (MB): peak = 2246.727 ; gain = 0.000
+INFO: [Place 30-746] Post Placement Timing Summary WNS=-1.938. For the most accurate timing information please run report_timing.
+Post Placement Optimization Initialization | Checksum: 2626d61b5
+
+Starting Physical Synthesis Task
+
+Phase 1 Physical Synthesis Initialization
+INFO: [Physopt 32-721] Multithreading enabled for phys_opt_design using a maximum of 2 CPUs
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-1.938 | TNS=-272.310 |
+Phase 1 Physical Synthesis Initialization | Checksum: 1fcd02c6e
+
+Time (s): cpu = 00:00:01 ; elapsed = 00:00:00.489 . Memory (MB): peak = 2246.727 ; gain = 0.000
+INFO: [Place 46-33] Processed net student_top_inst/Core_cpu/u_rf/bbstub_locked, BUFG insertion was skipped due to placement/routing conflicts.
+INFO: [Place 46-56] BUFG insertion identified 1 candidate nets. Inserted BUFG: 0, Replicated BUFG Driver: 0, Skipped due to Placement/Routing Conflicts: 1, Skipped due to Timing Degradation: 0, Skipped due to netlist editing failed: 0.
+Ending Physical Synthesis Task | Checksum: 1fcd02c6e
+
+Time (s): cpu = 00:00:02 ; elapsed = 00:00:00.925 . Memory (MB): peak = 2246.727 ; gain = 0.000
+INFO: [Place 30-746] Post Placement Timing Summary WNS=-1.938. For the most accurate timing information please run report_timing.
+
+Phase 4.2 Post Placement Cleanup
+Phase 4.2 Post Placement Cleanup | Checksum: 281cccab8
+
+Time (s): cpu = 00:04:21 ; elapsed = 00:04:21 . Memory (MB): peak = 2246.727 ; gain = 53.719
+
+Phase 4.3 Placer Reporting
+
+Phase 4.3.1 Print Estimated Congestion
+INFO: [Place 30-612] Post-Placement Estimated Congestion 
+ ____________________________________________________
+|           | Global Congestion | Short Congestion  |
+| Direction | Region Size       | Region Size       |
+|___________|___________________|___________________|
+|      North|                1x1|                1x1|
+|___________|___________________|___________________|
+|      South|                1x1|                1x1|
+|___________|___________________|___________________|
+|       East|                1x1|                1x1|
+|___________|___________________|___________________|
+|       West|                1x1|                1x1|
+|___________|___________________|___________________|
+
+Phase 4.3.1 Print Estimated Congestion | Checksum: 281cccab8
+
+Time (s): cpu = 00:04:21 ; elapsed = 00:04:21 . Memory (MB): peak = 2246.727 ; gain = 53.719
+Phase 4.3 Placer Reporting | Checksum: 281cccab8
+
+Time (s): cpu = 00:04:21 ; elapsed = 00:04:21 . Memory (MB): peak = 2246.727 ; gain = 53.719
+
+Phase 4.4 Final Placement Cleanup
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.009 . Memory (MB): peak = 2246.727 ; gain = 0.000
+
+Time (s): cpu = 00:04:21 ; elapsed = 00:04:21 . Memory (MB): peak = 2246.727 ; gain = 53.719
+Phase 4 Post Placement Optimization and Clean-Up | Checksum: 27cf376e1
+
+Time (s): cpu = 00:04:21 ; elapsed = 00:04:21 . Memory (MB): peak = 2246.727 ; gain = 53.719
+Ending Placer Task | Checksum: 18b06f323
+
+Time (s): cpu = 00:04:21 ; elapsed = 00:04:21 . Memory (MB): peak = 2246.727 ; gain = 53.719
+58 Infos, 0 Warnings, 0 Critical Warnings and 0 Errors encountered.
+place_design completed successfully
+place_design: Time (s): cpu = 00:04:24 ; elapsed = 00:04:23 . Memory (MB): peak = 2246.727 ; gain = 53.719
+# phys_opt_design -directive AggressiveExplore
+Command: phys_opt_design -directive AggressiveExplore
+Attempting to get a license for feature 'Implementation' and/or device 'xc7k325t'
+INFO: [Common 17-349] Got license for feature 'Implementation' and/or device 'xc7k325t'
+INFO: [Vivado_Tcl 4-137] Directive used for phys_opt_design is: AggressiveExplore
+
+Starting Initial Update Timing Task
+
+Time (s): cpu = 00:00:03 ; elapsed = 00:00:02 . Memory (MB): peak = 2254.848 ; gain = 8.121
+INFO: [Vivado_Tcl 4-1435] PhysOpt_Tcl_Interface Runtime Before Starting Physical Synthesis Task | CPU: 3.00s |  WALL: 1.76s
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.002 . Memory (MB): peak = 2254.848 ; gain = 0.000
+
+Starting Physical Synthesis Task
+
+Phase 1 Physical Synthesis Initialization
+INFO: [Physopt 32-721] Multithreading enabled for phys_opt_design using a maximum of 2 CPUs
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-1.938 | TNS=-272.310 |
+Phase 1 Physical Synthesis Initialization | Checksum: 14a46d7d3
+
+Time (s): cpu = 00:00:02 ; elapsed = 00:00:02 . Memory (MB): peak = 2260.512 ; gain = 5.664
+
+Phase 2 SLR Crossing Optimization
+Phase 2 SLR Crossing Optimization | Checksum: 14a46d7d3
+
+Time (s): cpu = 00:00:02 ; elapsed = 00:00:02 . Memory (MB): peak = 2260.512 ; gain = 5.664
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-1.938 | TNS=-272.310 |
+
+Phase 3 Fanout Optimization
+INFO: [Physopt 32-76] Pass 1. Identified 39 candidate nets for fanout optimization.
+INFO: [Physopt 32-81] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[15]. Replicated 2 times.
+INFO: [Physopt 32-572] Net student_top_inst/Core_cpu/ex_alu_b[1] was not replicated.
+Resolution: phys_opt_design can be forced to replicate a net driver using the option -force_replication_on_nets <list of net objects>.
+INFO: [Physopt 32-81] Processed net student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg_1_6_0[0]. Replicated 1 times.
+INFO: [Physopt 32-81] Processed net student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg_1_6_0[4]. Replicated 2 times.
+INFO: [Physopt 32-572] Net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[0] was not replicated.
+Resolution: phys_opt_design can be forced to replicate a net driver using the option -force_replication_on_nets <list of net objects>.
+INFO: [Physopt 32-572] Net student_top_inst/Core_cpu/ex_alu_b[2] was not replicated.
+Resolution: phys_opt_design can be forced to replicate a net driver using the option -force_replication_on_nets <list of net objects>.
+INFO: [Physopt 32-81] Processed net student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg_1_6_0[1]. Replicated 1 times.
+INFO: [Physopt 32-572] Net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[25] was not replicated.
+Resolution: phys_opt_design can be forced to replicate a net driver using the option -force_replication_on_nets <list of net objects>.
+INFO: [Physopt 32-572] Net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[4] was not replicated.
+Resolution: phys_opt_design can be forced to replicate a net driver using the option -force_replication_on_nets <list of net objects>.
+INFO: [Physopt 32-572] Net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[3] was not replicated.
+Resolution: phys_opt_design can be forced to replicate a net driver using the option -force_replication_on_nets <list of net objects>.
+INFO: [Physopt 32-572] Net student_top_inst/Core_cpu/ex_alu_b[0] was not replicated.
+Resolution: phys_opt_design can be forced to replicate a net driver using the option -force_replication_on_nets <list of net objects>.
+INFO: [Physopt 32-572] Net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[24] was not replicated.
+Resolution: phys_opt_design can be forced to replicate a net driver using the option -force_replication_on_nets <list of net objects>.
+INFO: [Physopt 32-81] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[8]. Replicated 2 times.
+INFO: [Physopt 32-572] Net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[9] was not replicated.
+Resolution: phys_opt_design can be forced to replicate a net driver using the option -force_replication_on_nets <list of net objects>.
+INFO: [Physopt 32-81] Processed net student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg_1_6_0[3]. Replicated 2 times.
+INFO: [Physopt 32-81] Processed net student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg_1_6_0[2]. Replicated 2 times.
+INFO: [Physopt 32-572] Net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[7] was not replicated.
+Resolution: phys_opt_design can be forced to replicate a net driver using the option -force_replication_on_nets <list of net objects>.
+INFO: [Physopt 32-81] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[17]. Replicated 3 times.
+INFO: [Physopt 32-81] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[23]. Replicated 4 times.
+INFO: [Physopt 32-572] Net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[22] was not replicated.
+Resolution: phys_opt_design can be forced to replicate a net driver using the option -force_replication_on_nets <list of net objects>.
+INFO: [Physopt 32-232] Optimized 9 nets. Created 19 new instances.
+INFO: [Physopt 32-775] End 1 Pass. Optimized 9 nets or cells. Created 19 new cells, deleted 0 existing cell and moved 0 existing cell
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-1.886 | TNS=-257.739 |
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.040 . Memory (MB): peak = 2278.230 ; gain = 0.000
+Phase 3 Fanout Optimization | Checksum: 1a182b644
+
+Time (s): cpu = 00:00:12 ; elapsed = 00:00:09 . Memory (MB): peak = 2278.230 ; gain = 23.383
+
+Phase 4 Single Cell Placement Optimization
+INFO: [Physopt 32-660] Identified 250 candidate nets for placement-based optimization.
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[0].  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][0]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[31]_i_2_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[31]_i_2
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_2_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_2
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_138_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_138
+INFO: [Physopt 32-663] Processed net student_top_inst/bridge_inst/dram_driver_inst/sel_dram_r_reg.  Re-placed instance student_top_inst/bridge_inst/dram_driver_inst/reg_bank[31][0]_i_4
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_150_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_150
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_3_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_3
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[21]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[21]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[21].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[21]
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/ex_alu_b[1].  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[1]_i_7
+INFO: [Physopt 32-663] Processed net student_top_inst/bridge_inst/dram_driver_inst/sel_dram_r_reg_0.  Re-placed instance student_top_inst/bridge_inst/dram_driver_inst/reg_bank[31][1]_i_4
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/ex_alu_y[22].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[22]_i_4
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[22]_i_2_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[22]_i_2
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[22]_i_6_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[22]_i_6
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[22]_i_15_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[22]_i_15
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[22]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[22]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg_1_6_0[0]_repN.  Did not re-place instance student_top_inst/bridge_inst/dram_driver_inst/reg_bank[31][1]_i_1_replica
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[22].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[22]
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_146_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_146
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[8]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[8]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[8].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[8]
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[20]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[20]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[20].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[20]
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/ex_alu_a[8].  Re-placed instance student_top_inst/Core_cpu/exmem_pc_target[8]_i_9
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[12]_i_3_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[12]_i_3
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_alu_y[30]_i_18_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_alu_y[30]_i_18
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/ex_alu_y[12].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[12]_i_3
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[12]_i_8_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[12]_i_8
+INFO: [Physopt 32-662] Processed net student_top_inst/bridge_inst/dram_lane3_reg_1_7_0[0].  Did not re-place instance student_top_inst/bridge_inst/reg_bank[31][8]_i_4
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_pc_target[12]_i_1_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_pc_target[12]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[8]_i_11_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[8]_i_11
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[12].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[12]
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[31]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[31]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[31].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[31]
+INFO: [Physopt 32-662] Processed net student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg_1_6_0[0].  Did not re-place instance student_top_inst/bridge_inst/dram_driver_inst/reg_bank[31][1]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_141_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_141
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/ex_alu_a[0].  Re-placed instance student_top_inst/Core_cpu/exmem_alu_y[0]_i_5
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[31]_i_15_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[31]_i_15
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[17]_i_13_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[17]_i_13
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/dram_lane1_reg_1_0.  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][0]_i_2
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/ex_alu_y[21].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[21]_i_2
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[21]_i_3_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[21]_i_3
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_alu_y[21]_i_8_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_alu_y[21]_i_8
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[25].  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][30]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg_1_7_1.  Did not re-place instance student_top_inst/bridge_inst/dram_driver_inst/reg_bank[31][31]_i_6
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/ex_alu_a[30].  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[30]_i_11
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[16]_i_18_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[16]_i_18
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_139_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_pc_redirect_i_139
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_alu_y[10]_i_2_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_alu_y[10]_i_2
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/ex_alu_y[10].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[10]_i_2
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_alu_y[26]_i_3_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_alu_y[26]_i_3
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[10]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[10]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[10].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[10]
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/ex_alu_y[28].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[28]_i_3
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[28]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[28]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[28]_i_5_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[28]_i_5
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[28].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[28]
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[4].  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][9]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_122_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_122
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_reg[9].  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][9]_i_2
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_108_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_108
+INFO: [Physopt 32-663] Processed net student_top_inst/bridge_inst/dram_lane3_reg_1_7_0[1].  Re-placed instance student_top_inst/bridge_inst/reg_bank[31][9]_i_4
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[3].  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][8]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_128_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_128
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/u_rf/reg_bank[31][8]_i_2_n_0.  Re-placed instance student_top_inst/Core_cpu/u_rf/reg_bank[31][8]_i_2
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/ex_alu_b[0].  Re-placed instance student_top_inst/Core_cpu/exmem_alu_y[0]_i_6
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_79_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_79
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/ex_alu_y[27].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[27]_i_3
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[15]_repN_1.  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][20]_i_1_replica_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/reg_bank[31][20]_i_2_n_0.  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][20]_i_2
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_56_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_56
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[27]_i_10_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[27]_i_10
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[27]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[27]_i_1
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/u_alu/adder_b[0].  Re-placed instance student_top_inst/Core_cpu/exmem_alu_y[3]_i_11
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[27].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[27]
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_wb_data[21]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_wb_data[21]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_wb_data[21].  Did not re-place instance student_top_inst/Core_cpu/exmem_wb_data_reg[21]
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_104_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_104
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[3]_i_14_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[3]_i_14
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_wb_data[10]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_wb_data[10]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_wb_data[10].  Did not re-place instance student_top_inst/Core_cpu/exmem_wb_data_reg[10]
+INFO: [Physopt 32-662] Processed net student_top_inst/bridge_inst/dram_driver_inst/dram_lane2_reg_1_7_0.  Did not re-place instance student_top_inst/bridge_inst/dram_driver_inst/reg_bank[31][31]_i_5
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/ex_alu_a[3].  Re-placed instance student_top_inst/Core_cpu/exmem_alu_y[3]_i_6
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_35_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_pc_redirect_i_35
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[1].  Re-placed instance student_top_inst/Core_cpu/u_rf/reg_bank[31][3]_i_1
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_alu_y[18]_i_12_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_alu_y[18]_i_12
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/ex_alu_y[18].  Re-placed instance student_top_inst/Core_cpu/exmem_pc_target[18]_i_2
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[18]_i_3_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[18]_i_3
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[18]_i_7_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[18]_i_7
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_17_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_17
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[18]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[18]_i_1
+INFO: [Physopt 32-663] Processed net student_top_inst/bridge_inst/dram_driver_inst/sel_dram_r_reg_1.  Re-placed instance student_top_inst/bridge_inst/dram_driver_inst/reg_bank[31][3]_i_4
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[18].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[18]
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/ex_alu_a[14].  Re-placed instance student_top_inst/Core_cpu/exmem_alu_y[14]_i_7
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/ex_alu_a[7].  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[7]_i_10
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[13]_i_3_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[13]_i_3
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[29]_i_13_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[29]_i_13
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_alu_y[29]_i_16_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_alu_y[29]_i_16
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/ex_alu_y[13].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[13]_i_2
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_alu_y[29]_i_8_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_alu_y[29]_i_8
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_reg[14].  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][14]_i_2
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_alu_y[7]_i_16_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_alu_y[7]_i_16
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[13]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[13]_i_1
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_pc_target[27]_i_13_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_pc_target[27]_i_13
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[27]_i_9_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[27]_i_9
+INFO: [Physopt 32-662] Processed net student_top_inst/bridge_inst/dram_lane3_reg_1_7_0[6].  Did not re-place instance student_top_inst/bridge_inst/reg_bank[31][14]_i_4
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[13].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[13]
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_124_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_124
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/dram_lane1_reg_1_6.  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][6]_i_5
+INFO: [Physopt 32-662] Processed net student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg_1_6_0[4]_repN.  Did not re-place instance student_top_inst/bridge_inst/dram_driver_inst/reg_bank[31][6]_i_1_replica
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_147_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_147
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_140_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_140
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/ex_alu_y[19].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[19]_i_3
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[19]_i_3_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[19]_i_3
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[19]_i_7_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[19]_i_7
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_pc_target[19]_i_1_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_pc_target[19]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[19].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[19]
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/ex_alu_a[13].  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[13]_i_7
+INFO: [Physopt 32-663] Processed net student_top_inst/bridge_inst/dram_lane3_reg_1_7_0[16].  Re-placed instance student_top_inst/bridge_inst/reg_bank[31][13]_i_3
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[30]_i_19_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[30]_i_19
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[22]_i_3_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[22]_i_3
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[13]_i_10_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[13]_i_10
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[22]_i_7_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[22]_i_7
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_52_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_52
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[23]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[23]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[23]_i_2_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[23]_i_2
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[23].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[23]
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[20]_i_18_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[20]_i_18
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_31_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_31
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/ex_alu_a[5].  Re-placed instance student_top_inst/Core_cpu/exmem_alu_y[5]_i_7
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[20]_i_17_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[20]_i_17
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/u_rf/dram_lane1_reg_1_5.  Re-placed instance student_top_inst/Core_cpu/u_rf/reg_bank[31][5]_i_3
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_13_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_13
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_wb_data[19]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_wb_data[19]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_wb_data[19].  Did not re-place instance student_top_inst/Core_cpu/exmem_wb_data_reg[19]
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[19]_i_19_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[19]_i_19
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_143_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_143
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[16]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[16]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[16]_i_2_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[16]_i_2
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[16].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[16]
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/memwb_alu_offset_reg[0].  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][15]_i_2
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_157_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_157
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[1]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[1]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[1].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[1]
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_34_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_pc_redirect_i_34
+INFO: [Physopt 32-662] Processed net student_top_inst/bridge_inst/dram_driver_inst/reg_bank[31][6]_i_6_n_0.  Did not re-place instance student_top_inst/bridge_inst/dram_driver_inst/reg_bank[31][6]_i_6
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[2]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[2]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[2].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[2]
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_154_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_154
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[19]_i_18_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[19]_i_18
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[23]_i_3_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[23]_i_3
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[31]_i_5_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[31]_i_5
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_129_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_129
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[17]_i_3_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[17]_i_3
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/ex_alu_y[17].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[17]_i_2
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_alu_y[17]_i_7_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_alu_y[17]_i_7
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_pc_target[17]_i_1_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_pc_target[17]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[17].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[17]
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_153_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_153
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[9].  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][14]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_91_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_91
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_105_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_105
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_151_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_151
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[26]_i_4_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[26]_i_4
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_pc_target[26]_i_10_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_pc_target[26]_i_10
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[26]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[26]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[26]_i_6_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[26]_i_6
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[28]_i_6_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[28]_i_6
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[26].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[26]
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_pc_target[28]_i_9_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_pc_target[28]_i_9
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[3]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[3]_i_1
+INFO: [Physopt 32-663] Processed net student_top_inst/bridge_inst/dram_lane3_reg_1_7_0[9].  Re-placed instance student_top_inst/bridge_inst/reg_bank[31][3]_i_3
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[3].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[3]
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[16]_i_4_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[16]_i_4
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_pc_target[16]_i_8_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_pc_target[16]_i_8
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_71_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_71
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[24]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[24]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[24]_i_2_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[24]_i_2
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[24].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[24]
+INFO: [Physopt 32-663] Processed net student_top_inst/bridge_inst/dram_lane3_reg_1_7_0[11].  Re-placed instance student_top_inst/bridge_inst/reg_bank[31][8]_i_3
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[25]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[25]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[25]_i_3_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[25]_i_3
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[25].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[25]
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[26]_i_2_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[26]_i_2
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_pc_target[26]_i_5_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_pc_target[26]_i_5
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_wb_data[26]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_wb_data[26]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_wb_data[26].  Did not re-place instance student_top_inst/Core_cpu/exmem_wb_data_reg[26]
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_101_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_101
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_wb_data[12]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_wb_data[12]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_wb_data[12].  Did not re-place instance student_top_inst/Core_cpu/exmem_wb_data_reg[12]
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[10]_i_6_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[10]_i_6
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[16]_i_3_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[16]_i_3
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_90_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_90
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_123_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_123
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/ex_alu_y[29].  Re-placed instance student_top_inst/Core_cpu/exmem_pc_target[29]_i_2
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[29]_i_3_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[29]_i_3
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[29]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[29]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[29].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[29]
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_wb_data[29]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_wb_data[29]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_wb_data[29].  Did not re-place instance student_top_inst/Core_cpu/exmem_wb_data_reg[29]
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[24].  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][29]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/ex_alu_a[29].  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[29]_i_11
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_alu_y[29]_i_12_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_alu_y[29]_i_12
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[13]_i_2_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[13]_i_2
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[29]_i_5_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[29]_i_5
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/u_rf/reg_bank[31][29]_i_2_n_0.  Re-placed instance student_top_inst/Core_cpu/u_rf/reg_bank[31][29]_i_2
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_125_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_125
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_69_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_69
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[14]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[14]_i_1
+INFO: [Physopt 32-663] Processed net student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg_1_6_0[4]_repN_1.  Re-placed instance student_top_inst/bridge_inst/dram_driver_inst/reg_bank[31][6]_i_1_replica_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[14].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[14]
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[7].  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][12]_i_1
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_92_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_pc_redirect_i_92
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_106_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_106
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[22]_i_4_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[22]_i_4
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_33_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_33
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[22]_i_5_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[22]_i_5
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[24]_i_10_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[24]_i_10
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[16]_i_6_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[16]_i_6
+INFO: [Physopt 32-662] Processed net student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg_1_6_0[4].  Did not re-place instance student_top_inst/bridge_inst/dram_driver_inst/reg_bank[31][6]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/ex_alu_a[6].  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[6]_i_7
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[5]_i_2_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[5]_i_2
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/ex_alu_y[5].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[5]_i_2
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[21]_i_5_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[21]_i_5
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[21]_i_12_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[21]_i_12
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[7]_i_20_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[7]_i_20
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_pc_target[5]_i_1_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_pc_target[5]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[5].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[5]
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/ex_alu_a[9].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[9]_i_9
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[14]_i_3_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[14]_i_3
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/ex_alu_y[14].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[14]_i_2
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[30]_i_8_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[30]_i_8
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[29]_i_2_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[29]_i_2
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_alu_y[29]_i_6_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_alu_y[29]_i_6
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[31]_i_16_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[31]_i_16
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/ex_alu_y[31].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[31]_i_6
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[31]_i_3_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[31]_i_3
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[31]_i_7_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[31]_i_7
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/ex_alu_a[22].  Re-placed instance student_top_inst/Core_cpu/exmem_alu_y[22]_i_11
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_alu_y[29]_i_14_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_alu_y[29]_i_14
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[17]_repN.  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][22]_i_1_replica
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_102_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_102
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/ex_alu_a[12].  Re-placed instance student_top_inst/Core_cpu/exmem_alu_y[12]_i_10
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/ex_alu_y[11].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[11]_i_3
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[7]_i_13_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[7]_i_13
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[27]_i_14_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[27]_i_14
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[5]_i_5_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[5]_i_5
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[11]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[11]_i_1
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[11]_i_9_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[11]_i_9
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[11].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target_reg[11]
+INFO: [Physopt 32-661] Optimized 48 nets.  Re-placed 48 instances.
+INFO: [Physopt 32-775] End 1 Pass. Optimized 48 nets or cells. Created 0 new cell, deleted 0 existing cell and moved 48 existing cells
+INFO: [Physopt 32-619] Estimated Timing Summary | WNS=-1.820 | TNS=-249.157 |
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00.007 . Memory (MB): peak = 2300.367 ; gain = 0.000
+Phase 4 Single Cell Placement Optimization | Checksum: 20be18de0
+
+Time (s): cpu = 00:00:30 ; elapsed = 00:00:22 . Memory (MB): peak = 2300.367 ; gain = 45.520
+
+Phase 5 Multi Cell Placement Optimization
+INFO: [Physopt 32-660] Identified 100 candidate nets for placement-based optimization.
+INFO: [Physopt 32-662] Processed net student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg_1_6_0[0].  Did not re-place instance student_top_inst/bridge_inst/dram_driver_inst/reg_bank[31][1]_i_1/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_141_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_141/O
+INFO: [Physopt 32-663] Processed net student_top_inst/bridge_inst/dram_driver_inst/sel_dram_r_reg_0.  Re-placed instance student_top_inst/bridge_inst/dram_driver_inst/reg_bank[31][1]_i_4/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_3_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_3/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[21]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[21]_i_1/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/ex_alu_y[22].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[22]_i_4/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[22]_i_2_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[22]_i_2/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[22]_i_6_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[22]_i_6/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[22]_i_15_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[22]_i_15/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[22]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[22]_i_1/O
+INFO: [Physopt 32-662] Processed net student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg_1_6_0[0]_repN.  Did not re-place instance student_top_inst/bridge_inst/dram_driver_inst/reg_bank[31][1]_i_1_replica/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[3].  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][8]_i_1/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_128_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_128/O
+INFO: [Physopt 32-663] Processed net student_top_inst/bridge_inst/dram_lane3_reg_1_7_0[0].  Re-placed instance student_top_inst/bridge_inst/reg_bank[31][8]_i_4/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/reg_bank[31][8]_i_2_n_0.  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][8]_i_2/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_79_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_79/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[15]_repN_1.  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][20]_i_1_replica_1/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/reg_bank[31][20]_i_2_n_0.  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][20]_i_2/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[8]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[8]_i_1/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[20]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[20]_i_1/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[4].  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][9]_i_1/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_122_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_122/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_reg[9].  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][9]_i_2/O
+INFO: [Physopt 32-662] Processed net student_top_inst/bridge_inst/dram_lane3_reg_1_7_0[1].  Did not re-place instance student_top_inst/bridge_inst/reg_bank[31][9]_i_4/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_124_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_124/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/dram_lane1_reg_1_6.  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][6]_i_5/O
+INFO: [Physopt 32-662] Processed net student_top_inst/bridge_inst/dram_driver_inst/dram_lane3_reg_1_6_0[4]_repN.  Did not re-place instance student_top_inst/bridge_inst/dram_driver_inst/reg_bank[31][6]_i_1_replica/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[31]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[31]_i_1/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_140_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_140/O
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/ex_alu_a[14].  Re-placed instance student_top_inst/Core_cpu/exmem_alu_y[14]_i_7/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[29]_i_13_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[29]_i_13/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/ex_alu_y[19].  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[19]_i_3/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[19]_i_3_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[19]_i_3/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_reg[14].  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][14]_i_2/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[19]_i_7_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[19]_i_7/O
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_wb_data[19]_i_1_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_wb_data[19]_i_1/O
+INFO: [Physopt 32-662] Processed net student_top_inst/bridge_inst/dram_lane3_reg_1_7_0[6].  Did not re-place instance student_top_inst/bridge_inst/reg_bank[31][14]_i_4/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[0].  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][0]_i_1/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_138_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_138/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/dram_lane1_reg_1_0.  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][0]_i_2/O
+INFO: [Physopt 32-662] Processed net student_top_inst/bridge_inst/dram_driver_inst/reg_bank[31][6]_i_6_n_0.  Did not re-place instance student_top_inst/bridge_inst/dram_driver_inst/reg_bank[31][6]_i_6/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_129_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_129/O
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[25].  Re-placed instance student_top_inst/Core_cpu/u_rf/reg_bank[31][30]_i_1/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_34_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_34/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/u_rf/memwb_wdata_final[9].  Did not re-place instance student_top_inst/Core_cpu/u_rf/reg_bank[31][14]_i_1/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_redirect_i_91_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_redirect_i_91/O
+INFO: [Physopt 32-662] Processed net student_top_inst/bridge_inst/dram_driver_inst/sel_dram_r_reg.  Did not re-place instance student_top_inst/bridge_inst/dram_driver_inst/reg_bank[31][0]_i_4/O
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/ex_alu_a[13].  Re-placed instance student_top_inst/Core_cpu/exmem_alu_y[13]_i_7/O
+INFO: [Physopt 32-663] Processed net student_top_inst/Core_cpu/exmem_alu_y[30]_i_19_n_0.  Re-placed instance student_top_inst/Core_cpu/exmem_alu_y[30]_i_19/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[22]_i_3_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[22]_i_3/O
+INFO: [Physopt 32-662] Processed net student_top_inst/bridge_inst/dram_lane3_reg_1_7_0[5].  Did not re-place instance student_top_inst/bridge_inst/reg_bank[31][13]_i_4/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[13]_i_10_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[13]_i_10/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_alu_y[22]_i_7_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_alu_y[22]_i_7/O
+INFO: [Physopt 32-662] Processed net student_top_inst/Core_cpu/exmem_pc_target[19]_i_1_n_0.  Did not re-place instance student_top_inst/Core_cpu/exmem_pc_target[19]_i_1/O

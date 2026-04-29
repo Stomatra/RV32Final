@@ -1,0 +1,57 @@
++====================+===================+========================================================+
+| Launch Setup Clock | Launch Hold Clock | Pin                                                    |
++====================+===================+========================================================+
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_pc_target_reg[28]/D    |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_alu_y_reg[28]/D        |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_alu_y_reg[29]/D        |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_pc_target_reg[31]/D    |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_pc_target_reg[25]/D    |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_wb_data_reg[28]/D      |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_wb_data_reg[29]/D      |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_wb_data_reg[22]/D      |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_wb_data_reg[18]/D      |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_wb_data_reg[8]/D       |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_wb_data_reg[24]/D      |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_alu_y_reg[16]_rep/D    |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_alu_y_reg[16]_rep__0/D |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_alu_y_reg[31]/D        |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_alu_y_reg[16]/D        |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_wb_data_reg[26]/D      |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_wb_data_reg[30]/D      |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_alu_y_reg[25]/D        |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_alu_y_reg[30]/D        |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_alu_y_reg[22]/D        |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_alu_y_reg[6]_rep__1/D  |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_alu_y_reg[27]/D        |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_alu_y_reg[18]/D        |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/idex_rs1_val_reg[3]/D        |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/idex_rs2_val_reg[3]/D        |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_store_data_reg[8]/D    |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/idex_rs2_val_reg[21]/D       |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/idex_rs1_val_reg[28]/D       |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/idex_rs2_val_reg[23]/D       |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_store_data_reg[12]/D   |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/idex_rs1_val_reg[19]/D       |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/idex_rs1_val_reg[15]/D       |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/idex_rs1_val_reg[29]/D       |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/idex_rs2_val_reg[20]/D       |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_store_data_reg[23]/D   |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_store_data_reg[13]/D   |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_store_data_reg[16]/D   |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_store_data_reg[15]/D   |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_store_data_reg[25]/D   |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/idex_rs2_val_reg[15]/D       |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_store_data_reg[24]/D   |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/idex_rs1_val_reg[31]/D       |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_store_data_reg[30]/D   |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_store_data_reg[20]/D   |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_store_data_reg[28]/D   |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_store_data_reg[18]/D   |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_store_data_reg[22]/D   |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_store_data_reg[26]/D   |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_store_data_reg[31]/D   |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/exmem_store_data_reg[29]/D   |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/idex_rs2_val_reg[9]/D        |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/idex_rs1_val_reg[9]/D        |
+| clk_out2_pll       | clk_out2_pll      | student_top_inst/Core_cpu/idex_rs1_val_reg[7]/D        |
++--------------------+-------------------+--------------------------------------------------------+
