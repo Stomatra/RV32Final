@@ -267,4 +267,18 @@ module tb_myCPU_core;
             $display("[TB] read  @%0.1f ns addr=%h data=%h", $realtime, perip_addr, perip_rdata);
         end
     end
+
+    always @(posedge cpu_clk) begin
+        if (!cpu_rst && dut.memwb_valid && dut.memwb_rf_we && (dut.memwb_rd == 5'd8) &&
+            (dut.memwb_wdata < 32'h0001_0000)) begin
+            $display("[TB][BAD_S0_WB] t=%0.1f ns memwb_pc=%h s0_wdata=%h sp=%h exmem_pc=%h exmem_addr=%h",
+                $realtime,
+                dut.memwb_pc,
+                dut.memwb_wdata,
+                dut.u_rf.reg_bank[2],
+                dut.exmem_pc,
+                dut.exmem_alu_y
+            );
+        end
+    end
 endmodule

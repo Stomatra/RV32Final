@@ -1,4 +1,28 @@
-# 忽略 Verilog 仿真波形文件（超大临时文件）
 *.vcd
-# 精准忽略该目录下的所有波形文件
+*.vvp
+*.wdb
+*.jou
+*.backup.jou
+*.log
+hs_err_pid*.dmp
+*.dcp
+*.bit
+*.rpx
 digital_twin.srcs/sim_iverilog/*.vcd
+.Xil/
+digital_twin.cache/
+digital_twin.gen/
+digital_twin.runs/
+digital_twin.sim/
+digital_twin.hw/
+node_modules/
+dist/
+build/
+.venv/
+__pycache__/
+*.zip
+*.rar
+*.mp4
+*.pt
+*.pth
+*.onnx

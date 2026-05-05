@@ -35,8 +35,6 @@ module dram_driver(
 	logic [ 1:0] offset;
 	logic [7:0] lane0_wdata, lane1_wdata, lane2_wdata, lane3_wdata;
 	logic       lane0_wen, lane1_wen, lane2_wen, lane3_wen;
-    integer init_index;
-
     (* ram_style = "block" *) logic [7:0] dram_lane0 [0:DRAM_DEPTH - 1];
     (* ram_style = "block" *) logic [7:0] dram_lane1 [0:DRAM_DEPTH - 1];
     (* ram_style = "block" *) logic [7:0] dram_lane2 [0:DRAM_DEPTH - 1];
@@ -45,13 +43,16 @@ module dram_driver(
     assign dram_addr = perip_addr[17:2];
     assign offset = perip_addr[1:0];
 
+    integer i;
 	initial begin
-		for (init_index = 0; init_index < DRAM_DEPTH; init_index = init_index + 1) begin
-			dram_lane0[init_index] = 8'h00;
-			dram_lane1[init_index] = 8'h00;
-			dram_lane2[init_index] = 8'h00;
-			dram_lane3[init_index] = 8'h00;
+		`ifndef SYNTHESIS
+		for (i = 0; i < DRAM_DEPTH; i = i + 1) begin
+			dram_lane0[i] = 8'h00;
+			dram_lane1[i] = 8'h00;
+			dram_lane2[i] = 8'h00;
+			dram_lane3[i] = 8'h00;
 		end
+		`endif
 
 		dram_lane0[16'd3] = 8'hcd;
 		dram_lane1[16'd3] = 8'hab;

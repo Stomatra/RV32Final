@@ -34,7 +34,10 @@ module RF #(
     input  logic [ADDR_WIDTH - 1:0] rR2   ,
 
     output logic [DATAWIDTH - 1:0]  rR1_data  ,
-    output logic [DATAWIDTH - 1:0]  rR2_data
+    output logic [DATAWIDTH - 1:0]  rR2_data  ,
+    output logic [DATAWIDTH - 1:0]  x1_data   ,
+    output logic [DATAWIDTH - 1:0]  x10_data  ,
+    output logic [DATAWIDTH - 1:0]  x11_data
 );
     logic [DATAWIDTH - 1:0] reg_bank [31:0];
 
@@ -55,6 +58,18 @@ module RF #(
 
     always_comb begin
         rR2_data = reg_bank[rR2];
+    end
+
+    always_comb begin
+        x1_data = reg_bank[5'd1];
+    end
+
+    always_comb begin
+        x10_data = reg_bank[5'd10];
+    end
+
+    always_comb begin
+        x11_data = reg_bank[5'd11];
     end
 
 endmodule

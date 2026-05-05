@@ -243,8 +243,16 @@ Set-Content -Path $iromStubPath -Value $iromStub -Encoding ascii
 Set-Content -Path $dramStubPath -Value $dramStub -Encoding ascii
 Set-Content -Path $wrapperPath -Value ($wrapperBody -join [Environment]::NewLine) -Encoding ascii
 
+$designFileNames = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+Get-ChildItem $designDir -File | ForEach-Object {
+    [void]$designFileNames.Add($_.Name)
+}
+
 $sourceFiles = @(
-    (Get-ChildItem $importsDir -File | Where-Object { $_.Extension -in '.sv', '.v' } | Sort-Object FullName | ForEach-Object { $_.FullName }),
+    (Get-ChildItem $importsDir -File |
+        Where-Object { $_.Extension -in '.sv', '.v' -and -not $designFileNames.Contains($_.Name) } |
+        Sort-Object FullName |
+        ForEach-Object { $_.FullName }),
     (Get-ChildItem $designDir -File | Where-Object { $_.Extension -in '.sv', '.v' } | Sort-Object FullName | ForEach-Object { $_.FullName }),
     $tbPath,
     $pllStubPath,
