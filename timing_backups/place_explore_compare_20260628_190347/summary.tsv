@@ -1,0 +1,4 @@
+directive	wns	report	dcp	status
+Explore	0.068	E:/Projects/1Aprojects/RV32Final/timing_backups/place_explore_compare_20260628_190347/timing_Explore.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/place_explore_compare_20260628_190347/top_Explore.dcp	ok
+AggressiveExplore	NA	E:/Projects/1Aprojects/RV32Final/timing_backups/place_explore_compare_20260628_190347/timing_AggressiveExplore.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/place_explore_compare_20260628_190347/top_AggressiveExplore.dcp	ERROR: [Common 17-69] Command failed: Placer could not place all instances
+

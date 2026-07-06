@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
 module myCPU #(
-	parameter ENABLE_MUL_HELPER_ACCEL = 1'b1
+	parameter ENABLE_MUL_HELPER_ACCEL = 1'b0
 ) (
 	input  logic         cpu_rst,
 	input  logic         cpu_clk,
@@ -91,6 +91,8 @@ module myCPU #(
 	logic        load_use_hazard;
 	logic        mem_load_stall;
 	logic        mem_stall_flag;
+	logic        id_mul_helper_candidate;
+	logic        id_mul_helper_return_match;
 	logic        id_mul_helper_hit;
 	logic [31:0] id_mul_helper_ra;
 	logic [31:0] id_mul_helper_lhs;
@@ -110,6 +112,8 @@ module myCPU #(
 	logic [4:0]  idex_rs2;
 	logic [31:0] idex_rs1_val;
 	logic [31:0] idex_rs2_val;
+	logic        idex_uses_rs1;
+	logic        idex_uses_rs2;
 	logic [4:0]  idex_rd;
 	logic [31:0] idex_imm;
 	logic [2:0]  idex_funct3;
@@ -130,16 +134,25 @@ module myCPU #(
 
 	logic [31:0] ex_rs1_val;
 	logic [31:0] ex_rs2_val;
+	logic [31:0] ex_pc_rs1_val;
+	logic [31:0] ex_pc_rs2_val;
 	logic [31:0] ex_alu_a;
 	logic [31:0] ex_alu_b;
 	logic [31:0] ex_alu_y;
 	logic        ex_br_take;
+	logic        ex_pc_use_rs1;
+	logic        ex_pc_use_rs2;
+	logic        ex_pc_fwd_rs1_from_exmem;
+	logic        ex_pc_fwd_rs1_from_memwb;
+	logic        ex_pc_fwd_rs2_from_exmem;
+	logic        ex_pc_fwd_rs2_from_memwb;
 	logic        ex_alu_is_true;
 	logic        ex_cmp_eq;
 	logic        ex_cmp_lt_signed;
 	logic        ex_cmp_lt_unsigned;
 	logic [31:0] ex_pc4;
 	logic [31:0] ex_pc_plus_imm;
+	logic [31:0] ex_jalr_sum;
 	logic [31:0] ex_jalr_target;
 	logic [63:0] ex_mul_helper_full;
 	logic [31:0] ex_mul_helper_result;
@@ -147,6 +160,18 @@ module myCPU #(
 	logic [31:0] ex_pc_target;
 	logic [31:0] ex_wb_data;
 	logic [31:0] ex_store_data;
+	logic        ex_use_rs1_value;
+	logic        ex_use_rs2_value;
+	logic        ex_match_rs1_exmem;
+	logic        ex_match_rs1_memwb;
+	logic        ex_match_rs2_exmem;
+	logic        ex_match_rs2_memwb;
+	logic        ex_fwd_rs1_from_exmem;
+	logic        ex_fwd_rs1_from_memwb;
+	logic        ex_fwd_rs2_from_exmem;
+	logic        ex_fwd_rs2_from_memwb;
+	logic        exmem_can_forward;
+	logic        memwb_can_forward;
 
 	logic [31:0] exmem_alu_y      = 32'h0;
 	logic [31:0] exmem_store_data = 32'h0;
@@ -165,7 +190,6 @@ module myCPU #(
 
 	logic [31:0] mem_load_data;
 	logic [31:0] mem_wb_data;
-
 	logic [31:0] memwb_wdata;
 	logic [4:0]  memwb_rd;
 	logic        memwb_rf_we;
@@ -201,6 +225,25 @@ module myCPU #(
 					forward_helper_reg = exmem_wb_data;
 				end else if (memwb_valid && memwb_rf_we && (memwb_rd == reg_addr) && (memwb_rd != 5'd0)) begin
 					forward_helper_reg = memwb_wdata;
+				end
+			end
+		end
+	endfunction
+
+	function automatic logic [31:0] forward_helper_operand_reg(
+		input logic [4:0]  reg_addr,
+		input logic [31:0] rf_value
+	);
+		begin
+			if (reg_addr == 5'd0) begin
+				forward_helper_operand_reg = 32'h0;
+			end else begin
+				forward_helper_operand_reg = rf_value;
+				if (exmem_valid && exmem_rf_we && (exmem_rd == reg_addr) && (exmem_rd != 5'd0) &&
+					(exmem_wb_sel != WB_SRC_MEM)) begin
+					forward_helper_operand_reg = exmem_wb_data;
+				end else if (memwb_valid && memwb_rf_we && (memwb_rd == reg_addr) && (memwb_rd != 5'd0)) begin
+					forward_helper_operand_reg = memwb_wdata;
 				end
 			end
 		end
@@ -250,28 +293,65 @@ module myCPU #(
 		.isTrue     (ex_alu_is_true)
 	);
 
-	assign ex_store_data    = ex_rs2_val;
+	assign ex_store_data    = idex_mem_write ? ex_rs2_val : 32'h0;
 	assign ex_pc4           = idex_pc + 32'd4;
 	assign ex_pc_plus_imm   = idex_pc + idex_imm;
-	assign ex_jalr_target   = {ex_alu_y[31:1], 1'b0};
-	assign ex_mul_helper_full   = $unsigned(idex_mul_helper_lhs) * $unsigned(idex_mul_helper_rhs);
-	assign ex_mul_helper_result = ex_mul_helper_full[31:0];
-	assign id_mul_helper_ra  = forward_helper_reg(5'd1, rf_x1_raw);
-	assign id_mul_helper_lhs = forward_helper_reg(5'd10, rf_x10_raw);
-	assign id_mul_helper_rhs = forward_helper_reg(5'd11, rf_x11_raw);
-	assign id_mul_helper_hit = ENABLE_MUL_HELPER_ACCEL && ifid_valid && (ifid_pc == MUL_HELPER_PC) &&
-							 (id_mul_helper_ra == MUL_HELPER_LOOP004_RA || id_mul_helper_ra == MUL_HELPER_LOOP006_RA);
+
+	always_comb begin
+		if (idex_valid && (idex_pc_sel == PC_SRC_JALR)) begin
+			ex_jalr_sum = ex_pc_rs1_val + idex_imm;
+		end else begin
+			ex_jalr_sum = 32'h0;
+		end
+	end
+
+	assign ex_jalr_target   = {ex_jalr_sum[31:1], 1'b0};
+	assign ex_mul_helper_full     = $unsigned(idex_mul_helper_lhs) * $unsigned(idex_mul_helper_rhs);
+	assign ex_mul_helper_result   = ex_mul_helper_full[31:0];
+	assign id_mul_helper_candidate = ENABLE_MUL_HELPER_ACCEL && ifid_valid && !idex_mul_helper && (ifid_pc == MUL_HELPER_PC);
+	assign id_mul_helper_ra       = id_mul_helper_candidate ? forward_helper_reg(5'd1, rf_x1_raw) : 32'h0;
+	assign id_mul_helper_return_match = (id_mul_helper_ra == MUL_HELPER_LOOP004_RA) ||
+									 (id_mul_helper_ra == MUL_HELPER_LOOP006_RA);
+	assign id_mul_helper_hit      = id_mul_helper_candidate && id_mul_helper_return_match;
+	assign id_mul_helper_lhs      = id_mul_helper_hit ? forward_helper_operand_reg(5'd10, rf_x10_raw) : 32'h0;
+	assign id_mul_helper_rhs      = id_mul_helper_hit ? forward_helper_operand_reg(5'd11, rf_x11_raw) : 32'h0;
 	assign id_imm           = (id_opcode == OPC_BRANCH) ? {{19{ifid_instr[31]}}, ifid_instr[31], ifid_instr[7], ifid_instr[30:25], ifid_instr[11:8], 1'b0} :
 							  (id_opcode == OPC_JAL)    ? {{11{ifid_instr[31]}}, ifid_instr[31], ifid_instr[19:12], ifid_instr[20], ifid_instr[30:21], 1'b0} :
 							  id_imm_raw;
-	assign ex_cmp_eq         = (ex_rs1_val == ex_rs2_val);
-	assign ex_cmp_lt_signed  = ($signed(ex_rs1_val) < $signed(ex_rs2_val));
-	assign ex_cmp_lt_unsigned = (ex_rs1_val < ex_rs2_val);
+	assign exmem_can_forward = exmem_rf_we && (exmem_rd != 5'h0) && (exmem_wb_sel != WB_SRC_MEM);
+	assign memwb_can_forward = memwb_rf_we && (memwb_rd != 5'h0);
+	assign ex_use_rs1_value = idex_valid && idex_uses_rs1;
+	assign ex_use_rs2_value = idex_valid && idex_uses_rs2;
+	assign ex_pc_use_rs1 = idex_valid && ((idex_pc_sel == PC_SRC_BRANCH) || (idex_pc_sel == PC_SRC_JALR));
+	assign ex_pc_use_rs2 = idex_valid && (idex_pc_sel == PC_SRC_BRANCH);
+	assign ex_match_rs1_exmem = exmem_can_forward && (exmem_rd == idex_rs1);
+	assign ex_match_rs1_memwb = memwb_can_forward && (memwb_rd == idex_rs1);
+	assign ex_match_rs2_exmem = exmem_can_forward && (exmem_rd == idex_rs2);
+	assign ex_match_rs2_memwb = memwb_can_forward && (memwb_rd == idex_rs2);
+	assign ex_fwd_rs1_from_exmem = ex_use_rs1_value && ex_match_rs1_exmem;
+	assign ex_fwd_rs1_from_memwb = ex_use_rs1_value && ex_match_rs1_memwb;
+	assign ex_fwd_rs2_from_exmem = ex_use_rs2_value && ex_match_rs2_exmem;
+	assign ex_fwd_rs2_from_memwb = ex_use_rs2_value && ex_match_rs2_memwb;
+	assign ex_pc_fwd_rs1_from_exmem = ex_pc_use_rs1 && ex_match_rs1_exmem;
+	assign ex_pc_fwd_rs1_from_memwb = ex_pc_use_rs1 && ex_match_rs1_memwb;
+	assign ex_pc_fwd_rs2_from_exmem = ex_pc_use_rs2 && ex_match_rs2_exmem;
+	assign ex_pc_fwd_rs2_from_memwb = ex_pc_use_rs2 && ex_match_rs2_memwb;
+
+	always_comb begin
+		ex_cmp_eq = 1'b0;
+		ex_cmp_lt_signed = 1'b0;
+		ex_cmp_lt_unsigned = 1'b0;
+		if (idex_pc_sel == PC_SRC_BRANCH) begin
+			ex_cmp_eq = (ex_pc_rs1_val == ex_pc_rs2_val);
+			ex_cmp_lt_signed = ($signed(ex_pc_rs1_val) < $signed(ex_pc_rs2_val));
+			ex_cmp_lt_unsigned = (ex_pc_rs1_val < ex_pc_rs2_val);
+		end
+	end
 
 	always_comb begin
 		if (id_rs1 == 5'd0) begin
 			id_rs1_val = 32'h0;
-		end else if (memwb_rf_we && memwb_valid && (memwb_rd == id_rs1) && (memwb_rd != 5'd0)) begin
+		end else if (memwb_can_forward && (memwb_rd == id_rs1)) begin
 			id_rs1_val = memwb_wdata;
 		end else begin
 			id_rs1_val = rf_rs1_raw;
@@ -279,7 +359,7 @@ module myCPU #(
 
 		if (id_rs2 == 5'd0) begin
 			id_rs2_val = 32'h0;
-		end else if (memwb_rf_we && memwb_valid && (memwb_rd == id_rs2) && (memwb_rd != 5'd0)) begin
+		end else if (memwb_can_forward && (memwb_rd == id_rs2)) begin
 			id_rs2_val = memwb_wdata;
 		end else begin
 			id_rs2_val = rf_rs2_raw;
@@ -308,12 +388,20 @@ module myCPU #(
 		if (cpu_rst) begin
 			ifid_pc    <= RESET_PC;
 			ifid_instr <= NOP_INSTR;
-			ifid_valid <= 1'b0;
-		end else if (ex_pc_redirect && !mem_load_stall) begin
-			ifid_valid <= 1'b0;
 		end else if (!load_use_hazard && !mem_load_stall) begin
 			ifid_pc    <= pc_q;
 			ifid_instr <= irom_data;
+		end
+	end
+
+	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
+		if (cpu_rst) begin
+			ifid_valid <= 1'b0;
+		end else if (mem_load_stall) begin
+			// hold IF/ID valid while the MEM-stage load bubble is extended
+		end else if (ex_pc_redirect) begin
+			ifid_valid <= 1'b0;
+		end else if (!load_use_hazard) begin
 			ifid_valid <= 1'b1;
 		end
 	end
@@ -479,6 +567,8 @@ module myCPU #(
 			idex_rs2           <= 5'h0;
 			idex_rs1_val       <= 32'h0;
 			idex_rs2_val       <= 32'h0;
+			idex_uses_rs1      <= 1'b0;
+			idex_uses_rs2      <= 1'b0;
 			idex_rd            <= 5'h0;
 			idex_funct3        <= 3'h0;
 			idex_mul_helper    <= 1'b0;
@@ -504,6 +594,8 @@ module myCPU #(
 			idex_rs2           <= 5'h0;
 			idex_rs1_val       <= 32'h0;
 			idex_rs2_val       <= 32'h0;
+			idex_uses_rs1      <= 1'b0;
+			idex_uses_rs2      <= 1'b0;
 			idex_rd            <= 5'h0;
 			idex_funct3        <= 3'h0;
 			idex_mul_helper    <= 1'b0;
@@ -527,6 +619,8 @@ module myCPU #(
 			idex_rs2           <= 5'h0;
 			idex_rs1_val       <= 32'h0;
 			idex_rs2_val       <= 32'h0;
+			idex_uses_rs1      <= 1'b0;
+			idex_uses_rs2      <= 1'b0;
 			idex_rd            <= 5'd10;
 			idex_funct3        <= 3'h0;
 			idex_mul_helper    <= 1'b1;
@@ -550,6 +644,8 @@ module myCPU #(
 			idex_rs2           <= id_rs2;
 			idex_rs1_val       <= id_rs1_val;
 			idex_rs2_val       <= id_rs2_val;
+			idex_uses_rs1      <= id_uses_rs1;
+			idex_uses_rs2      <= id_uses_rs2;
 			idex_rd            <= id_rd;
 			idex_funct3        <= id_funct3;
 			idex_mul_helper    <= 1'b0;
@@ -571,21 +667,33 @@ module myCPU #(
 
 	always_comb begin
 		ex_rs1_val = idex_rs1_val;
-		if (exmem_valid && exmem_rf_we && (exmem_rd != 5'h0) &&
-			(exmem_rd == idex_rs1) && (exmem_wb_sel != WB_SRC_MEM)) begin
+		if (ex_fwd_rs1_from_exmem) begin
 			ex_rs1_val = exmem_wb_data;
-		end else if (memwb_valid && memwb_rf_we && (memwb_rd != 5'h0) &&
-					 (memwb_rd == idex_rs1)) begin
+		end else if (ex_fwd_rs1_from_memwb) begin
 			ex_rs1_val = memwb_wdata;
 		end
 
 		ex_rs2_val = idex_rs2_val;
-		if (exmem_valid && exmem_rf_we && (exmem_rd != 5'h0) &&
-			(exmem_rd == idex_rs2) && (exmem_wb_sel != WB_SRC_MEM)) begin
+		if (ex_fwd_rs2_from_exmem) begin
 			ex_rs2_val = exmem_wb_data;
-		end else if (memwb_valid && memwb_rf_we && (memwb_rd != 5'h0) &&
-					 (memwb_rd == idex_rs2)) begin
+		end else if (ex_fwd_rs2_from_memwb) begin
 			ex_rs2_val = memwb_wdata;
+		end
+	end
+
+	always_comb begin
+		ex_pc_rs1_val = idex_rs1_val;
+		if (ex_pc_fwd_rs1_from_exmem) begin
+			ex_pc_rs1_val = exmem_wb_data;
+		end else if (ex_pc_fwd_rs1_from_memwb) begin
+			ex_pc_rs1_val = memwb_wdata;
+		end
+
+		ex_pc_rs2_val = idex_rs2_val;
+		if (ex_pc_fwd_rs2_from_exmem) begin
+			ex_pc_rs2_val = exmem_wb_data;
+		end else if (ex_pc_fwd_rs2_from_memwb) begin
+			ex_pc_rs2_val = memwb_wdata;
 		end
 	end
 

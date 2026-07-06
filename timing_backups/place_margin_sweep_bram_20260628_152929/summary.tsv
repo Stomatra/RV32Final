@@ -1,0 +1,7 @@
+name	wns	report	dcp	status
+wl_block	NA	E:/Projects/1Aprojects/RV32Final/timing_backups/place_margin_sweep_bram_20260628_152929/timing_wl_block.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/place_margin_sweep_bram_20260628_152929/top_wl_block.dcp	ERROR: [Vivado_Tcl 4-2310] The option -subdirective is not supported for part xc7k325tffg900-2.
+
+wl_block_psip	NA	E:/Projects/1Aprojects/RV32Final/timing_backups/place_margin_sweep_bram_20260628_152929/timing_wl_block_psip.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/place_margin_sweep_bram_20260628_152929/top_wl_block_psip.dcp	ERROR: [Vivado_Tcl 4-2310] The option -subdirective is not supported for part xc7k325tffg900-2.
+
+wl_block_congestion	NA	E:/Projects/1Aprojects/RV32Final/timing_backups/place_margin_sweep_bram_20260628_152929/timing_wl_block_congestion.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/place_margin_sweep_bram_20260628_152929/top_wl_block_congestion.dcp	ERROR: [Vivado_Tcl 4-2310] The option -subdirective is not supported for part xc7k325tffg900-2.
+

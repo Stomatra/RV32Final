@@ -1,0 +1,5 @@
+freq_mhz	wns	status	report	dcp
+202.25	-0.151	ok	E:/Projects/1Aprojects/RV32Final/timing_backups/freq_sweep_explore_20260628_193722/timing_202p25.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/freq_sweep_explore_20260628_193722/top_202p25.dcp
+202.50	-0.151	ok	E:/Projects/1Aprojects/RV32Final/timing_backups/freq_sweep_explore_20260628_193722/timing_202p50.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/freq_sweep_explore_20260628_193722/top_202p50.dcp
+202.75	-0.151	ok	E:/Projects/1Aprojects/RV32Final/timing_backups/freq_sweep_explore_20260628_193722/timing_202p75.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/freq_sweep_explore_20260628_193722/top_202p75.dcp
+203.00	-0.405	ok	E:/Projects/1Aprojects/RV32Final/timing_backups/freq_sweep_explore_20260628_193722/timing_203p00.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/freq_sweep_explore_20260628_193722/top_203p00.dcp

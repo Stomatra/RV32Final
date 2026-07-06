@@ -1,0 +1,7 @@
+physopt_directive	wns	report	dcp	status
+Default	0.007	E:/Projects/1Aprojects/RV32Final/timing_backups/physopt_margin_sweep_20260628_142853/timing_Default.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/physopt_margin_sweep_20260628_142853/top_Default.dcp	ok
+Explore	-0.140	E:/Projects/1Aprojects/RV32Final/timing_backups/physopt_margin_sweep_20260628_142853/timing_Explore.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/physopt_margin_sweep_20260628_142853/top_Explore.dcp	ok
+AggressiveExplore	-0.029	E:/Projects/1Aprojects/RV32Final/timing_backups/physopt_margin_sweep_20260628_142853/timing_AggressiveExplore.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/physopt_margin_sweep_20260628_142853/top_AggressiveExplore.dcp	ok
+AggressiveFanoutOpt	0.007	E:/Projects/1Aprojects/RV32Final/timing_backups/physopt_margin_sweep_20260628_142853/timing_AggressiveFanoutOpt.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/physopt_margin_sweep_20260628_142853/top_AggressiveFanoutOpt.dcp	ok
+AddRetime	0.007	E:/Projects/1Aprojects/RV32Final/timing_backups/physopt_margin_sweep_20260628_142853/timing_AddRetime.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/physopt_margin_sweep_20260628_142853/top_AddRetime.dcp	ok
+AlternateFlowWithRetiming	0.007	E:/Projects/1Aprojects/RV32Final/timing_backups/physopt_margin_sweep_20260628_142853/timing_AlternateFlowWithRetiming.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/physopt_margin_sweep_20260628_142853/top_AlternateFlowWithRetiming.dcp	ok

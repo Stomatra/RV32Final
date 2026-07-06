@@ -124,11 +124,11 @@ module dram_driver(
 
     // BRAM synchronous read/write — perip_rdata valid 1 cycle after address
     always_ff @(posedge clk) begin
-        if (lane0_wen) dram_lane0[dram_addr] <= lane0_wdata;
-        if (lane1_wen) dram_lane1[dram_addr] <= lane1_wdata;
-        if (lane2_wen) dram_lane2[dram_addr] <= lane2_wdata;
-        if (lane3_wen) dram_lane3[dram_addr] <= lane3_wdata;
-        perip_rdata <= {dram_lane3[dram_addr], dram_lane2[dram_addr],
-                        dram_lane1[dram_addr], dram_lane0[dram_addr]};
+		if (lane0_wen) dram_lane0[dram_addr] <= lane0_wdata;
+		if (lane1_wen) dram_lane1[dram_addr] <= lane1_wdata;
+		if (lane2_wen) dram_lane2[dram_addr] <= lane2_wdata;
+		if (lane3_wen) dram_lane3[dram_addr] <= lane3_wdata;
+		perip_rdata <= {dram_lane3[dram_addr], dram_lane2[dram_addr],
+		                dram_lane1[dram_addr], dram_lane0[dram_addr]};
     end
 endmodule
