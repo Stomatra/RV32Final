@@ -102,6 +102,17 @@ module myCPU #(
 	localparam logic [2:0] CSR_OP_ECALL = 3'd4;
 	localparam logic [2:0] CSR_OP_MRET  = 3'd5;
 
+	//M指令类型
+	localparam logic [3:0] M_OP_NONE   = 4'd0;
+	localparam logic [3:0] M_OP_MUL    = 4'd1;
+	localparam logic [3:0] M_OP_MULH   = 4'd2;
+	localparam logic [3:0] M_OP_MULHSU = 4'd3;
+	localparam logic [3:0] M_OP_MULHU  = 4'd4;
+	localparam logic [3:0] M_OP_DIV    = 4'd5;
+	localparam logic [3:0] M_OP_DIVU   = 4'd6;
+	localparam logic [3:0] M_OP_REM    = 4'd7;
+	localparam logic [3:0] M_OP_REMU   = 4'd8;
+
 	// =========================
 	// IF 级与 IF/ID 流水寄存器
 	// =========================
@@ -156,6 +167,8 @@ module myCPU #(
 	logic [31:0] id_csr_wdata;
 	logic        id_is_ecall;
 	logic        id_is_mret;
+	logic        id_is_m_ext;
+	logic [3:0]  id_m_op;
 
 	// =========================
 	// ID/EX 流水寄存器
@@ -190,7 +203,8 @@ module myCPU #(
 	logic [31:0] idex_csr_wdata;
 	logic        idex_is_ecall;
 	logic        idex_is_mret;
-
+	logic        idex_is_m_ext;
+	logic [3:0]  idex_m_op;
 
 	// =========================
 	// EX 级：forwarding、分支判断、ALU 与跳转目标
@@ -246,6 +260,13 @@ module myCPU #(
 	logic        ex_trap_return;
 	logic        ex_trap_redirect;
 	logic [31:0] ex_trap_target;
+	logic [31:0] ex_m_result;
+	logic [31:0] ex_div_result;
+	logic [1:0]  ex_div_op;
+	logic        ex_m_is_div;
+	logic        div_start;
+	logic        div_busy;
+	logic        div_done;
 
 	// =========================
 	// EX/MEM 流水寄存器
@@ -285,6 +306,15 @@ module myCPU #(
 	logic [31:0] csr_mcause;
 	logic        csr_write_operand_nonzero;
 	logic        csr_rs1_is_x0;
+
+	// ========================
+	// MUL寄存器
+	// ========================
+	logic [63:0] mul_uu;
+	logic signed [63:0] mul_ss;
+	logic signed [65:0] mul_su;
+
+	logic div_stall;
 
 	// 根据 load/store 的 funct3 生成字节掩码。
 	function automatic logic [1:0] decode_mem_mask(input logic [2:0] funct3);
@@ -363,6 +393,19 @@ module myCPU #(
 		.rs2    (id_rs2)
 	);
 
+	// 除法器
+	rv32_divider u_div (
+		.clk   (cpu_clk),
+		.rst   (cpu_rst),
+		.start (div_start),
+		.op    (ex_div_op),
+		.rs1   (ex_rs1_val),
+		.rs2   (ex_rs2_val),
+		.busy  (div_busy),
+		.done  (div_done),
+		.result(ex_div_result)
+	);
+
 	// 立即数扩展。
 	IMMGEN #(32) u_imm (
 		.instr (ifid_instr),
@@ -427,6 +470,10 @@ module myCPU #(
 	// CSR 指令类型译码。
 	assign id_is_ecall = ifid_valid && (ifid_instr == 32'h0000_0073);
 	assign id_is_mret  = ifid_valid && (ifid_instr == 32'h3020_0073);
+	assign id_is_m_ext = ifid_valid &&
+						 (id_opcode == OPC_OP) &&
+						 (id_funct7 == 7'b0000001);
+
 	// EXMEM/MEMWB 是否允许被前递。
 	assign exmem_can_forward = exmem_rf_we && (exmem_rd != 5'h0) && (exmem_wb_sel != WB_SRC_MEM);
 	assign memwb_can_forward = memwb_rf_we && (memwb_rd != 5'h0);
@@ -459,6 +506,27 @@ module myCPU #(
 	assign csr_rs1_is_x0 = (idex_rs1 == 5'd0);
 	assign csr_write_operand_nonzero = (idex_csr_imm ? (idex_csr_wdata != 32'h0)
                                                  : !csr_rs1_is_x0);
+	// 乘法器的三种组合模式，分别对应 mul、mulh、mulhsu、mulhu。
+	assign mul_uu = $unsigned(ex_rs1_val) * $unsigned(ex_rs2_val);
+	assign mul_ss = $signed(ex_rs1_val) * $signed(ex_rs2_val);
+	assign mul_su = $signed({ex_rs1_val[31], ex_rs1_val}) * $signed({1'b0, ex_rs2_val});
+	assign ex_m_is_div = idex_valid && idex_is_m_ext &&
+						 ((idex_m_op == M_OP_DIV) ||
+						  (idex_m_op == M_OP_DIVU) ||
+						  (idex_m_op == M_OP_REM) ||
+						  (idex_m_op == M_OP_REMU));
+	assign div_start = ex_m_is_div && !div_busy && !div_done && !ex_pc_redirect;
+	assign div_stall = ex_m_is_div && !div_done;
+
+	always_comb begin
+		case (idex_m_op)
+			M_OP_DIV:  ex_div_op = 2'd0;
+			M_OP_DIVU: ex_div_op = 2'd1;
+			M_OP_REM:  ex_div_op = 2'd2;
+			M_OP_REMU: ex_div_op = 2'd3;
+			default:   ex_div_op = 2'd0;
+		endcase
+	end
 
 	// 比较器只在 branch 时真正工作，避免平时把比较链白白挂在关键路径上。
 	always_comb begin
@@ -489,6 +557,20 @@ module myCPU #(
 		end else begin
 			id_rs2_val = rf_rs2_raw;
 		end
+	end
+
+	always_comb begin
+		case (idex_m_op)
+			M_OP_MUL:    ex_m_result = mul_uu[31:0];
+			M_OP_MULH:   ex_m_result = mul_ss[63:32];
+			M_OP_MULHSU: ex_m_result = mul_su[63:32];
+			M_OP_MULHU:  ex_m_result = mul_uu[63:32];
+			M_OP_DIV,
+			M_OP_DIVU,
+			M_OP_REM,
+			M_OP_REMU:  ex_m_result = ex_div_result;
+			default:     ex_m_result = 32'h0;
+		endcase
 	end
 
 	// PC redirect 判定：trap / helper / branch / jump 统一在 EX 级生效。
@@ -526,7 +608,7 @@ module myCPU #(
 	always_comb begin
 		if (ex_pc_redirect) begin
 			pc_next = ex_pc_target;
-		end else if (load_use_hazard || mem_load_stall) begin
+		end else if (load_use_hazard || mem_load_stall || div_stall) begin
 			pc_next = pc_q;
 		end else begin
 			pc_next = pc_q + 32'd4;
@@ -547,7 +629,7 @@ module myCPU #(
 		if (cpu_rst) begin
 			ifid_pc    <= RESET_PC;
 			ifid_instr <= NOP_INSTR;
-		end else if (!load_use_hazard && !mem_load_stall) begin
+		end else if (!load_use_hazard && !mem_load_stall && !div_stall) begin
 			ifid_pc    <= pc_q;
 			ifid_instr <= irom_data;
 		end
@@ -557,7 +639,7 @@ module myCPU #(
 	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
 		if (cpu_rst) begin
 			ifid_valid <= 1'b0;
-		end else if (mem_load_stall) begin
+		end else if (mem_load_stall || div_stall) begin
 			// hold IF/ID valid while the MEM-stage load bubble is extended
 		end else if (ex_pc_redirect) begin
 			ifid_valid <= 1'b0;
@@ -583,6 +665,7 @@ module myCPU #(
 		id_csr_imm   = 1'b0;
 		id_csr_addr  = ifid_instr[31:20];
 		id_csr_wdata = 32'h0;
+		id_m_op      = M_OP_NONE;
 
 		if (ifid_valid) begin
 			case (id_opcode)
@@ -645,17 +728,34 @@ module myCPU #(
 					id_wb_sel        = WB_SRC_ALU;
 					id_alu_src_a_sel = ALU_SRC_A_RS1;
 					id_alu_src_b_sel = ALU_SRC_B_RS2;
-					case (id_funct3)
-						3'b000: id_alu_op = id_funct7[5] ? ALU_SUB : ALU_ADD;
-						3'b001: id_alu_op = ALU_SLL;
-						3'b010: id_alu_op = ALU_SLT;
-						3'b011: id_alu_op = ALU_SLTU;
-						3'b100: id_alu_op = ALU_XOR;
-						3'b101: id_alu_op = id_funct7[5] ? ALU_SRA : ALU_SRL;
-						3'b110: id_alu_op = ALU_OR;
-						3'b111: id_alu_op = ALU_AND;
-						default: id_rf_we = 1'b0;
-					endcase
+					if(id_funct7 == 7'b0000001) begin
+						id_m_op = M_OP_NONE;
+						if (id_is_m_ext) begin
+							unique case (id_funct3)
+								3'b000: id_m_op = M_OP_MUL;
+								3'b001: id_m_op = M_OP_MULH;
+								3'b010: id_m_op = M_OP_MULHSU;
+								3'b011: id_m_op = M_OP_MULHU;
+								3'b100: id_m_op = M_OP_DIV;
+								3'b101: id_m_op = M_OP_DIVU;
+								3'b110: id_m_op = M_OP_REM;
+								3'b111: id_m_op = M_OP_REMU;
+								default: id_m_op = M_OP_NONE;
+							endcase
+						end
+					end else begin
+						case (id_funct3)
+							3'b000: id_alu_op = id_funct7[5] ? ALU_SUB : ALU_ADD;
+							3'b001: id_alu_op = ALU_SLL;
+							3'b010: id_alu_op = ALU_SLT;
+							3'b011: id_alu_op = ALU_SLTU;
+							3'b100: id_alu_op = ALU_XOR;
+							3'b101: id_alu_op = id_funct7[5] ? ALU_SRA : ALU_SRL;
+							3'b110: id_alu_op = ALU_OR;
+							3'b111: id_alu_op = ALU_AND;
+							default: id_rf_we = 1'b0;
+						endcase
+					end
 				end
 
 				OPC_LOAD: begin
@@ -813,7 +913,9 @@ module myCPU #(
 			idex_csr_wdata     <= 32'h0;
 			idex_is_ecall      <= 1'b0;
 			idex_is_mret       <= 1'b0;
-		end else if (mem_load_stall) begin
+			idex_is_m_ext      <= 1'b0;
+			idex_m_op          <= M_OP_NONE;
+		end else if (mem_load_stall || div_stall) begin
 			// hold IDEX - memory read stall
 		end else if (ex_pc_redirect || load_use_hazard) begin
 			idex_valid         <= 1'b0;
@@ -846,6 +948,8 @@ module myCPU #(
 			idex_csr_wdata     <= 32'h0;
 			idex_is_ecall      <= 1'b0;
 			idex_is_mret       <= 1'b0;
+			idex_is_m_ext      <= 1'b0;
+			idex_m_op          <= M_OP_NONE;
 		end else if (id_mul_helper_hit) begin
 			idex_valid         <= 1'b1;
 			idex_pc            <= ifid_pc;
@@ -877,6 +981,8 @@ module myCPU #(
 			idex_csr_wdata     <= 32'h0;
 			idex_is_ecall      <= 1'b0;
 			idex_is_mret       <= 1'b0;
+			idex_is_m_ext      <= 1'b0;
+			idex_m_op          <= M_OP_NONE;
 		end else begin
 			idex_valid         <= ifid_valid;
 			idex_pc            <= ifid_pc;
@@ -908,6 +1014,8 @@ module myCPU #(
 			idex_csr_wdata     <= id_csr_wdata;
 			idex_is_ecall      <= id_is_ecall;
 			idex_is_mret       <= id_is_mret;
+			idex_is_m_ext      <= id_is_m_ext;
+			idex_m_op          <= id_m_op;
 		end
 	end
 
@@ -988,6 +1096,8 @@ module myCPU #(
 	always_comb begin
 		if (idex_mul_helper) begin
 			ex_wb_data = ex_mul_helper_result;
+		end else if (idex_is_m_ext) begin
+			ex_wb_data = ex_m_result;
 		end else begin
 			case (idex_wb_sel)
 				WB_SRC_PC4:   ex_wb_data = ex_pc4;
@@ -1020,7 +1130,7 @@ module myCPU #(
 			end
 
 			CSR_OP_CSRRS: begin
-				// rs1=x0 或 uimm=0 时，只读不写CSR_OP_CSRRS: begin
+				// rs1=x0 或 uimm=0 时，只读不写
 				ex_csr_we    = csr_write_operand_nonzero;
 				ex_csr_wdata = ex_csr_rdata | (idex_csr_imm ? idex_csr_wdata : ex_rs1_val);
 			end
@@ -1056,6 +1166,21 @@ module myCPU #(
 			exmem_addr_off   <= 32'h0;
 		end else if (mem_load_stall) begin
 			// hold EXMEM - memory read stall
+		end else if (div_stall) begin
+			exmem_valid      <= 1'b0;
+			exmem_alu_y      <= 32'h0;
+			exmem_store_data <= 32'h0;
+			exmem_rd         <= 5'h0;
+			exmem_funct3     <= 3'h0;
+			exmem_wb_data    <= 32'h0;
+			exmem_rf_we      <= 1'b0;
+			exmem_wb_sel     <= WB_SRC_ALU;
+			exmem_mem_req    <= 1'b0;
+			exmem_mem_write  <= 1'b0;
+			exmem_mem_mask   <= MEM_MASK_WORD;
+			exmem_pc         <= 32'h0;
+			exmem_addr_base  <= 32'h0;
+			exmem_addr_off   <= 32'h0;
 		end else begin
 			exmem_valid      <= idex_valid;
 			exmem_alu_y      <= ex_alu_y;
