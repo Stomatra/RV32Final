@@ -12,124 +12,97 @@ module CSR #(
 	output logic [DATAWIDTH-1:0]	csr_wb
 );
 	// 一个简化版 CSR 子系统，仅实现当前工程需要的少量 M-mode CSR：
-	// - mstatus
-	// - mepc
-	// - mtvec
-	// - mcause
-	//
-	// 同时支持：
-	// - csrrs / csrrw
-	// - ecall
-	// - mret
-	reg [DATAWIDTH-1:0] mstatus, mepc, mtvec, mcause;
-	reg [DATAWIDTH-1:0] old_mstatus, old_mepc, old_mtvec, old_mcause;
-	reg [DATAWIDTH-1:0] mask;
+	// - mstatus / mtvec / mepc / mcause
+	// - csrrs / csrrw / csrrc
+	// - ecall / mret
+	localparam logic [11:0] CSR_MSTATUS = 12'h300;
+	localparam logic [11:0] CSR_MTVEC   = 12'h305;
+	localparam logic [11:0] CSR_MEPC    = 12'h341;
+	localparam logic [11:0] CSR_MCAUSE  = 12'h342;
 
-	// 初始化写掩码；当前实现默认允许全宽写。
-	always @(posedge clk or posedge rst) begin
-		if (rst) begin
-			mask <= 32'hFFFFFFFF;
-		end
-	end
+	localparam logic [3:0] CSR_CTL_CSRRS = 4'b0001;
+	localparam logic [3:0] CSR_CTL_CSRRW = 4'b0010;
+	localparam logic [3:0] CSR_CTL_CSRRC = 4'b0011;
+	localparam logic [3:0] CSR_CTL_ECALL = 4'b0100;
+	localparam logic [3:0] CSR_CTL_MRET  = 4'b1000;
 
-	// 备份“更新前”的 CSR 值，用于 csrr* 返回旧值语义。
-	always @(posedge clk or posedge rst) begin
-		if (rst) begin
-			old_mstatus <= 32'h0;
-		end else begin
-			old_mstatus <= mstatus;
-		end
-	end
+	localparam logic [DATAWIDTH-1:0] CSR_WRITE_MASK = {DATAWIDTH{1'b1}};
 
-	always @(posedge clk or posedge rst) begin
-		if (rst) begin
-			old_mepc <= 32'h0;
-		end else begin
-			old_mepc <= mepc;
-		end
-	end
+	logic [DATAWIDTH-1:0] mstatus;
+	logic [DATAWIDTH-1:0] mepc;
+	logic [DATAWIDTH-1:0] mtvec;
+	logic [DATAWIDTH-1:0] mcause;
+	logic [DATAWIDTH-1:0] csr_rdata;
 
-	always @(posedge clk or posedge rst) begin
-		if (rst) begin
-			old_mtvec <= 32'h0;
-		end else begin
-			old_mtvec <= mtvec;
-		end
-	end
-
-	always @(posedge clk or posedge rst) begin
-		if (rst) begin
-			old_mcause <= 32'h0;
-		end else begin
-			old_mcause <= mcause;
-		end
-	end
-
-	// mstatus 更新。
-	always @(posedge clk or posedge rst) begin
+	always_ff @(posedge clk or posedge rst) begin
 		if (rst) begin
 			mstatus <= 32'h1800;
+			mtvec   <= 32'h0;
+			mepc    <= 32'h0;
+			mcause  <= 32'h0;
 		end else begin
-			case (CSRControll)
-				4'b0001: if (csr_idx == 12'h300) mstatus <= mask & (old_mstatus | rf1);
-				4'b0010: if (csr_idx == 12'h300) mstatus <= mask & rf1;
-				4'b0100: mstatus <= { old_mstatus[31:8], old_mstatus[3], old_mstatus[6:4], old_mstatus[2:0] };
-				4'b1000: mstatus <= { old_mstatus[31:13], 2'b11, old_mstatus[10:8], 1'b1, old_mstatus[6:4], old_mstatus[3], old_mstatus[2:0] };
-				default: mstatus <= mstatus; // 保持原值
+			unique case (CSRControll)
+				CSR_CTL_CSRRS: begin
+					unique case (csr_idx)
+						CSR_MSTATUS: mstatus <= CSR_WRITE_MASK & (mstatus | rf1);
+						CSR_MTVEC:   mtvec   <= mtvec | rf1;
+						CSR_MEPC:    mepc    <= mepc | rf1;
+						CSR_MCAUSE:  mcause  <= mcause | rf1;
+						default: begin end
+					endcase
+				end
+
+				CSR_CTL_CSRRW: begin
+					unique case (csr_idx)
+						CSR_MSTATUS: mstatus <= CSR_WRITE_MASK & rf1;
+						CSR_MTVEC:   mtvec   <= rf1;
+						CSR_MEPC:    mepc    <= rf1;
+						CSR_MCAUSE:  mcause  <= rf1;
+						default: begin end
+					endcase
+				end
+
+				CSR_CTL_CSRRC: begin
+					unique case (csr_idx)
+						CSR_MSTATUS: mstatus <= CSR_WRITE_MASK & (mstatus & ~rf1);
+						CSR_MTVEC:   mtvec   <= mtvec & ~rf1;
+						CSR_MEPC:    mepc    <= mepc & ~rf1;
+						CSR_MCAUSE:  mcause  <= mcause & ~rf1;
+						default: begin end
+					endcase
+				end
+
+				CSR_CTL_ECALL: begin
+					mstatus <= {mstatus[31:13], 2'b11, mstatus[10:8], mstatus[3],
+								mstatus[6:4], 1'b0, mstatus[2:0]};
+					mepc    <= pc;
+					mcause  <= 32'h0b;
+				end
+
+				CSR_CTL_MRET: begin
+					mstatus <= {mstatus[31:13], 2'b00, mstatus[10:8], 1'b1,
+								mstatus[6:4], mstatus[7], mstatus[2:0]};
+				end
+
+				default: begin end
 			endcase
 		end
 	end
 
-	// mtvec 更新。
-	always @(posedge clk or posedge rst) begin
-		if (rst) begin
-			mtvec <= 32'h0;
-		end else begin
-			case (CSRControll)
-				4'b0001: if (csr_idx == 12'h305) mtvec <= old_mtvec | rf1;
-				4'b0010: if (csr_idx == 12'h305) mtvec <= rf1;
-				default: mtvec <= mtvec;
-			endcase
-		end
+	always_comb begin
+		unique case (csr_idx)
+			CSR_MSTATUS: csr_rdata = mstatus;
+			CSR_MTVEC:   csr_rdata = mtvec;
+			CSR_MEPC:    csr_rdata = mepc;
+			CSR_MCAUSE:  csr_rdata = mcause;
+			default:     csr_rdata = 32'h0;
+		endcase
 	end
 
-	// mepc 更新：ecall 时记录异常返回地址，csrr* 时允许软件写入。
-	always @(posedge clk or posedge rst) begin
-		if (rst) begin
-			mepc <= 32'h0;
-		end else begin
-			case (CSRControll)
-				4'b0001: if (csr_idx == 12'h341) mepc <= old_mepc | rf1;
-				4'b0010: if (csr_idx == 12'h341) mepc <= rf1;
-				4'b0100: mepc <= pc;
-				default: mepc <= mepc;
-			endcase
-		end
-	end
-
-	// mcause 更新：ecall 固定写入 M-mode environment call 编码 0x0b。
-	always @(posedge clk or posedge rst) begin
-		if (rst) begin
-			mcause <= 32'h0;
-		end else begin
-			case (CSRControll)
-				4'b0001: if (csr_idx == 12'h342) mcause <= old_mcause | rf1;
-				4'b0010: if (csr_idx == 12'h342) mcause <= rf1;
-				4'b0100: mcause <= 32'h0b;  // environment call from M-mode
-				default: mcause <= mcause;
-			endcase
-		end
-	end
-
-	// 读通路：根据 csr_idx 返回更新前的旧值。
-	assign csr_wb = {32{csr_idx == 12'h300}} & old_mstatus |
-				{32{csr_idx == 12'h305}} & old_mtvec |
-				{32{csr_idx == 12'h341}} & old_mepc |
-				{32{csr_idx == 12'h342}} & old_mcause;
-
-	// 跳转通路：ecall 跳到 mtvec，mret 跳回 mepc。
-	assign csr_npc =  {32{CSRControll == 4'b0100}} & old_mtvec |
-				{32{CSRControll == 4'b1000}} & old_mepc;
+	assign csr_wb = csr_rdata;
+	assign csr_npc = (CSRControll == CSR_CTL_ECALL) ? mtvec :
+					 (CSRControll == CSR_CTL_MRET)  ? mepc :
+					 32'h0;
 	
 	
 endmodule

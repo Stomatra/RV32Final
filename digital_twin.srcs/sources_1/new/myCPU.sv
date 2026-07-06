@@ -46,6 +46,7 @@ module myCPU #(
 	localparam logic [6:0]  OPC_STORE     = 7'b0100011;
 	localparam logic [6:0]  OPC_OPIMM     = 7'b0010011;
 	localparam logic [6:0]  OPC_OP        = 7'b0110011;
+	localparam logic [6:0]  OPC_SYSTEM    = 7'b1110011;
 
 	// ALU 控制码。
 	localparam logic [3:0]  ALU_ADD       = 4'd0;
@@ -70,10 +71,11 @@ module myCPU #(
 	localparam logic [1:0]  ALU_SRC_B_IMM_U = 2'd3;
 
 	// WB 选择：ALU 结果、内存返回、PC+4 或 U 型立即数。
-	localparam logic [1:0]  WB_SRC_ALU    = 2'd0;
-	localparam logic [1:0]  WB_SRC_MEM    = 2'd1;
-	localparam logic [1:0]  WB_SRC_PC4    = 2'd2;
-	localparam logic [1:0]  WB_SRC_IMM_U  = 2'd3;
+	localparam logic [2:0]  WB_SRC_ALU    = 3'd0;
+	localparam logic [2:0]  WB_SRC_MEM    = 3'd1;
+	localparam logic [2:0]  WB_SRC_PC4    = 3'd2;
+	localparam logic [2:0]  WB_SRC_IMM_U  = 3'd3;
+	localparam logic [2:0]  WB_SRC_CSR    = 3'd4;
 
 	// PC 下一拍来源。
 	localparam logic [1:0]  PC_SRC_PC4    = 2'd0;
@@ -85,6 +87,20 @@ module myCPU #(
 	localparam logic [1:0]  MEM_MASK_BYTE = 2'b00;
 	localparam logic [1:0]  MEM_MASK_HALF = 2'b01;
 	localparam logic [1:0]  MEM_MASK_WORD = 2'b10;
+
+	//CSR地址常量
+	localparam logic [11:0] CSR_MSTATUS = 12'h300;
+	localparam logic [11:0] CSR_MTVEC   = 12'h305;
+	localparam logic [11:0] CSR_MEPC    = 12'h341;
+	localparam logic [11:0] CSR_MCAUSE  = 12'h342;
+
+	//CSR指令类型
+	localparam logic [2:0] CSR_OP_NONE  = 3'd0;
+	localparam logic [2:0] CSR_OP_CSRRW = 3'd1;
+	localparam logic [2:0] CSR_OP_CSRRS = 3'd2;
+	localparam logic [2:0] CSR_OP_CSRRC = 3'd3;
+	localparam logic [2:0] CSR_OP_ECALL = 3'd4;
+	localparam logic [2:0] CSR_OP_MRET  = 3'd5;
 
 	// =========================
 	// IF 级与 IF/ID 流水寄存器
@@ -126,7 +142,7 @@ module myCPU #(
 	logic [31:0] id_mul_helper_lhs;
 	logic [31:0] id_mul_helper_rhs;
 	logic        id_rf_we;
-	logic [1:0]  id_wb_sel;
+	logic [2:0]  id_wb_sel;
 	logic        id_alu_src_a_sel;
 	logic [1:0]  id_alu_src_b_sel;
 	logic [3:0]  id_alu_op;
@@ -134,6 +150,12 @@ module myCPU #(
 	logic        id_mem_req;
 	logic        id_mem_write;
 	logic [1:0]  id_mem_mask;
+	logic [2:0]  id_csr_op;
+	logic        id_csr_imm;
+	logic [11:0] id_csr_addr;
+	logic [31:0] id_csr_wdata;
+	logic        id_is_ecall;
+	logic        id_is_mret;
 
 	// =========================
 	// ID/EX 流水寄存器
@@ -154,7 +176,7 @@ module myCPU #(
 	logic [31:0] idex_mul_helper_lhs;
 	logic [31:0] idex_mul_helper_rhs;
 	logic        idex_rf_we;
-	logic [1:0]  idex_wb_sel;
+	logic [2:0]  idex_wb_sel;
 	logic        idex_alu_src_a_sel;
 	logic [1:0]  idex_alu_src_b_sel;
 	logic [3:0]  idex_alu_op;
@@ -162,6 +184,13 @@ module myCPU #(
 	logic        idex_mem_req;
 	logic        idex_mem_write;
 	logic [1:0]  idex_mem_mask;
+	logic [2:0]  idex_csr_op;
+	logic        idex_csr_imm;
+	logic [11:0] idex_csr_addr;
+	logic [31:0] idex_csr_wdata;
+	logic        idex_is_ecall;
+	logic        idex_is_mret;
+
 
 	// =========================
 	// EX 级：forwarding、分支判断、ALU 与跳转目标
@@ -208,8 +237,15 @@ module myCPU #(
 	logic        ex_fwd_rs1_from_memwb;
 	logic        ex_fwd_rs2_from_exmem;
 	logic        ex_fwd_rs2_from_memwb;
+	logic [31:0] ex_csr_rdata;
+	logic [31:0] ex_csr_wdata;
+	logic        ex_csr_we;
 	logic        exmem_can_forward;
 	logic        memwb_can_forward;
+	logic        ex_trap_enter;
+	logic        ex_trap_return;
+	logic        ex_trap_redirect;
+	logic [31:0] ex_trap_target;
 
 	// =========================
 	// EX/MEM 流水寄存器
@@ -221,7 +257,7 @@ module myCPU #(
 	logic        exmem_valid      = 1'b0;
 	logic [31:0] exmem_wb_data    = 32'h0;
 	logic        exmem_rf_we      = 1'b0;
-	logic [1:0]  exmem_wb_sel     = WB_SRC_ALU;
+	logic [2:0]  exmem_wb_sel     = WB_SRC_ALU;
 	logic        exmem_mem_req    = 1'b0;
 	logic        exmem_mem_write  = 1'b0;
 	logic [1:0]  exmem_mem_mask   = MEM_MASK_WORD;
@@ -239,6 +275,14 @@ module myCPU #(
 	logic        memwb_rf_we;
 	logic        memwb_valid;
 	logic [31:0] memwb_pc;
+
+	// ========================
+	// CSR级
+	// ========================
+	logic [31:0] csr_mstatus;
+	logic [31:0] csr_mtvec;
+	logic [31:0] csr_mepc;
+	logic [31:0] csr_mcause;
 
 	// 根据 load/store 的 funct3 生成字节掩码。
 	function automatic logic [1:0] decode_mem_mask(input logic [2:0] funct3);
@@ -378,6 +422,9 @@ module myCPU #(
 	assign id_imm           = (id_opcode == OPC_BRANCH) ? {{19{ifid_instr[31]}}, ifid_instr[31], ifid_instr[7], ifid_instr[30:25], ifid_instr[11:8], 1'b0} :
 							  (id_opcode == OPC_JAL)    ? {{11{ifid_instr[31]}}, ifid_instr[31], ifid_instr[19:12], ifid_instr[20], ifid_instr[30:21], 1'b0} :
 							  id_imm_raw;
+	// CSR 指令类型译码。
+	assign id_is_ecall = (id_opcode == OPC_SYSTEM) && (id_funct3 == 3'b000) && (ifid_instr[31:20] == 12'h000);
+	assign id_is_mret  = (id_opcode == OPC_SYSTEM) && (id_funct3 == 3'b000) && (ifid_instr[31:20] == 12'h302);
 	// EXMEM/MEMWB 是否允许被前递。
 	assign exmem_can_forward = exmem_rf_we && (exmem_rd != 5'h0) && (exmem_wb_sel != WB_SRC_MEM);
 	assign memwb_can_forward = memwb_rf_we && (memwb_rd != 5'h0);
@@ -400,6 +447,13 @@ module myCPU #(
 	assign ex_pc_fwd_rs1_from_memwb = ex_pc_use_rs1 && ex_match_rs1_memwb;
 	assign ex_pc_fwd_rs2_from_exmem = ex_pc_use_rs2 && ex_match_rs2_exmem;
 	assign ex_pc_fwd_rs2_from_memwb = ex_pc_use_rs2 && ex_match_rs2_memwb;
+	assign ex_trap_enter = idex_valid && idex_is_ecall && !mem_load_stall;
+	assign ex_trap_return = idex_valid && idex_is_mret && !mem_load_stall;
+	assign ex_trap_redirect = ex_trap_enter || ex_trap_return;
+	assign ex_trap_target =
+		ex_trap_enter  ? {csr_mtvec[31:2], 2'b00} :
+		ex_trap_return ? csr_mepc :
+						 32'h0;
 
 	// 比较器只在 branch 时真正工作，避免平时把比较链白白挂在关键路径上。
 	always_comb begin
@@ -429,6 +483,37 @@ module myCPU #(
 			id_rs2_val = memwb_wdata;
 		end else begin
 			id_rs2_val = rf_rs2_raw;
+		end
+	end
+
+	// PC redirect 判定：trap / helper / branch / jump 统一在 EX 级生效。
+	always_comb begin
+		ex_pc_redirect = 1'b0;
+
+		if (idex_valid) begin
+			if (ex_trap_enter || ex_trap_return) begin
+				ex_pc_redirect = 1'b1;
+			end else if (idex_mul_helper) begin
+				ex_pc_redirect = 1'b1;
+			end else begin
+				case (idex_pc_sel)
+					PC_SRC_BRANCH: begin
+						if (ex_br_take) begin
+							ex_pc_redirect = 1'b1;
+						end
+					end
+
+					PC_SRC_JAL: begin
+						ex_pc_redirect = 1'b1;
+					end
+
+					PC_SRC_JALR: begin
+						ex_pc_redirect = 1'b1;
+					end
+
+					default: begin end
+				endcase
+			end
 		end
 	end
 
@@ -489,6 +574,10 @@ module myCPU #(
 		id_mem_req       = 1'b0;
 		id_mem_write     = 1'b0;
 		id_mem_mask      = MEM_MASK_WORD;
+		id_csr_op    = CSR_OP_NONE;
+		id_csr_imm   = 1'b0;
+		id_csr_addr  = ifid_instr[31:20];
+		id_csr_wdata = 32'h0;
 
 		if (ifid_valid) begin
 			case (id_opcode)
@@ -608,6 +697,63 @@ module myCPU #(
 					endcase
 				end
 
+				OPC_SYSTEM: begin
+					id_rf_we  = 1'b0;
+					id_wb_sel = WB_SRC_CSR;
+
+					case (id_funct3)
+						3'b001: begin // CSRRW
+							id_uses_rs1  = 1'b1;
+							id_rf_we     = (id_rd != 5'd0);
+							id_csr_op    = CSR_OP_CSRRW;
+							id_csr_imm   = 1'b0;
+							id_csr_wdata = id_rs1_val;
+						end
+
+						3'b010: begin // CSRRS
+							id_uses_rs1  = 1'b1;
+							id_rf_we     = (id_rd != 5'd0);
+							id_csr_op    = CSR_OP_CSRRS;
+							id_csr_imm   = 1'b0;
+							id_csr_wdata = id_rs1_val;
+						end
+
+						3'b011: begin // CSRRC
+							id_uses_rs1  = 1'b1;
+							id_rf_we     = (id_rd != 5'd0);
+							id_csr_op    = CSR_OP_CSRRC;
+							id_csr_imm   = 1'b0;
+							id_csr_wdata = id_rs1_val;
+						end
+
+						3'b101: begin // CSRRWI
+							id_rf_we     = (id_rd != 5'd0);
+							id_csr_op    = CSR_OP_CSRRW;
+							id_csr_imm   = 1'b1;
+							id_csr_wdata = {27'h0, id_rs1};
+						end
+
+						3'b110: begin // CSRRSI
+							id_rf_we     = (id_rd != 5'd0);
+							id_csr_op    = CSR_OP_CSRRS;
+							id_csr_imm   = 1'b1;
+							id_csr_wdata = {27'h0, id_rs1};
+						end
+
+						3'b111: begin // CSRRCI
+							id_rf_we     = (id_rd != 5'd0);
+							id_csr_op    = CSR_OP_CSRRC;
+							id_csr_imm   = 1'b1;
+							id_csr_wdata = {27'h0, id_rs1};
+						end
+
+						default: begin
+							id_rf_we     = 1'b0;
+							id_csr_op    = CSR_OP_NONE;
+						end
+					endcase
+				end
+
 				default: begin end
 			endcase
 		end
@@ -656,6 +802,12 @@ module myCPU #(
 			idex_mem_req       <= 1'b0;
 			idex_mem_write     <= 1'b0;
 			idex_mem_mask      <= MEM_MASK_WORD;
+			idex_csr_op        <= CSR_OP_NONE;
+			idex_csr_imm       <= 1'b0;
+			idex_csr_addr      <= 12'h0;
+			idex_csr_wdata     <= 32'h0;
+			idex_is_ecall      <= 1'b0;
+			idex_is_mret       <= 1'b0;
 		end else if (mem_load_stall) begin
 			// hold IDEX - memory read stall
 		end else if (ex_pc_redirect || load_use_hazard) begin
@@ -683,6 +835,12 @@ module myCPU #(
 			idex_mem_req       <= 1'b0;
 			idex_mem_write     <= 1'b0;
 			idex_mem_mask      <= MEM_MASK_WORD;
+			idex_csr_op        <= CSR_OP_NONE;
+			idex_csr_imm       <= 1'b0;
+			idex_csr_addr      <= 12'h0;
+			idex_csr_wdata     <= 32'h0;
+			idex_is_ecall      <= 1'b0;
+			idex_is_mret       <= 1'b0;
 		end else if (id_mul_helper_hit) begin
 			idex_valid         <= 1'b1;
 			idex_pc            <= ifid_pc;
@@ -708,6 +866,12 @@ module myCPU #(
 			idex_mem_req       <= 1'b0;
 			idex_mem_write     <= 1'b0;
 			idex_mem_mask      <= MEM_MASK_WORD;
+			idex_csr_op        <= CSR_OP_NONE;
+			idex_csr_imm       <= 1'b0;
+			idex_csr_addr      <= 12'h0;
+			idex_csr_wdata     <= 32'h0;
+			idex_is_ecall      <= 1'b0;
+			idex_is_mret       <= 1'b0;
 		end else begin
 			idex_valid         <= ifid_valid;
 			idex_pc            <= ifid_pc;
@@ -733,6 +897,12 @@ module myCPU #(
 			idex_mem_req       <= id_mem_req;
 			idex_mem_write     <= id_mem_write;
 			idex_mem_mask      <= id_mem_mask;
+			idex_csr_op        <= id_csr_op;
+			idex_csr_imm       <= id_csr_imm;
+			idex_csr_addr      <= id_csr_addr;
+			idex_csr_wdata     <= id_csr_wdata;
+			idex_is_ecall      <= id_is_ecall;
+			idex_is_mret       <= id_is_mret;
 		end
 	end
 
@@ -796,7 +966,9 @@ module myCPU #(
 	end
 
 	always_comb begin
-		if (idex_mul_helper) begin
+		if (ex_trap_redirect) begin
+			ex_pc_target = ex_trap_target;
+		end else if (idex_mul_helper) begin
 			ex_pc_target = idex_mul_helper_ra;
 		end else begin
 			case (idex_pc_sel)
@@ -809,40 +981,56 @@ module myCPU #(
 	end
 
 	always_comb begin
-		ex_pc_redirect = 1'b0;
-		if (idex_valid) begin
-			if (idex_mul_helper) begin
-				ex_pc_redirect = 1'b1;
-			end else begin
-				case (idex_pc_sel)
-					PC_SRC_BRANCH: begin
-						if (ex_br_take) begin
-							ex_pc_redirect = 1'b1;
-						end
-					end
-					PC_SRC_JAL: begin
-						ex_pc_redirect = 1'b1;
-					end
-					PC_SRC_JALR: begin
-						ex_pc_redirect = 1'b1;
-					end
-					default: begin end
-				endcase
-			end
-		end
-	end
-
-	always_comb begin
 		if (idex_mul_helper) begin
 			ex_wb_data = ex_mul_helper_result;
 		end else begin
 			case (idex_wb_sel)
 				WB_SRC_PC4:   ex_wb_data = ex_pc4;
 				WB_SRC_IMM_U: ex_wb_data = idex_imm;
+				WB_SRC_CSR:   ex_wb_data = ex_csr_rdata;
 				WB_SRC_ALU:   ex_wb_data = ex_alu_y;
 				default:      ex_wb_data = ex_alu_y;
 			endcase
 		end
+	end
+
+	always_comb begin
+		unique case (idex_csr_addr)
+			CSR_MSTATUS: ex_csr_rdata = csr_mstatus;
+			CSR_MTVEC:   ex_csr_rdata = csr_mtvec;
+			CSR_MEPC:    ex_csr_rdata = csr_mepc;
+			CSR_MCAUSE:  ex_csr_rdata = csr_mcause;
+			default:     ex_csr_rdata = 32'h0;
+		endcase
+	end
+
+	always_comb begin
+		ex_csr_we    = 1'b0;
+		ex_csr_wdata = ex_csr_rdata;
+
+		unique case (idex_csr_op)
+			CSR_OP_CSRRW: begin
+				ex_csr_we    = 1'b1;
+				ex_csr_wdata = idex_csr_imm ? idex_csr_wdata : ex_rs1_val;
+			end
+
+			CSR_OP_CSRRS: begin
+				// rs1=x0 或 uimm=0 时，只读不写
+				ex_csr_we    = ((idex_csr_imm ? idex_csr_wdata : ex_rs1_val) != 32'h0);
+				ex_csr_wdata = ex_csr_rdata | (idex_csr_imm ? idex_csr_wdata : ex_rs1_val);
+			end
+
+			CSR_OP_CSRRC: begin
+				// rs1=x0 或 uimm=0 时，只读不写
+				ex_csr_we    = ((idex_csr_imm ? idex_csr_wdata : ex_rs1_val) != 32'h0);
+				ex_csr_wdata = ex_csr_rdata & ~(idex_csr_imm ? idex_csr_wdata : ex_rs1_val);
+			end
+
+			default: begin
+				ex_csr_we    = 1'b0;
+				ex_csr_wdata = ex_csr_rdata;
+			end
+		endcase
 	end
 
 	always_ff @(posedge cpu_clk) begin
@@ -927,6 +1115,34 @@ module myCPU #(
 			memwb_pc    <= exmem_pc;
 		end
 	end
+
+	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
+		if (cpu_rst) begin
+			csr_mstatus <= 32'h0000_1800;
+			csr_mtvec   <= 32'h0000_0000;
+			csr_mepc    <= 32'h0000_0000;
+			csr_mcause  <= 32'h0000_0000;
+		end else if (ex_trap_enter) begin
+			csr_mstatus[7]     <= csr_mstatus[3]; // MIE -> MPIE
+			csr_mstatus[3]     <= 1'b0;           // MIE = 0
+			csr_mstatus[12:11] <= 2'b11;          // MPP = M-mode
+			csr_mepc           <= idex_pc;
+			csr_mcause         <= 32'd11;         // ECALL from M-mode
+		end else if (ex_trap_return) begin
+			csr_mstatus[3]     <= csr_mstatus[7]; // MPIE -> MIE
+			csr_mstatus[7]     <= 1'b1;           // MPIE = 1
+			csr_mstatus[12:11] <= 2'b00;          // MPP = U-mode
+		end else if (idex_valid && !mem_load_stall && ex_csr_we) begin
+			case (idex_csr_addr)
+				CSR_MSTATUS: csr_mstatus <= ex_csr_wdata;
+				CSR_MTVEC:   csr_mtvec   <= ex_csr_wdata;
+				CSR_MEPC:    csr_mepc    <= ex_csr_wdata;
+				CSR_MCAUSE:  csr_mcause  <= ex_csr_wdata;
+				default: begin end
+			endcase
+		end
+	end
+
 endmodule
 
 module mycpu_rv32_decode (
@@ -945,4 +1161,3 @@ module mycpu_rv32_decode (
 	assign rs2    = instr[24:20];
 	assign funct7 = instr[31:25];
 endmodule
-
