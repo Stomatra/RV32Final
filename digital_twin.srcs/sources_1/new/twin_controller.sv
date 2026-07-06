@@ -36,6 +36,9 @@ module twin_controller(
     input wire [39:0] seg,
     input wire [31:0] led
 );
+	// twin_controller 负责把 UART 串口协议翻译成板上虚拟输入/输出状态：
+	// - 收到 0x80 时，回传当前 seg/key/sw/led 的状态快照
+	// - 收到其它字节时，用 bit[6:0] 选择 sw/key 的某一位，用 bit[7] 写值
 
     typedef enum reg [0:0] {
         IDLE = 1'd0,
@@ -49,6 +52,7 @@ module twin_controller(
 
     state_t current_state, next_state;
 
+	// 状态寄存器。
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n)
             current_state <= IDLE;
@@ -56,6 +60,9 @@ module twin_controller(
             current_state <= next_state;
     end
 
+	// 下一状态和发送控制的组合逻辑：
+	// - IDLE 看到 0x80 进入 SEND
+	// - SEND 在 UART 空闲时逐字节发送 status_buffer
     always @(*) begin
         next_state = current_state;
         tx_start_next = 0;
@@ -89,6 +96,7 @@ module twin_controller(
         endcase
     end
 
+	// 把组合结果寄存到输出，避免毛刺直接打到 UART 发送口。
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             tx_start <= 0;
@@ -99,7 +107,8 @@ module twin_controller(
         end
     end
 
-    reg tx_start_d; // send_cnt should only add once in a tx process
+	// send_cnt 只应该在一次新的 tx_start 脉冲时加一，因此这里做边沿检测。
+    reg tx_start_d;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -109,6 +118,7 @@ module twin_controller(
         end
     end
 
+	// 发送计数器：每发出一个字节，就推进到下一个状态槽位。
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             send_cnt <= 0;
@@ -119,6 +129,7 @@ module twin_controller(
         end
     end
 
+	// 非 0x80 的输入命令用于更新开关或按键镜像。
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             sw <= 64'd0;
@@ -131,6 +142,7 @@ module twin_controller(
         end
     end
 
+	// 收到 0x80 且当前空闲时，抓取当前状态快照，随后 SEND 状态会按顺序发出。
     integer i;
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin

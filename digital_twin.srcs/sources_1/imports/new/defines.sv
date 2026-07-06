@@ -1,5 +1,8 @@
 //`define RUN_TRACE
 
+// 指令主 opcode 宏定义。
+// 这些宏主要服务于旧版解码模块（例如 IMMGEN / ACTL / Control）。
+
 `define R_TYPE   7'b011_0011
 `define I_TYPE   7'b001_0011
 `define IL_TYPE  7'b000_0011 // I lw

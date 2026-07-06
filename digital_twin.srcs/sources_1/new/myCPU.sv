@@ -15,12 +15,28 @@ module myCPU #(
 	output logic [31:0]  perip_wdata,
 	input  logic [31:0]  perip_rdata
 );
+	// 这个 CPU 是一个面向 RV32I 子集的简化流水实现。
+	// 顶层接口只暴露两类总线：
+	// 1. 指令只读口：给 IROM 地址，取回 32bit 指令。
+	// 2. 外设/数据口：统一访问 DRAM、计数器和 MMIO。
+	//
+	// 当前实现的关键设计点：
+	// - IF/ID、ID/EX、EX/MEM、MEM/WB 四级寄存流水。
+	// - load 返回值通过 perip_bridge / dram_driver 的 1 周期返回链进入 WB。
+	// - branch / jalr 的 PC 跳转使用单独的 ex_pc_* forwarding 链，避免和普通 ALU forwarding 混在一起。
+	// - mul helper 是一个可选的小捷径，用来识别固定 PC 的乘法辅助代码段；默认关闭。
+	// - 当前文件里大量 timing 优化都围绕“减少无效 compare / forwarding 扇出”和“缩短 PC 控制链”展开。
+
+	// 复位后从固定 Boot 地址开始执行。
 	localparam logic [31:0] RESET_PC      = 32'h8000_0000;
+	// NOP 采用 addi x0, x0, 0。
 	localparam logic [31:0] NOP_INSTR     = 32'h0000_0013;
+	// mul helper 相关地址用于识别“乘法辅助例程入口”和它可能的返回点。
 	localparam logic [31:0] MUL_HELPER_PC = 32'h8000_1fa8;
 	localparam logic [31:0] MUL_HELPER_LOOP004_RA = 32'h8000_04c8;
 	localparam logic [31:0] MUL_HELPER_LOOP006_RA = 32'h8000_0734;
 
+	// RV32I 基本 opcode 编码。
 	localparam logic [6:0]  OPC_LUI       = 7'b0110111;
 	localparam logic [6:0]  OPC_AUIPC     = 7'b0010111;
 	localparam logic [6:0]  OPC_JAL       = 7'b1101111;
@@ -31,6 +47,7 @@ module myCPU #(
 	localparam logic [6:0]  OPC_OPIMM     = 7'b0010011;
 	localparam logic [6:0]  OPC_OP        = 7'b0110011;
 
+	// ALU 控制码。
 	localparam logic [3:0]  ALU_ADD       = 4'd0;
 	localparam logic [3:0]  ALU_SUB       = 4'd1;
 	localparam logic [3:0]  ALU_AND       = 4'd2;
@@ -42,28 +59,36 @@ module myCPU #(
 	localparam logic [3:0]  ALU_SRL       = 4'd8;
 	localparam logic [3:0]  ALU_SRA       = 4'd9;
 
+	// ALU A 端输入来源：rs1 或 PC。
 	localparam logic        ALU_SRC_A_RS1 = 1'b0;
 	localparam logic        ALU_SRC_A_PC  = 1'b1;
 
+	// ALU B 端输入来源：rs2 / I-type 立即数 / S-type 立即数 / U-type 立即数。
 	localparam logic [1:0]  ALU_SRC_B_RS2   = 2'd0;
 	localparam logic [1:0]  ALU_SRC_B_IMM_I = 2'd1;
 	localparam logic [1:0]  ALU_SRC_B_IMM_S = 2'd2;
 	localparam logic [1:0]  ALU_SRC_B_IMM_U = 2'd3;
 
+	// WB 选择：ALU 结果、内存返回、PC+4 或 U 型立即数。
 	localparam logic [1:0]  WB_SRC_ALU    = 2'd0;
 	localparam logic [1:0]  WB_SRC_MEM    = 2'd1;
 	localparam logic [1:0]  WB_SRC_PC4    = 2'd2;
 	localparam logic [1:0]  WB_SRC_IMM_U  = 2'd3;
 
+	// PC 下一拍来源。
 	localparam logic [1:0]  PC_SRC_PC4    = 2'd0;
 	localparam logic [1:0]  PC_SRC_BRANCH = 2'd1;
 	localparam logic [1:0]  PC_SRC_JAL    = 2'd2;
 	localparam logic [1:0]  PC_SRC_JALR   = 2'd3;
 
+	// 数据口写掩码：字节 / 半字 / 整字。
 	localparam logic [1:0]  MEM_MASK_BYTE = 2'b00;
 	localparam logic [1:0]  MEM_MASK_HALF = 2'b01;
 	localparam logic [1:0]  MEM_MASK_WORD = 2'b10;
 
+	// =========================
+	// IF 级与 IF/ID 流水寄存器
+	// =========================
 	logic [31:0] pc_q;
 	logic [31:0] pc_next;
 
@@ -71,6 +96,9 @@ module myCPU #(
 	logic [31:0] ifid_instr;
 	logic        ifid_valid;
 
+	// =========================
+	// ID 级译码与冒险检测
+	// =========================
 	logic [6:0]  id_opcode;
 	logic [6:0]  id_funct7;
 	logic [2:0]  id_funct3;
@@ -107,6 +135,9 @@ module myCPU #(
 	logic        id_mem_write;
 	logic [1:0]  id_mem_mask;
 
+	// =========================
+	// ID/EX 流水寄存器
+	// =========================
 	logic [31:0] idex_pc;
 	logic [4:0]  idex_rs1;
 	logic [4:0]  idex_rs2;
@@ -132,6 +163,9 @@ module myCPU #(
 	logic        idex_mem_write;
 	logic [1:0]  idex_mem_mask;
 
+	// =========================
+	// EX 级：forwarding、分支判断、ALU 与跳转目标
+	// =========================
 	logic [31:0] ex_rs1_val;
 	logic [31:0] ex_rs2_val;
 	logic [31:0] ex_pc_rs1_val;
@@ -162,6 +196,10 @@ module myCPU #(
 	logic [31:0] ex_store_data;
 	logic        ex_use_rs1_value;
 	logic        ex_use_rs2_value;
+	// 这四条“命中线”是当前保留的 timing 优化：
+	// 先共享 exmem/memwb 与 rs1/rs2 的 compare 结果，
+	// 再分别给普通 ALU forwarding 和 PC forwarding 复用，
+	// 避免同一组比较器在多条链上重复综合。
 	logic        ex_match_rs1_exmem;
 	logic        ex_match_rs1_memwb;
 	logic        ex_match_rs2_exmem;
@@ -173,6 +211,9 @@ module myCPU #(
 	logic        exmem_can_forward;
 	logic        memwb_can_forward;
 
+	// =========================
+	// EX/MEM 流水寄存器
+	// =========================
 	logic [31:0] exmem_alu_y      = 32'h0;
 	logic [31:0] exmem_store_data = 32'h0;
 	logic [4:0]  exmem_rd         = 5'h0;
@@ -188,6 +229,9 @@ module myCPU #(
 	logic [31:0] exmem_addr_base  = 32'h0;
 	logic [31:0] exmem_addr_off   = 32'h0;
 
+	// =========================
+	// MEM / MEMWB 级
+	// =========================
 	logic [31:0] mem_load_data;
 	logic [31:0] mem_wb_data;
 	logic [31:0] memwb_wdata;
@@ -196,6 +240,7 @@ module myCPU #(
 	logic        memwb_valid;
 	logic [31:0] memwb_pc;
 
+	// 根据 load/store 的 funct3 生成字节掩码。
 	function automatic logic [1:0] decode_mem_mask(input logic [2:0] funct3);
 		begin
 			case (funct3)
@@ -208,6 +253,9 @@ module myCPU #(
 		end
 	endfunction
 
+	// 供 mul helper 使用的寄存器前递助手。
+	// 它允许在 helper 入口处直接观察更靠后的写回值，
+	// 但为了控制时序，不会无脑复制所有主流水 forwarding 链。
 	function automatic logic [31:0] forward_helper_reg(
 		input logic [4:0]  reg_addr,
 		input logic [31:0] rf_value
@@ -230,6 +278,8 @@ module myCPU #(
 		end
 	endfunction
 
+	// helper operand 的前递更保守：只看 EXMEM / MEMWB，
+	// 避免把当前 EX 结果再次折回 helper 判定路径里。
 	function automatic logic [31:0] forward_helper_operand_reg(
 		input logic [4:0]  reg_addr,
 		input logic [31:0] rf_value
@@ -249,12 +299,14 @@ module myCPU #(
 		end
 	endfunction
 
+	// 对外总线连接：真正发起访存的是 EX/MEM 级。
 	assign irom_addr   = pc_q[13:2];
 	assign perip_addr  = exmem_alu_y;
 	assign perip_wen   = exmem_valid && exmem_mem_req && exmem_mem_write;
 	assign perip_mask  = exmem_mem_mask;
 	assign perip_wdata = exmem_store_data;
 
+	// 指令字段译码。
 	mycpu_rv32_decode u_dec (
 		.instr  (ifid_instr),
 		.opcode (id_opcode),
@@ -265,11 +317,13 @@ module myCPU #(
 		.rs2    (id_rs2)
 	);
 
+	// 立即数扩展。
 	IMMGEN #(32) u_imm (
 		.instr (ifid_instr),
 		.imm   (id_imm_raw)
 	);
 
+	// 通用寄存器堆，写回发生在 MEM/WB。
 	RF #(5, 32) u_rf (
 		.clk     (cpu_clk),
 		.rst     (cpu_rst),
@@ -285,6 +339,7 @@ module myCPU #(
 		.x11_data(rf_x11_raw)
 	);
 
+	// EX 级主 ALU。
 	ALU #(32) u_alu (
 		.A          (ex_alu_a),
 		.B          (ex_alu_b),
@@ -293,10 +348,12 @@ module myCPU #(
 		.isTrue     (ex_alu_is_true)
 	);
 
+	// store 数据只在 store 指令时有效，其余时间清零有利于减少无关逻辑传播。
 	assign ex_store_data    = idex_mem_write ? ex_rs2_val : 32'h0;
 	assign ex_pc4           = idex_pc + 32'd4;
 	assign ex_pc_plus_imm   = idex_pc + idex_imm;
 
+	// JALR 的目标地址单独计算，避免普通 ALU 输出再回绕到 PC 选择链上。
 	always_comb begin
 		if (idex_valid && (idex_pc_sel == PC_SRC_JALR)) begin
 			ex_jalr_sum = ex_pc_rs1_val + idex_imm;
@@ -306,8 +363,10 @@ module myCPU #(
 	end
 
 	assign ex_jalr_target   = {ex_jalr_sum[31:1], 1'b0};
+	// helper 乘法用组合乘法器，仅在 helper 命中时结果才会真正写回。
 	assign ex_mul_helper_full     = $unsigned(idex_mul_helper_lhs) * $unsigned(idex_mul_helper_rhs);
 	assign ex_mul_helper_result   = ex_mul_helper_full[31:0];
+	// helper 命中条件：当前 IF/ID 正好来到指定 PC，并且返回地址匹配预期模板。
 	assign id_mul_helper_candidate = ENABLE_MUL_HELPER_ACCEL && ifid_valid && !idex_mul_helper && (ifid_pc == MUL_HELPER_PC);
 	assign id_mul_helper_ra       = id_mul_helper_candidate ? forward_helper_reg(5'd1, rf_x1_raw) : 32'h0;
 	assign id_mul_helper_return_match = (id_mul_helper_ra == MUL_HELPER_LOOP004_RA) ||
@@ -315,11 +374,16 @@ module myCPU #(
 	assign id_mul_helper_hit      = id_mul_helper_candidate && id_mul_helper_return_match;
 	assign id_mul_helper_lhs      = id_mul_helper_hit ? forward_helper_operand_reg(5'd10, rf_x10_raw) : 32'h0;
 	assign id_mul_helper_rhs      = id_mul_helper_hit ? forward_helper_operand_reg(5'd11, rf_x11_raw) : 32'h0;
+	// B/J 型立即数这里直接按指令格式重新拼接，剩余情况沿用通用 IMMGEN 输出。
 	assign id_imm           = (id_opcode == OPC_BRANCH) ? {{19{ifid_instr[31]}}, ifid_instr[31], ifid_instr[7], ifid_instr[30:25], ifid_instr[11:8], 1'b0} :
 							  (id_opcode == OPC_JAL)    ? {{11{ifid_instr[31]}}, ifid_instr[31], ifid_instr[19:12], ifid_instr[20], ifid_instr[30:21], 1'b0} :
 							  id_imm_raw;
+	// EXMEM/MEMWB 是否允许被前递。
 	assign exmem_can_forward = exmem_rf_we && (exmem_rd != 5'h0) && (exmem_wb_sel != WB_SRC_MEM);
 	assign memwb_can_forward = memwb_rf_we && (memwb_rd != 5'h0);
+	// 普通 EX forwarding 与 PC redirect forwarding 分离：
+	// - ex_use_rs* 面向 ALU/store 数据链
+	// - ex_pc_use_rs* 面向 branch/jalr 的 PC 选择链
 	assign ex_use_rs1_value = idex_valid && idex_uses_rs1;
 	assign ex_use_rs2_value = idex_valid && idex_uses_rs2;
 	assign ex_pc_use_rs1 = idex_valid && ((idex_pc_sel == PC_SRC_BRANCH) || (idex_pc_sel == PC_SRC_JALR));
@@ -337,6 +401,7 @@ module myCPU #(
 	assign ex_pc_fwd_rs2_from_exmem = ex_pc_use_rs2 && ex_match_rs2_exmem;
 	assign ex_pc_fwd_rs2_from_memwb = ex_pc_use_rs2 && ex_match_rs2_memwb;
 
+	// 比较器只在 branch 时真正工作，避免平时把比较链白白挂在关键路径上。
 	always_comb begin
 		ex_cmp_eq = 1'b0;
 		ex_cmp_lt_signed = 1'b0;
@@ -348,6 +413,7 @@ module myCPU #(
 		end
 	end
 
+	// ID 级允许从 MEMWB 做“同拍旁路读取”，减少读后写停顿。
 	always_comb begin
 		if (id_rs1 == 5'd0) begin
 			id_rs1_val = 32'h0;
@@ -366,6 +432,7 @@ module myCPU #(
 		end
 	end
 
+	// PC 更新优先级：redirect > stall/hold > 顺序 +4。
 	always_comb begin
 		if (ex_pc_redirect) begin
 			pc_next = ex_pc_target;
@@ -376,6 +443,7 @@ module myCPU #(
 		end
 	end
 
+	// IF 级 PC 寄存器。
 	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
 		if (cpu_rst) begin
 			pc_q <= RESET_PC;
@@ -384,6 +452,7 @@ module myCPU #(
 		end
 	end
 
+	// IF/ID 指令寄存：遇到 load-use 或 MEM load stall 时保持。
 	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
 		if (cpu_rst) begin
 			ifid_pc    <= RESET_PC;
@@ -394,6 +463,7 @@ module myCPU #(
 		end
 	end
 
+	// IF/ID valid 与数据寄存分离控制，这样 flush 不需要强耦合到数据写使能上。
 	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
 		if (cpu_rst) begin
 			ifid_valid <= 1'b0;
@@ -406,6 +476,7 @@ module myCPU #(
 		end
 	end
 
+	// ID 级主控制器：这里只做组合译码，不直接写流水寄存器。
 	always_comb begin
 		id_uses_rs1      = 1'b0;
 		id_uses_rs2      = 1'b0;

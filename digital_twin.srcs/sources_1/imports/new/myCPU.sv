@@ -15,6 +15,9 @@ module myCPU #(
 	output logic [31:0]  perip_wdata,
 	input  logic [31:0]  perip_rdata
 );
+	// 这是 imports/new 下保留的旧版 CPU 副本。
+	// 当前工程综合使用的是 sources_1/new/myCPU.sv，
+	// 这个文件主要用于历史对照、回归比较或早期结构参考。
 	localparam logic [31:0] RESET_PC      = 32'h8000_0000;
 	localparam logic [31:0] NOP_INSTR     = 32'h0000_0013;
 	localparam logic [31:0] MUL_HELPER_PC = 32'h8000_1fa8;

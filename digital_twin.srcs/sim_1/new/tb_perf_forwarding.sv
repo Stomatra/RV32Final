@@ -1,6 +1,8 @@
 `timescale 1ns / 1ps
 
 module tb_perf_forwarding;
+    // forwarding 性能测试。
+    // 构造密集 RAW 相关的 ALU 指令序列，用来量化普通 forwarding 链的收益。
 
     // 200 MHz CPU clock: 5 ns period
     localparam real CPU_CLK_PERIOD_NS = 5.0;

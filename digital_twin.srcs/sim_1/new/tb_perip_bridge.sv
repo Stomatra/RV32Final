@@ -1,6 +1,8 @@
 `timescale 1ns / 1ps
 
 module tb_perip_bridge;
+    // perip_bridge 单元测试平台。
+    // 重点验证地址译码、MMIO 读写、DRAM 通路以及统一 1 周期返回语义。
 
     logic clk;
     logic cnt_clk;

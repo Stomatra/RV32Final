@@ -1,6 +1,8 @@
 `timescale 1ns / 1ps
 
 module tb_myCPU_core;
+    // myCPU 核心级测试平台。
+    // 重点是提供最小但真实的外部环境，让单个 CPU 模块可以独立执行完整程序镜像。
     localparam int CPU_CLK_PERIOD_NS = 20;
     localparam int IROM_DEPTH = 4096;
     localparam int DRAM_DEPTH = 65536;
@@ -67,6 +69,7 @@ module tb_myCPU_core;
 
     assign fetch_pc = {RESET_PC[31:14], irom_addr, 2'b00};
 
+    // 根据访问粒度和字内 offset，从 32bit DRAM 存储字中还原 CPU 实际会读到的数据。
     function automatic logic [31:0] dram_read_mux(
         input logic [31:0] word,
         input logic [1:0]  mask,
@@ -88,6 +91,7 @@ module tb_myCPU_core;
         end
     endfunction
 
+    // 根据写掩码和 offset，把 byte/half/word 写操作折叠成新的 32bit 存储字内容。
     function automatic logic [31:0] dram_write_mux(
         input logic [31:0] old_word,
         input logic [31:0] new_word,

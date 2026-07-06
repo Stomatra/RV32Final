@@ -24,6 +24,7 @@ module seg7(
     input  logic [3:0]      din     ,
     output logic [6:0]      dout    
 );
+	// 组合查表：把 4bit 十六进制值映射为七段显示编码。
  
 always_comb begin
     case(din)

@@ -1,6 +1,8 @@
 `timescale 1ns / 1ps
 
 module tb_perf_alu_stream;
+    // 纯 ALU 指令流性能测试。
+    // 用于观察在没有 load 干扰时，CPU 的理想流水吞吐和 redirect 开销。
 
     // 200 MHz CPU clock: 5 ns period
     localparam real CPU_CLK_PERIOD_NS = 5.0;

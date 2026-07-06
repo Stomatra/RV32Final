@@ -29,6 +29,10 @@ module top(
     output wire [31:0] virtual_led  ,
     output wire [39:0] virtual_seg
 );
+	// top 是整板顶层：
+	// - 处理差分系统时钟输入
+	// - 生成 50MHz 外设时钟和 CPU 时钟
+	// - 处理 UART twin 通道与 student_top 之间的跨时钟同步
 
     wire w_clk_50Mhz, cpu_clk;
     wire w_clk_rst;
@@ -42,6 +46,9 @@ module top(
     wire [31:0] student_virtual_led_50;
     wire [39:0] student_virtual_seg_50;
 
+	// 这些双触发同步器负责两个方向的跨时钟域采样：
+	// 1. twin_controller(50MHz) -> CPU 域的按键/拨码输入
+	// 2. CPU 域 -> twin_controller(50MHz) 的显示输出
     (* ASYNC_REG = "TRUE" *) reg [7:0] virtual_key_cpu_ff1, virtual_key_cpu_ff2;
     (* ASYNC_REG = "TRUE" *) reg [63:0] virtual_sw_cpu_ff1, virtual_sw_cpu_ff2;
     (* ASYNC_REG = "TRUE" *) reg [31:0] student_virtual_led_ff1, student_virtual_led_ff2;
@@ -61,6 +68,7 @@ module top(
     assign virtual_led = student_virtual_led;
     assign virtual_seg = student_virtual_seg;
 
+	// 将 UART/twin 侧的输入同步到 CPU 时钟域。
     always @(posedge cpu_clk or negedge w_clk_rst) begin
         if (!w_clk_rst) begin
             virtual_key_cpu_ff1 <= 8'd0;
@@ -75,6 +83,7 @@ module top(
         end
     end
 
+	// 将 CPU 侧 LED/数码管状态同步回 50MHz twin/UART 域。
     always @(posedge w_clk_50Mhz or negedge w_clk_rst) begin
         if (!w_clk_rst) begin
             student_virtual_led_ff1 <= 32'd0;
@@ -89,6 +98,7 @@ module top(
         end
     end
 
+	// PLL 产生 50MHz 和 CPU 主频，同时 locked 也被用作系统复位释放条件。
     pll pll_inst(
         .clk_in1_p(i_sys_clk_p),
         .clk_in1_n(i_sys_clk_n),
@@ -97,6 +107,7 @@ module top(
         .locked(w_clk_rst)
     );
 
+	// UART 只运行在 50MHz 域，供 twin_controller 做上位机交互。
     uart #(
         .CLK_FREQ(50000000),
         .BAUD_RATE(9600)
@@ -112,6 +123,7 @@ module top(
         .tx_busy(tx_busy)
     );
 
+	// twin_controller 负责把 UART 协议翻译成开关/按键输入与状态回读。
     twin_controller twin_controller_inst(
         .clk(w_clk_50Mhz),
         .rst_n(w_clk_rst),
@@ -126,6 +138,7 @@ module top(
         .led(student_virtual_led_50)
     );
 
+	// student_top 是板上学生设计主体。
     student_top student_top_inst(
         .w_cpu_clk(cpu_clk),
         .w_clk_50Mhz(w_clk_50Mhz),

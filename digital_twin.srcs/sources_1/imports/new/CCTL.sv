@@ -3,6 +3,11 @@ module CCTL (
 	output logic [11:0] csr_idx		,
 	output logic [3:0]  CSRControll
 );
+	// CSR 控制译码：
+	// [0] csrrs
+	// [1] csrrw
+	// [2] ecall
+	// [3] mret
 	assign csr_idx = instr[31:20];
 	assign CSRControll[0] = (instr[6:0] == 7'b1110011) && (instr[14:12] == 3'b010); // csrrs
 	assign CSRControll[1] = (instr[6:0] == 7'b1110011) && (instr[14:12] == 3'b001); // csrrw

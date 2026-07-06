@@ -26,6 +26,9 @@ module IMMGEN#(
     input  logic [DATAWIDTH-1:0]   instr   ,
     output logic [DATAWIDTH - 1:0] imm       
 );
+	// 立即数生成器。
+	// 根据 opcode 识别 I/S/B/U/J 五种立即数格式，
+	// 然后直接在组合逻辑里完成符号扩展和位拼接。
     logic op_itype, op_stype, op_btype, op_utype, op_jtype;
     logic [6:0] opcode;
 
@@ -39,6 +42,7 @@ module IMMGEN#(
     assign op_utype = (opcode == `U_TYPE) || (opcode == `UA_TYPE);
     assign op_jtype = opcode == `J_TYPE;
 
+	// 利用 one-hot 形式把五类立即数合并到同一个输出上。
     assign imm = {32{op_itype}} & {{20{instr[31]}}, instr[31:20]} |
                 {32{op_stype}} & {{20{instr[31]}}, instr[31:25], instr[11:7]} |
                 {32{op_btype}} & {{20{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0} |

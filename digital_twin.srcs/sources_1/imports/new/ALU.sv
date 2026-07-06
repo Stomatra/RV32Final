@@ -28,6 +28,9 @@ module ALU#(
     output logic [DATAWIDTH - 1:0]  Result      ,
     output logic                    isTrue        
 );
+	// 组合 ALU。
+	// 这里把加法、减法、有符号比较、无符号比较统一复用到一条加/减法链上，
+	// 可以减少硬件重复，也方便综合工具把比较逻辑压进加法器进位链。
 
     localparam logic [3:0] ALU_ADD  = 4'd0;
     localparam logic [3:0] ALU_SUB  = 4'd1;
@@ -45,6 +48,9 @@ module ALU#(
     logic                 less_unsigned;
     logic                 use_subtract;
 
+	// adder_a / adder_b / cin 构成一条统一的加减法器：
+	// - 普通加法：A + B + 0
+	// - 减法/比较：A + (~B) + 1
     logic [DATAWIDTH-1:0] adder_a, adder_b;
     logic cin, carry;
 
@@ -54,6 +60,7 @@ module ALU#(
     assign cin = use_subtract;
 
     /* verilator lint_off WIDTHEXPAND */
+	// carry 同时用于无符号比较，add_sub_result 的最高位参与有符号比较。
     assign {carry, add_sub_result} = adder_a + adder_b + cin;
     assign less_signed = (A[DATAWIDTH-1] & ~B[DATAWIDTH-1]) |
                          ((~A[DATAWIDTH-1] ^ B[DATAWIDTH-1]) & add_sub_result[DATAWIDTH-1]);
@@ -61,6 +68,7 @@ module ALU#(
 
     assign isTrue = Result[0];
 
+	// 根据 ALUOp 选择最终输出。
     always_comb begin
         Result = '0;
         unique case (ALUOp)

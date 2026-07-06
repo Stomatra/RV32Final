@@ -25,6 +25,9 @@ module ACTL(
     input  logic [3:0] funct        ,
     output logic [13:0] ALUControl    
 );
+	// 老版 ALU control 译码器。
+	// 输出是 one-hot 形式的 14bit 控制字，
+	// 同时覆盖普通 ALU 运算和 branch 比较操作。
     localparam ADD      = 14'h0001;
     localparam SUB      = 14'h0002;
     localparam AND      = 14'h0004;
@@ -45,6 +48,7 @@ module ACTL(
     logic op_add, op_sub, op_and, op_or, op_xor, op_sll, op_srl;
     logic op_sra, op_beq, op_bne, op_blt, op_bge, op_bgeu, op_bltu;
 
+	// 将单个命中条件展开成 one-hot 控制字。
     assign ALUControl = {14{op_add}} & ADD |
                         {14{op_sub}} & SUB |
                         {14{op_and}} & AND |
@@ -70,6 +74,7 @@ module ACTL(
     assign auipc = opcode == `UA_TYPE;
     assign branch = opcode == `B_TYPE;
 
+	// 下面这组条件负责把 opcode/funct 映射为具体运算类型。
     assign op_add = (rtype && funct == 4'b0000) ||
                     (itype && funct[2:0] == 3'b000) ||
                     (load && funct[2:0] == 3'b000) ||

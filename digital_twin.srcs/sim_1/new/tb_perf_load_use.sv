@@ -1,6 +1,8 @@
 `timescale 1ns / 1ps
 
 module tb_perf_load_use;
+    // load-use 冒险性能测试。
+    // 构造连续 load / use 相关链，统计暂停次数和 CPI，专门观察 load 返回路径的代价。
 
     // 200 MHz CPU clock: 5 ns period
     localparam real CPU_CLK_PERIOD_NS = 5.0;

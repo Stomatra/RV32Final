@@ -11,18 +11,28 @@ module CSR #(
 	output logic [DATAWIDTH-1:0] 	csr_npc		,
 	output logic [DATAWIDTH-1:0]	csr_wb
 );
+	// 一个简化版 CSR 子系统，仅实现当前工程需要的少量 M-mode CSR：
+	// - mstatus
+	// - mepc
+	// - mtvec
+	// - mcause
+	//
+	// 同时支持：
+	// - csrrs / csrrw
+	// - ecall
+	// - mret
 	reg [DATAWIDTH-1:0] mstatus, mepc, mtvec, mcause;
 	reg [DATAWIDTH-1:0] old_mstatus, old_mepc, old_mtvec, old_mcause;
 	reg [DATAWIDTH-1:0] mask;
 
-	// 信号初始化
+	// 初始化写掩码；当前实现默认允许全宽写。
 	always @(posedge clk or posedge rst) begin
 		if (rst) begin
 			mask <= 32'hFFFFFFFF;
 		end
 	end
 
-	// 寄存器备份，old版本
+	// 备份“更新前”的 CSR 值，用于 csrr* 返回旧值语义。
 	always @(posedge clk or posedge rst) begin
 		if (rst) begin
 			old_mstatus <= 32'h0;
@@ -55,7 +65,7 @@ module CSR #(
 		end
 	end
 
-	// mstatus更新
+	// mstatus 更新。
 	always @(posedge clk or posedge rst) begin
 		if (rst) begin
 			mstatus <= 32'h1800;
@@ -70,7 +80,7 @@ module CSR #(
 		end
 	end
 
-	// mtvec更新
+	// mtvec 更新。
 	always @(posedge clk or posedge rst) begin
 		if (rst) begin
 			mtvec <= 32'h0;
@@ -83,7 +93,7 @@ module CSR #(
 		end
 	end
 
-	// mepc更新
+	// mepc 更新：ecall 时记录异常返回地址，csrr* 时允许软件写入。
 	always @(posedge clk or posedge rst) begin
 		if (rst) begin
 			mepc <= 32'h0;
@@ -97,7 +107,7 @@ module CSR #(
 		end
 	end
 
-	// mcause更新
+	// mcause 更新：ecall 固定写入 M-mode environment call 编码 0x0b。
 	always @(posedge clk or posedge rst) begin
 		if (rst) begin
 			mcause <= 32'h0;
@@ -111,11 +121,13 @@ module CSR #(
 		end
 	end
 
+	// 读通路：根据 csr_idx 返回更新前的旧值。
 	assign csr_wb = {32{csr_idx == 12'h300}} & old_mstatus |
 				{32{csr_idx == 12'h305}} & old_mtvec |
 				{32{csr_idx == 12'h341}} & old_mepc |
 				{32{csr_idx == 12'h342}} & old_mcause;
 
+	// 跳转通路：ecall 跳到 mtvec，mret 跳回 mepc。
 	assign csr_npc =  {32{CSRControll == 4'b0100}} & old_mtvec |
 				{32{CSRControll == 4'b1000}} & old_mepc;
 	

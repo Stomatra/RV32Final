@@ -34,13 +34,18 @@ module uart #(
     input wire tx_start,
     output reg tx_busy
 );
+	// 一个最小 UART 收发器：
+	// - RX 在检测到起始位后按 BAUD_DIV 定时采样 8bit 数据
+	// - TX 按 1 个起始位、8 个数据位、1 个停止位发送
     localparam BAUD_DIV = CLK_FREQ / BAUD_RATE;
 
+	// RX 相关状态与采样寄存器。
     reg [1:0] rx_state;
     reg [12:0] rx_cnt;
     reg [7:0] rx_shift;
     reg rx_d0, rx_d1, rx_d2;
 
+	// 对异步输入 rx 做三级同步，再在同步后的信号上检测下降沿。
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             rx_d0 <= 1'b1;
@@ -53,12 +58,14 @@ module uart #(
         end
     end
 
+	// 起始位下降沿检测。
     wire rx_negedge = rx_d2 & ~rx_d1;
 
     reg [3:0] rx_bit_cnt;
     reg rx_ready_pulse;
     reg [15:0] rx_ready_cnt;
 
+	// RX 状态机：空闲 -> 对齐到位中心 -> 接收 8 位 -> 吃停止位并提交结果。
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             rx_state <= 0;
@@ -110,7 +117,7 @@ module uart #(
         end
     end
     
-    // rx_ready delay for half of BAUD_DIV
+	// 将 rx_ready 拉高维持一小段时间，方便上层逻辑稳定采样事件。
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             rx_ready <= 1'b0;
@@ -129,12 +136,13 @@ module uart #(
         end
     end
 
-    // tx state machine
+	// TX 状态与移位寄存器。
     reg [3:0] tx_state;
     reg [12:0] tx_cnt;
     reg [3:0] tx_bit_cnt;
     reg [9:0] tx_shift;
 
+	// TX 状态机：空闲等待启动，随后按 BAUD_DIV 节拍依次推出 10 个串行位。
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             tx_state <= 0;

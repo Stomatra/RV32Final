@@ -1,6 +1,8 @@
 `timescale 1ns / 1ps
 
 module tb_rv32i_isa;
+    // RV32I ISA 兼容性测试平台。
+    // 通过观察数码管 PASS 图样是否稳定出现，判断指令测试程序是否完整跑通。
 
     localparam int CLK_PERIOD_NS = 20;
     localparam int TIMEOUT_NS    = 1_200_000_000;

@@ -39,8 +39,13 @@ module RF #(
     output logic [DATAWIDTH - 1:0]  x10_data  ,
     output logic [DATAWIDTH - 1:0]  x11_data
 );
+    // 32 x DATAWIDTH 的通用寄存器堆。
+    // - 写口 1 个：wen/waddr/wdata
+    // - 读口 2 个：rR1/rR2
+    // 另外单独导出 x1/x10/x11，供某些上层快速旁路或 helper 逻辑直接读取。
     logic [DATAWIDTH - 1:0] reg_bank [31:0];
 
+    // 同步写，x0 始终保持 0，不允许写入。
     always_ff @(posedge clk, posedge rst) begin
         if (rst) begin
             for (int i = 0; i < 32; i ++) begin
@@ -52,6 +57,7 @@ module RF #(
         end
     end
 
+	// 组合读口。
     always_comb begin
         rR1_data = reg_bank[rR1];
     end

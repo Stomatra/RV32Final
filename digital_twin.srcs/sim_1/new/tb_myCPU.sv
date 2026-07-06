@@ -21,6 +21,8 @@
 
 
 module tb_myCPU;
+    // student_top 级综合测试平台。
+    // 它把 CPU、外设、计数器和程序运行放在一起，适合跑较长程序、看性能统计与 checkpoint 行为。
     localparam realtime CPU_CLK_HALF_PERIOD = 2.5;
     localparam realtime CNT_CLK_HALF_PERIOD = 10.0;
     localparam time TIMEOUT             = 3s;

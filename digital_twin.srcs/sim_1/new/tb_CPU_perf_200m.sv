@@ -1,6 +1,8 @@
 `timescale 1ns / 1ps
 
 module tb_cpu_perf_200m;
+    // 200MHz 整体性能采样平台。
+    // 以 student_top 为 DUT，统计退休数、暂停数和 CPI，评估高频运行下的整体行为。
 
     // CPU 200 MHz，周期 5 ns
     localparam int CPU_CLK_PERIOD_NS = 5;

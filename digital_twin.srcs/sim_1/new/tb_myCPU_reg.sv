@@ -1,6 +1,8 @@
 `timescale 1ns / 1ps
 
 module tb_myCPU_reg;
+    // 裸 myCPU 核心测试平台。
+    // 在 testbench 内手工建立 IROM/DRAM/MMIO 模型，用于直接观察 CPU 对外总线和寄存器级行为。
     localparam int CPU_CLK_PERIOD_NS = 20;
     localparam int IROM_DEPTH = 4096;
     localparam int DRAM_DEPTH = 65536;
@@ -67,6 +69,7 @@ module tb_myCPU_reg;
 
     assign fetch_pc = {RESET_PC[31:14], irom_addr, 2'b00};
 
+    // 根据访问粒度和字内偏移，从 DRAM 存储字中还原 CPU 实际看到的返回值。
     function automatic logic [31:0] dram_read_mux(
         input logic [31:0] word,
         input logic [1:0]  mask,
@@ -88,6 +91,7 @@ module tb_myCPU_reg;
         end
     endfunction
 
+    // 根据写掩码把字节/半字/整字写操作折叠到 32bit 存储字上。
     function automatic logic [31:0] dram_write_mux(
         input logic [31:0] old_word,
         input logic [31:0] new_word,

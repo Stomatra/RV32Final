@@ -1,6 +1,8 @@
 `timescale 1ns / 1ps
 
 module tb_counter;
+    // counter 外设单元测试。
+    // 通过 start/stop 命令检查跨时钟启停控制和毫秒累加是否正常。
 
     logic cpu_clk;
     logic cnt_clk;

@@ -30,9 +30,12 @@ module display_seg (
     output logic [6:0]    seg4   ,
     output logic [7:0]    ans
 );
+	// display_seg 把 32bit 数据拆成 8 个十六进制半字节，
+	// 再通过两相扫描方式复用到 4 个七段显示位置上。
     logic  [4:0]   count;
     logic  [3:0]   digit1, digit2, digit3, digit4; 
 
+	// 扫描计数器，count[4] 用来决定当前显示高半字节组还是低半字节组。
     always@(posedge clk or posedge rst) begin
         if(rst)  
             count <= 0;
@@ -40,6 +43,7 @@ module display_seg (
             count <= count + 1;
     end
        
+    	// 根据扫描相位生成位选，并挑出当前要显示的 4 个 nibble。
     always @(*)
     case(count[4])
         0: begin
@@ -60,6 +64,7 @@ module display_seg (
 
     endcase
     
+	// 四个独立的七段译码器。
     seg7 SEG1(.din(digit1),.dout(seg1));
     seg7 SEG2(.din(digit2),.dout(seg2));
     seg7 SEG3(.din(digit3),.dout(seg3));

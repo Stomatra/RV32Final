@@ -28,6 +28,9 @@ module PC#(
     input  logic [DATAWIDTH - 1:0] npc  ,
     output logic [DATAWIDTH - 1:0] pc_out   
 );
+	// 简单程序计数器寄存器。
+	// 这里保留了一个 rst_delay，用来在复位刚释放后的下一拍再维持一次复位值，
+	// 适合某些较早期的启动时序需求。
     logic [DATAWIDTH - 1:0] reg_pc;
     logic rst_delay;
 

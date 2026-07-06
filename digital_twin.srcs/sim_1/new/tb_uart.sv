@@ -23,6 +23,8 @@
 `timescale 1ns / 1ps
 
 module tb_uart;
+    // UART 单元测试。
+    // 先向 RX 注入一个字符，再根据接收结果触发后续发送，检查最基本的串口收发链路。
 
     reg clk;
     reg rst_n;

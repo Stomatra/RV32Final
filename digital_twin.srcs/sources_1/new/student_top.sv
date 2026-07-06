@@ -35,6 +35,10 @@ module student_top#(
     output [P_LED_CNT - 1:0]                    virtual_led   ,
     output [P_SEG_CNT - 1:0]                    virtual_seg   
 );
+	// student_top 是“CPU 子系统”顶层：
+	// - 连接 CPU / IROM / 外设桥
+	// - 不处理跨时钟同步，那部分留给更外层 top
+	// - w_cpu_clk 跑 CPU，w_clk_50Mhz 提供给计数器等慢速外设
 
     // IROM
     logic [11:0] inst_addr;
@@ -45,6 +49,7 @@ module student_top#(
     logic perip_wen;
     logic [1:0] perip_mask;
 
+	// 核心 CPU 实例。
     myCPU Core_cpu (
         .cpu_rst            (w_clk_rst),
         .cpu_clk            (w_cpu_clk),
@@ -61,11 +66,13 @@ module student_top#(
         .perip_rdata        (perip_rdata)     
     );
 
+	// 指令 ROM：CPU 只按字地址取指。
     IROM Mem_IROM (
         .a          (inst_addr),
         .spo        (instruction)
     );
     
+	// 数据访存与 MMIO 统一桥接。
     perip_bridge bridge_inst (
         .clk				(w_cpu_clk),
         .cnt_clk            (w_clk_50Mhz),

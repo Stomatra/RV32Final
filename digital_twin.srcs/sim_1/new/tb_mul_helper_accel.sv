@@ -1,6 +1,8 @@
 `timescale 1ns / 1ps
 
 module tb_mul_helper_accel;
+    // mul helper 加速路径专项测试。
+    // 构造固定 PC 与返回地址场景，检查 helper 命中、跳转和结果写回行为。
 
     localparam real CPU_CLK_PERIOD_NS = 5.0;
     localparam int  SAMPLE_CYCLES     = 500;

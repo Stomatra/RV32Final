@@ -36,6 +36,15 @@ module perip_bridge(
 	output logic [39:0]  virtual_seg_output	,
     output logic [31:0]  virtual_led_output
 );
+    // perip_bridge 把 CPU 的统一 perip 总线拆成三类目标：
+    // 1. DRAM 地址区：转给 dram_driver
+    // 2. 计数器地址：转给 counter
+    // 3. MMIO 地址：拨码、按键、数码管、LED
+    //
+    // 这里最关键的时序选择是：
+    // - DRAM 读本身是同步 BRAM 返回
+    // - MMIO / counter 读也统一打一拍
+    // 这样 CPU 只面对“所有读口都是 1 周期返回”的一致模型。
     localparam DRAM_ADDR_START = 32'h8010_0000;
     localparam DRAM_ADDR_END   = 32'h8013_FFFF;
     localparam SW0_ADDR  = 32'h8020_0000;  // sw[31:0]
@@ -54,7 +63,7 @@ module perip_bridge(
     logic        sel_seg;
     logic        sel_cnt;
     logic        sel_dram;
-    // Registered stage — all reads have 1-cycle latency (matches BRAM in dram_driver)
+	// 所有读源统一打一拍，和 dram_driver 的同步读延迟保持一致。
     logic        sel_dram_r, sel_cnt_r, sel_mmio_r;
     logic [31:0] mmio_rdata_r, cnt_rdata_r;
 
@@ -65,8 +74,7 @@ module perip_bridge(
     assign sel_cnt  = (perip_addr == CNT_ADDR);
     assign sel_dram = (perip_addr >= DRAM_ADDR_START && perip_addr <= DRAM_ADDR_END);
 
-    // we don't care perip_mask in LED, SEG, SW & KEY, only care in DRAM
-    // write process
+	// LED / SEG 的写入是最简单的寄存器写；开关与按键是只读输入。
     always_ff @(posedge clk) begin
         if (perip_wen) begin
             if (perip_addr == LED_ADDR) begin
@@ -78,7 +86,7 @@ module perip_bridge(
         end
     end
 
-    // read process: in one cycle
+	// MMIO 读是组合选择，但结果最终还会被后面的寄存器级统一打一拍。
     always_comb begin
         if (~perip_wen) begin
             if (sel_sw0) begin
@@ -97,7 +105,7 @@ module perip_bridge(
         end
     end
 
-    // seg driver
+	// display_seg 把 32bit 数值拆成 4 组七段码和位选。
     display_seg seg_driver (
         .clk    (clk),
         .rst    (rst),
@@ -115,7 +123,7 @@ module perip_bridge(
     assign seg_output[37] = 0;
     
 
-    // dram rw
+	// DRAM 地址空间。
     dram_driver dram_driver_inst (
         .clk				(clk),
         .perip_addr			(perip_addr[17:0]),
@@ -125,7 +133,7 @@ module perip_bridge(
         .perip_rdata		(dram_rdata)
     );
 
-    // counter rw
+	// 计数器地址空间。
     counter counter_inst (
 		.cpu_clk			(clk),
 		.cnt_clk			(cnt_clk),
@@ -135,7 +143,7 @@ module perip_bridge(
         .perip_rdata		(cnt_rdata)
     );
 
-    // Register select signals and non-BRAM data so all sources are 1-cycle delayed
+	// 选择信号和非 BRAM 读数据打一拍，使所有读源都对齐成 1 周期延迟。
     always_ff @(posedge clk) begin
         sel_dram_r  <= sel_dram;
         sel_cnt_r   <= sel_cnt;
@@ -144,7 +152,7 @@ module perip_bridge(
         cnt_rdata_r  <= cnt_rdata;
     end
 
-    // perip_rdata valid in WB stage (1 cycle after address/select is presented)
+	// CPU 看到的 perip_rdata 在“地址给出后一拍”有效。
     always_comb begin
         if (sel_dram_r) begin
             perip_rdata = dram_rdata;    // BRAM output already 1-cycle delayed

@@ -29,11 +29,17 @@ module NPC#(
     output logic [DATAWIDTH - 1:0] npc      ,
     output logic [DATAWIDTH - 1:0] pcadd4  
 );
+	// 旧版 next-PC 选择器：
+	// - 默认顺序执行 pc+4
+	// - branch 用 isTrue 决定是否跳转到 pc+offset
+	// - jalr 直接使用经过对齐处理后的 offset
+	// - jal 直接跳到 pc+offset
     logic [DATAWIDTH-1:0] pc_plus_offset;
     logic [DATAWIDTH-1:0] jalr_addr;
 
     assign pcadd4 = pc + 4;
     assign pc_plus_offset = pc + offset;
+	// jalr 目标地址最低位强制清零。
     assign jalr_addr = offset & {{DATAWIDTH - 1{1'b1}}, 1'b0};
 
     always_comb begin
