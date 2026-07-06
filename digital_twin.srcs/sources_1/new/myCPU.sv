@@ -277,12 +277,14 @@ module myCPU #(
 	logic [31:0] memwb_pc;
 
 	// ========================
-	// CSR级
+	// CSR级控制和状态寄存器
 	// ========================
 	logic [31:0] csr_mstatus;
 	logic [31:0] csr_mtvec;
 	logic [31:0] csr_mepc;
 	logic [31:0] csr_mcause;
+	logic        csr_write_operand_nonzero;
+	logic        csr_rs1_is_x0;
 
 	// 根据 load/store 的 funct3 生成字节掩码。
 	function automatic logic [1:0] decode_mem_mask(input logic [2:0] funct3);
@@ -423,8 +425,8 @@ module myCPU #(
 							  (id_opcode == OPC_JAL)    ? {{11{ifid_instr[31]}}, ifid_instr[31], ifid_instr[19:12], ifid_instr[20], ifid_instr[30:21], 1'b0} :
 							  id_imm_raw;
 	// CSR 指令类型译码。
-	assign id_is_ecall = (id_opcode == OPC_SYSTEM) && (id_funct3 == 3'b000) && (ifid_instr[31:20] == 12'h000);
-	assign id_is_mret  = (id_opcode == OPC_SYSTEM) && (id_funct3 == 3'b000) && (ifid_instr[31:20] == 12'h302);
+	assign id_is_ecall = ifid_valid && (ifid_instr == 32'h0000_0073);
+	assign id_is_mret  = ifid_valid && (ifid_instr == 32'h3020_0073);
 	// EXMEM/MEMWB 是否允许被前递。
 	assign exmem_can_forward = exmem_rf_we && (exmem_rd != 5'h0) && (exmem_wb_sel != WB_SRC_MEM);
 	assign memwb_can_forward = memwb_rf_we && (memwb_rd != 5'h0);
@@ -454,6 +456,9 @@ module myCPU #(
 		ex_trap_enter  ? {csr_mtvec[31:2], 2'b00} :
 		ex_trap_return ? csr_mepc :
 						 32'h0;
+	assign csr_rs1_is_x0 = (idex_rs1 == 5'd0);
+	assign csr_write_operand_nonzero = (idex_csr_imm ? (idex_csr_wdata != 32'h0)
+                                                 : !csr_rs1_is_x0);
 
 	// 比较器只在 branch 时真正工作，避免平时把比较链白白挂在关键路径上。
 	always_comb begin
@@ -1015,14 +1020,14 @@ module myCPU #(
 			end
 
 			CSR_OP_CSRRS: begin
-				// rs1=x0 或 uimm=0 时，只读不写
-				ex_csr_we    = ((idex_csr_imm ? idex_csr_wdata : ex_rs1_val) != 32'h0);
+				// rs1=x0 或 uimm=0 时，只读不写CSR_OP_CSRRS: begin
+				ex_csr_we    = csr_write_operand_nonzero;
 				ex_csr_wdata = ex_csr_rdata | (idex_csr_imm ? idex_csr_wdata : ex_rs1_val);
 			end
 
 			CSR_OP_CSRRC: begin
 				// rs1=x0 或 uimm=0 时，只读不写
-				ex_csr_we    = ((idex_csr_imm ? idex_csr_wdata : ex_rs1_val) != 32'h0);
+				ex_csr_we    = csr_write_operand_nonzero;
 				ex_csr_wdata = ex_csr_rdata & ~(idex_csr_imm ? idex_csr_wdata : ex_rs1_val);
 			end
 
@@ -1125,13 +1130,13 @@ module myCPU #(
 		end else if (ex_trap_enter) begin
 			csr_mstatus[7]     <= csr_mstatus[3]; // MIE -> MPIE
 			csr_mstatus[3]     <= 1'b0;           // MIE = 0
-			csr_mstatus[12:11] <= 2'b11;          // MPP = M-mode
+			//csr_mstatus[12:11] <= 2'b11;          // MPP = M-mode
 			csr_mepc           <= idex_pc;
 			csr_mcause         <= 32'd11;         // ECALL from M-mode
 		end else if (ex_trap_return) begin
 			csr_mstatus[3]     <= csr_mstatus[7]; // MPIE -> MIE
 			csr_mstatus[7]     <= 1'b1;           // MPIE = 1
-			csr_mstatus[12:11] <= 2'b00;          // MPP = U-mode
+			//csr_mstatus[12:11] <= 2'b00;          // MPP = U-mode
 		end else if (idex_valid && !mem_load_stall && ex_csr_we) begin
 			case (idex_csr_addr)
 				CSR_MSTATUS: csr_mstatus <= ex_csr_wdata;
