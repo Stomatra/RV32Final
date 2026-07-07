@@ -336,7 +336,6 @@ module myCPU #(
 			endcase
 		end
 	endfunction
-	
 	// 它允许在 helper 入口处直接观察更靠后的写回值，
 	// 但为了控制时序，不会无脑复制所有主流水 forwarding 链。
 	function automatic logic [31:0] forward_helper_reg(
@@ -419,15 +418,13 @@ module myCPU #(
 		.imm   (id_imm_raw)
 	);
 
-	// 通用寄存器堆。
+	// 通用寄存器堆，写回发生在 MEM/WB。
 	RF #(5, 32) u_rf (
 		.clk     (cpu_clk),
 		.rst     (cpu_rst),
-		//写回发生在 MEM/WB。
 		.wen     (memwb_rf_we && memwb_valid),
 		.waddr   (memwb_rd),
 		.wdata   (memwb_wdata),
-		//
 		.rR1     (id_rs1),
 		.rR2     (id_rs2),
 		.rR1_data(rf_rs1_raw),
@@ -532,7 +529,6 @@ module myCPU #(
 	assign div_stall = ex_m_is_div && !div_done;
 	assign m_stall = idex_valid && idex_is_m_ext && !m_result_ready;
 
-	// div_op 译码，传给除法器。
 	always_comb begin
 		case (idex_m_op)
 			M_OP_DIV:  ex_div_op = 2'd0;
@@ -574,7 +570,6 @@ module myCPU #(
 		end
 	end
 
-	// EX 级乘法结果选择：低位/高位/有符号修正。
 	always_comb begin
 		case (m_op_reg)
 			M_OP_MUL:    ex_mul_result_comb = m_mul_uu_reg[31:0];
@@ -587,8 +582,7 @@ module myCPU #(
 			default:     ex_mul_result_comb = 32'h0;
 		endcase
 	end
-	
-	// M 级状态机：乘法/除法的结果在 EX 级就可以直接写回。
+
 	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
 		if (cpu_rst) begin
 			m_inflight   <= 1'b0;
@@ -634,7 +628,6 @@ module myCPU #(
 		end
 	end
 
-	// M 扩展结果选择：乘法/除法的结果在 EX 级就可以直接写回。
 	always_comb begin
 		case (idex_m_op)
 			M_OP_MUL,
@@ -981,7 +974,6 @@ module myCPU #(
 			mem_stall_flag <= mem_load_stall;
 	end
 
-	// ID/EX 流水寄存器：遇到 load-use hazard 或 EX/MEM load stall 时保持。
 	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
 		if (cpu_rst) begin
 			idex_valid         <= 1'b0;
@@ -1120,8 +1112,6 @@ module myCPU #(
 		end
 	end
 
-	// EX 级前递：EX 级的 rs1/rs2 可能来自 EX/MEM 或 MEM/WB。
-	// EX 阶段先通过*前递逻辑*得到 ex_rs1_val 和 ex_rs2_val。
 	always_comb begin
 		ex_rs1_val = idex_rs1_val;
 		if (ex_fwd_rs1_from_exmem) begin
@@ -1137,7 +1127,7 @@ module myCPU #(
 			ex_rs2_val = memwb_wdata;
 		end
 	end
-	
+
 	always_comb begin
 		ex_pc_rs1_val = idex_rs1_val;
 		if (ex_pc_fwd_rs1_from_exmem) begin
@@ -1181,7 +1171,6 @@ module myCPU #(
 		end
 	end
 
-	// 所有改变 PC 的东西，最后都归到 ex_pc_redirect + ex_pc_target
 	always_comb begin
 		if (ex_trap_redirect) begin
 			ex_pc_target = ex_trap_target;
