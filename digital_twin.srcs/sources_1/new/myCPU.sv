@@ -86,6 +86,7 @@ module myCPU #(
 	localparam logic [11:0] CSR_MTVEC   = 12'h305;// CSR 寄存器 MTVEC 地址，用于保存异常向量基地址。
 	localparam logic [11:0] CSR_MEPC    = 12'h341;// CSR 寄存器 MEPC 地址，用于保存异常返回地址。
 	localparam logic [11:0] CSR_MCAUSE  = 12'h342;// CSR 寄存器 MCAUSE 地址，用于保存异常原因。
+	localparam logic [11:0] CSR_MSCRATCH = 12'h340;// CSR 寄存器 MSCRATCH 地址，用于保存临时数据。
 
 	//CSR指令类型
 	localparam logic [2:0] CSR_OP_NONE  = 3'd0;// CSR 操作类型 NONE，表示没有 CSR 操作。
@@ -315,7 +316,8 @@ module myCPU #(
 	logic [31:0] csr_mtvec;   // CSR 级寄存器中的 mtvec 值，表示机器异常向量基地址寄存器的值。
 	logic [31:0] csr_mepc;    // CSR 级寄存器中的 mepc 值，表示机器异常程序计数器的值。
 	logic [31:0] csr_mcause;  // CSR 级寄存器中的 mcause 值，表示机器异常原因寄存器的值。
-	logic        csr_write_operand_nonzero; // CSR 级寄存器中的写操作数非零标志，表示写入 CSR 的操作数是否非零。
+	logic [31:0] csr_mscratch; // CSR 级寄存器中的 mscratch 值，表示机器临时寄存器的值。
+ 	logic        csr_write_operand_nonzero; // CSR 级寄存器中的写操作数非零标志，表示写入 CSR 的操作数是否非零。
 	logic        csr_rs1_is_x0; // CSR 级寄存器中的 rs1 是否为 x0 标志，表示源寄存器 rs1 是否为 x0。
 
 	// ========================
@@ -508,11 +510,11 @@ module myCPU #(
 	assign ex_fwd_rs1_from_memwb = ex_use_rs1_value && ex_match_rs1_memwb;
 	assign ex_fwd_rs2_from_exmem = ex_use_rs2_value && ex_match_rs2_exmem;
 	assign ex_fwd_rs2_from_memwb = ex_use_rs2_value && ex_match_rs2_memwb;
-	//为了避免load-branch冒险，现在重新开启forwarding，后续可以考虑增加branch预测来优化。
+	//现在关闭forwarding，避免 timing 过长，load-branch冒险的解决方案为再等一拍。
 	assign ex_pc_fwd_rs1_from_exmem = 1'b0;
-	assign ex_pc_fwd_rs1_from_memwb = ex_pc_use_rs1 && ex_match_rs1_memwb;
+	assign ex_pc_fwd_rs1_from_memwb = 1'b0;
 	assign ex_pc_fwd_rs2_from_exmem = 1'b0;
-	assign ex_pc_fwd_rs2_from_memwb = ex_pc_use_rs2 && ex_match_rs2_memwb;
+	assign ex_pc_fwd_rs2_from_memwb = 1'b0;
 	assign ex_trap_enter = idex_valid && idex_is_ecall && !mem_load_stall;
 	assign ex_trap_return = idex_valid && idex_is_mret && !mem_load_stall;
 	assign ex_trap_redirect = ex_trap_enter || ex_trap_return;
@@ -1229,6 +1231,7 @@ module myCPU #(
 			CSR_MTVEC:   ex_csr_rdata = csr_mtvec;
 			CSR_MEPC:    ex_csr_rdata = csr_mepc;
 			CSR_MCAUSE:  ex_csr_rdata = csr_mcause;
+			CSR_MSCRATCH: ex_csr_rdata = csr_mscratch;
 			default:     ex_csr_rdata = 32'h0;
 		endcase
 	end
@@ -1366,6 +1369,7 @@ module myCPU #(
 			csr_mtvec   <= 32'h0000_0000;
 			csr_mepc    <= 32'h0000_0000;
 			csr_mcause  <= 32'h0000_0000;
+			csr_mscratch <= 32'h0000_0000;
 		end else if (ex_trap_enter) begin
 			// trap 进入：MPIE <= MIE, MIE <= 0, MPP <= M 模式
 			csr_mstatus[7]      <= csr_mstatus[3];
@@ -1384,6 +1388,7 @@ module myCPU #(
 				CSR_MTVEC:   csr_mtvec   <= ex_csr_wdata;
 				CSR_MEPC:    csr_mepc    <= ex_csr_wdata;
 				CSR_MCAUSE:  csr_mcause  <= ex_csr_wdata;
+				CSR_MSCRATCH: csr_mscratch <= ex_csr_wdata;
 				default: begin end
 			endcase
 		end

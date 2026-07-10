@@ -43,6 +43,8 @@ module top(
     wire [63:0] virtual_sw_cpu;
     wire [31:0] student_virtual_led;
     wire [39:0] student_virtual_seg;
+    wire [31:0] student_virtual_led_src;
+    wire [39:0] student_virtual_seg_src;
     wire [31:0] student_virtual_led_50;
     wire [39:0] student_virtual_seg_50;
 
@@ -60,8 +62,84 @@ module top(
     wire [7:0] tx_data;
     wire tx_busy;
 
+	// PLL 产生 50MHz 和 CPU 主频，同时 locked 也被用作系统复位释放条件。
+    pll pll_inst(
+        .clk_in1_p(i_sys_clk_p),
+        .clk_in1_n(i_sys_clk_n),
+        .clk_out1(w_clk_50Mhz),
+        .clk_out2(cpu_clk),
+        .locked(w_clk_rst)
+    );
+
+`ifdef LED_WALK_TEST
+    localparam integer LED_WALK_TICKS = 50_000_000;
+    localparam [25:0] LED_WALK_LAST = LED_WALK_TICKS - 1;
+
+    reg [25:0] led_walk_counter;
+    reg [4:0]  led_walk_index;
+    reg [31:0] led_walk_value;
+    reg [3:0]  led_walk_tens;
+    reg [3:0]  led_walk_ones;
+    wire [31:0] led_walk_seg_word;
+    wire [6:0]  led_walk_seg1;
+    wire [6:0]  led_walk_seg2;
+    wire [6:0]  led_walk_seg3;
+    wire [6:0]  led_walk_seg4;
+    wire [7:0]  led_walk_ans;
+
+    assign student_virtual_led_src = led_walk_value;
+    assign led_walk_seg_word = {24'd0, led_walk_tens, led_walk_ones};
+    assign student_virtual_seg_src = {
+        led_walk_ans[7:6], 1'b0, led_walk_seg4,
+        led_walk_ans[5:4], 1'b0, led_walk_seg3,
+        led_walk_ans[3:2], 1'b0, led_walk_seg2,
+        led_walk_ans[1:0], 1'b0, led_walk_seg1
+    };
+
+    display_seg led_walk_seg_driver (
+        .clk    (w_clk_50Mhz),
+        .rst    (~w_clk_rst),
+        .s      (led_walk_seg_word),
+        .seg1   (led_walk_seg1),
+        .seg2   (led_walk_seg2),
+        .seg3   (led_walk_seg3),
+        .seg4   (led_walk_seg4),
+        .ans    (led_walk_ans)
+    );
+
+    always @(*) begin
+        led_walk_value = 32'h0000_0001 << led_walk_index;
+        led_walk_tens = 4'd0;
+        led_walk_ones = led_walk_index[3:0];
+        if (led_walk_index >= 5'd30) begin
+            led_walk_tens = 4'd3;
+            led_walk_ones = led_walk_index - 5'd30;
+        end else if (led_walk_index >= 5'd20) begin
+            led_walk_tens = 4'd2;
+            led_walk_ones = led_walk_index - 5'd20;
+        end else if (led_walk_index >= 5'd10) begin
+            led_walk_tens = 4'd1;
+            led_walk_ones = led_walk_index - 5'd10;
+        end
+    end
+
+    always @(posedge w_clk_50Mhz or negedge w_clk_rst) begin
+        if (!w_clk_rst) begin
+            led_walk_counter <= 26'd0;
+            led_walk_index <= 5'd0;
+        end else if (led_walk_counter == LED_WALK_LAST) begin
+            led_walk_counter <= 26'd0;
+            led_walk_index <= led_walk_index + 5'd1;
+        end else begin
+            led_walk_counter <= led_walk_counter + 26'd1;
+        end
+    end
+`endif
+
     assign virtual_key_cpu = virtual_key_cpu_ff2;
     assign virtual_sw_cpu = virtual_sw_cpu_ff2;
+    assign student_virtual_led = student_virtual_led_src;
+    assign student_virtual_seg = student_virtual_seg_src;
     assign student_virtual_led_50 = student_virtual_led_ff2;
     assign student_virtual_seg_50 = student_virtual_seg_ff2;
 
@@ -98,15 +176,6 @@ module top(
         end
     end
 
-	// PLL 产生 50MHz 和 CPU 主频，同时 locked 也被用作系统复位释放条件。
-    pll pll_inst(
-        .clk_in1_p(i_sys_clk_p),
-        .clk_in1_n(i_sys_clk_n),
-        .clk_out1(w_clk_50Mhz),
-        .clk_out2(cpu_clk),
-        .locked(w_clk_rst)
-    );
-
 	// UART 只运行在 50MHz 域，供 twin_controller 做上位机交互。
     uart #(
         .CLK_FREQ(50000000),
@@ -139,15 +208,15 @@ module top(
     );
 
 	// student_top 是板上学生设计主体。
+`ifndef LED_WALK_TEST
     student_top student_top_inst(
         .w_cpu_clk(cpu_clk),
         .w_clk_50Mhz(w_clk_50Mhz),
         .w_clk_rst(~w_clk_rst),
         .virtual_key(virtual_key_cpu),
         .virtual_sw(virtual_sw_cpu),
-        .virtual_led(student_virtual_led),
-        .virtual_seg(student_virtual_seg)
+        .virtual_led(student_virtual_led_src),
+        .virtual_seg(student_virtual_seg_src)
     );
-
+`endif
 endmodule
-

@@ -1,0 +1,16 @@
+IMPL_STRATEGY=Performance_Explore
+RESET_SYNTH=YES
+BIT_STABLE=E:\Projects\1Aprojects\RV32Final\top_performance_explore.bit
+BIT_NAMED=E:\Projects\1Aprojects\RV32Final\top_performance_explore_20260710_201701.bit
+BIT_MTIME=2026-07-10 20:16:45
+BIT_SHA256=42873B3CFECD3E3F2AD8F51C04EBF5B3C274C7349E95D742637B45342FD14C38
+TIMING_REPORT=E:\Projects\1Aprojects\RV32Final\timing_performance_explore_bit.rpt
+PATHS_REPORT=E:\Projects\1Aprojects\RV32Final\timing_performance_explore_bit_paths.rpt
+TCL_SUMMARY=E:\Projects\1Aprojects\RV32Final\timing_performance_explore_bit_summary.txt
+WNS=-0.074
+TNS=-1.944
+FAILING_ENDPOINTS=43
+WORST_SETUP_SLACK=-0.074
+WORST_SETUP_SOURCE=student_top_inst/Core_cpu/memwb_rf_we_reg/C
+WORST_SETUP_DESTINATION=student_top_inst/Core_cpu/pc_q_reg[25]/D
+TIMING_CLEAN=NO
