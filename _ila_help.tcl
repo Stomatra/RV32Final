@@ -1,0 +1,5 @@
+help disconnect_debug_port
+help delete_debug_core
+help delete_debug_cores
+help create_debug_core
+help set_property

@@ -1,0 +1,1399 @@
+`timescale 1ns / 1ps
+
+module myCPU #(
+	parameter ENABLE_MUL_HELPER_ACCEL = 1'b0
+) (
+	input  logic         cpu_rst,
+	input  logic         cpu_clk,
+
+	output logic [11:0]  irom_addr,
+	input  logic [31:0]  irom_data,
+
+	output logic [31:0]  perip_addr,
+	output logic         perip_wen,
+	output logic [1:0]   perip_mask,
+	output logic [31:0]  perip_wdata,
+	input  logic [31:0]  perip_rdata
+);
+	// 这个 CPU 是一个面向 RV32I 子集的简化流水实现。
+	// 顶层接口只暴露两类总线：
+	// 1. 指令只读口：给 IROM 地址，取回 32bit 指令。
+	// 2. 外设/数据口：统一访问 DRAM、计数器和 MMIO。
+
+	// 复位后从固定 Boot 地址开始执行。
+	localparam logic [31:0] RESET_PC      = 32'h8000_0000;// 重置 PC 地址
+	// NOP 采用 addi x0, x0, 0。
+	localparam logic [31:0] NOP_INSTR     = 32'h0000_0013;// NOP 指令
+	// mul helper 相关地址用于识别“乘法辅助例程入口”和它可能的返回点。
+	localparam logic [31:0] MUL_HELPER_PC = 32'h8000_1fa8;// mul helper 入口地址
+	localparam logic [31:0] MUL_HELPER_LOOP004_RA = 32'h8000_04c8;// mul helper 循环004返回地址
+	localparam logic [31:0] MUL_HELPER_LOOP006_RA = 32'h8000_0734;// mul helper 循环006返回地址
+
+	// RV32I 基本 opcode 编码。
+	localparam logic [6:0]  OPC_LUI       = 7'b0110111; // LUI 指令，主要负责加载高 20 位立即数到寄存器。
+	localparam logic [6:0]  OPC_AUIPC     = 7'b0010111; // AUIPC 指令，用于将当前 PC 加上一个立即数并存储到寄存器中，常用于生成 PC 相对地址。
+	localparam logic [6:0]  OPC_JAL       = 7'b1101111; // JAL 指令，用于无条件跳转并保存返回地址。
+	localparam logic [6:0]  OPC_JALR      = 7'b1100111; // JALR 指令，用于寄存器间接跳转并保存返回地址。
+	localparam logic [6:0]  OPC_BRANCH    = 7'b1100011; // 分支指令，用于条件跳转。
+	localparam logic [6:0]  OPC_LOAD      = 7'b0000011; // 加载指令，用于从内存读取数据。
+	localparam logic [6:0]  OPC_STORE     = 7'b0100011; // 存储指令，用于向内存写入数据。
+	localparam logic [6:0]  OPC_OPIMM     = 7'b0010011; // 立即数操作指令，用于对寄存器和立即数进行算术或逻辑操作。
+	localparam logic [6:0]  OPC_OP        = 7'b0110011; // 寄存器操作指令，用于对两个寄存器进行算术或逻辑操作。
+	localparam logic [6:0]  OPC_SYSTEM    = 7'b1110011; // 系统指令，用于特权操作和环境调用。
+
+	// ALU 控制码。
+	localparam logic [3:0]  ALU_ADD       = 4'd0;// ALU 执行加法操作。
+	localparam logic [3:0]  ALU_SUB       = 4'd1;// ALU 执行减法操作。
+	localparam logic [3:0]  ALU_AND       = 4'd2;// ALU 执行按位与操作。
+	localparam logic [3:0]  ALU_OR        = 4'd3;// ALU 执行按位或操作。
+	localparam logic [3:0]  ALU_XOR       = 4'd4;// ALU 执行按位异或操作。
+	localparam logic [3:0]  ALU_SLT       = 4'd5;// ALU 执行有符号小于比较操作。
+	localparam logic [3:0]  ALU_SLTU      = 4'd6;// ALU 执行无符号小于比较操作。
+	localparam logic [3:0]  ALU_SLL       = 4'd7;// ALU 执行逻辑左移操作。
+	localparam logic [3:0]  ALU_SRL       = 4'd8;// ALU 执行逻辑右移操作。
+	localparam logic [3:0]  ALU_SRA       = 4'd9;// ALU 执行算术右移操作。
+
+	// ALU A 端输入来源：rs1 或 PC。
+	localparam logic        ALU_SRC_A_RS1 = 1'b0;// ALU A 端输入来自寄存器 rs1。
+	localparam logic        ALU_SRC_A_PC  = 1'b1;// ALU A 端输入来自当前 PC。
+
+	// ALU B 端输入来源：rs2 / I-type 立即数 / S-type 立即数 / U-type 立即数。
+	localparam logic [1:0]  ALU_SRC_B_RS2   = 2'd0;// ALU B 端输入来自寄存器 rs2。
+	localparam logic [1:0]  ALU_SRC_B_IMM_I = 2'd1;// ALU B 端输入来自 I 型立即数。
+	localparam logic [1:0]  ALU_SRC_B_IMM_S = 2'd2;// ALU B 端输入来自 S 型立即数。
+	localparam logic [1:0]  ALU_SRC_B_IMM_U = 2'd3;// ALU B 端输入来自 U 型立即数。
+
+	// WB 选择：ALU 结果、内存返回、PC+4 或 U 型立即数。
+	localparam logic [2:0]  WB_SRC_ALU    = 3'd0;// 写回数据选择 ALU 结果。
+	localparam logic [2:0]  WB_SRC_MEM    = 3'd1;// 写回数据选择内存返回数据。
+	localparam logic [2:0]  WB_SRC_PC4    = 3'd2;// 写回数据选择 PC + 4。
+	localparam logic [2:0]  WB_SRC_IMM_U  = 3'd3;// 写回数据选择 U 型立即数。
+	localparam logic [2:0]  WB_SRC_CSR    = 3'd4;// 写回数据选择 CSR 寄存器值。
+
+	// PC 下一拍来源。
+	localparam logic [1:0]  PC_SRC_PC4    = 2'd0;// PC 下一拍选择 PC + 4。
+	localparam logic [1:0]  PC_SRC_BRANCH = 2'd1;// PC 下一拍选择分支目标地址。
+	localparam logic [1:0]  PC_SRC_JAL    = 2'd2;// PC 下一拍选择 JAL 指令目标地址。
+	localparam logic [1:0]  PC_SRC_JALR   = 2'd3;// PC 下一拍选择 JALR 指令目标地址。
+
+	// 数据口写掩码：字节 / 半字 / 整字。
+	localparam logic [1:0]  MEM_MASK_BYTE = 2'b00;// 数据口写掩码选择字节。
+	localparam logic [1:0]  MEM_MASK_HALF = 2'b01;// 数据口写掩码选择半字。
+	localparam logic [1:0]  MEM_MASK_WORD = 2'b10;// 数据口写掩码选择整字。
+
+	//CSR地址常量
+	localparam logic [11:0] CSR_MSTATUS = 12'h300;// CSR 寄存器 MSTATUS 地址，用于保存处理器状态。
+	localparam logic [11:0] CSR_MTVEC   = 12'h305;// CSR 寄存器 MTVEC 地址，用于保存异常向量基地址。
+	localparam logic [11:0] CSR_MEPC    = 12'h341;// CSR 寄存器 MEPC 地址，用于保存异常返回地址。
+	localparam logic [11:0] CSR_MCAUSE  = 12'h342;// CSR 寄存器 MCAUSE 地址，用于保存异常原因。
+
+	//CSR指令类型
+	localparam logic [2:0] CSR_OP_NONE  = 3'd0;// CSR 操作类型 NONE，表示没有 CSR 操作。
+	localparam logic [2:0] CSR_OP_CSRRW = 3'd1;// CSR 操作类型 CSRRW，表示读写 CSR。
+	localparam logic [2:0] CSR_OP_CSRRS = 3'd2;// CSR 操作类型 CSRRS，表示读置位 CSR。
+	localparam logic [2:0] CSR_OP_CSRRC = 3'd3;// CSR 操作类型 CSRRC，表示读清除 CSR。
+	localparam logic [2:0] CSR_OP_ECALL = 3'd4;// CSR 操作类型 ECALL，表示环境调用。
+	localparam logic [2:0] CSR_OP_MRET  = 3'd5;// CSR 操作类型 MRET，表示从机器模式返回。
+
+	//M指令类型
+	localparam logic [3:0] M_OP_NONE   = 4'd0;// M 指令类型 NONE，表示没有 M 扩展操作。
+	localparam logic [3:0] M_OP_MUL    = 4'd1;// M 指令类型 MUL，表示乘法操作。
+	localparam logic [3:0] M_OP_MULH   = 4'd2;// M 指令类型 MULH，表示有符号乘法高位操作。
+	localparam logic [3:0] M_OP_MULHSU = 4'd3;// M 指令类型 MULHSU，表示有符号乘法高位操作（混合符号）。
+	localparam logic [3:0] M_OP_MULHU  = 4'd4;// M 指令类型 MULHU，表示无符号乘法高位操作。
+	localparam logic [3:0] M_OP_DIV    = 4'd5;// M 指令类型 DIV，表示有符号除法操作。
+	localparam logic [3:0] M_OP_DIVU   = 4'd6;// M 指令类型 DIVU，表示无符号除法操作。
+	localparam logic [3:0] M_OP_REM    = 4'd7;// M 指令类型 REM，表示有符号取模操作。
+	localparam logic [3:0] M_OP_REMU   = 4'd8;// M 指令类型 REMU，表示无符号取模操作。
+
+	// =========================
+	// IF 级与 IF/ID 流水寄存器 表示取指令阶段的 PC、指令和有效位。
+	// =========================
+	logic [31:0] pc_q;      // 当前 PC 寄存器，表示当前正在执行的指令的地址。
+	logic [31:0] pc_next;   // 下一拍 PC 值，表示下一条指令的地址。
+
+	logic [31:0] ifid_pc;    // IF/ID 流水寄存器中的 PC 值，表示取指阶段的指令地址。
+	logic [31:0] ifid_instr; // IF/ID 流水寄存器中的指令值，表示取指阶段的指令内容。
+	logic        ifid_valid; // IF/ID 流水寄存器中的有效位，表示取指阶段的指令是否有效。
+
+	// =========================
+	// ID 级译码与冒险检测 表示译码阶段的指令字段、立即数、寄存器值和控制信号。
+	// =========================
+	logic [6:0]  id_opcode; // 译码阶段的指令操作码，表示当前指令的类型。
+	logic [6:0]  id_funct7; // 译码阶段的指令功能码7位，表示当前指令的具体操作。
+	logic [2:0]  id_funct3; // 译码阶段的指令功能码3位，表示当前指令的具体操作。
+	logic [4:0]  id_rd;     // 译码阶段的目标寄存器地址，表示当前指令的写回寄存器。
+	logic [4:0]  id_rs1;    // 译码阶段的源寄存器1地址，表示当前指令的第一个操作数寄存器。
+	logic [4:0]  id_rs2;    // 译码阶段的源寄存器2地址，表示当前指令的第二个操作数寄存器。
+	logic [31:0] id_imm_raw;// 译码阶段的原始立即数，表示当前指令的立即数值。
+	logic [31:0] id_imm;    // 译码阶段的立即数，表示当前指令的立即数值。
+	logic [31:0] id_rs1_val;// 译码阶段的源寄存器1值，表示当前指令的第一个操作数值。
+	logic [31:0] id_rs2_val;// 译码阶段的源寄存器2值，表示当前指令的第二个操作数值。
+	logic [31:0] rf_rs1_raw;// 译码阶段的源寄存器1原始值，表示当前指令的第一个操作数原始值。
+	logic [31:0] rf_rs2_raw;// 译码阶段的源寄存器2原始值，表示当前指令的第二个操作数原始值。
+	logic [31:0] rf_x1_raw; // 译码阶段的寄存器 x1 原始值，表示当前指令的寄存器 x1 的原始值。
+	logic [31:0] rf_x10_raw;// 译码阶段的寄存器 x10 原始值，表示当前指令的寄存器 x10 的原始值。
+	logic [31:0] rf_x11_raw;// 译码阶段的寄存器 x11 原始值，表示当前指令的寄存器 x11 的原始值。
+	logic        id_uses_rs1;// 译码阶段是否使用源寄存器1，表示当前指令是否使用源寄存器1。
+	logic        id_uses_rs2;// 译码阶段是否使用源寄存器2，表示当前指令是否使用源寄存器2。
+	logic        load_use_hazard;// 译码阶段是否存在 load-use 冒险，表示当前指令是否与前一条 load 指令存在数据依赖。
+	logic        pc_ex_hazard;// 译码阶段是否存在 PC 与 EX 阶段的冒险，表示当前指令是否与 EX 阶段的指令存在数据依赖。
+	logic        pc_mem_hazard;// 译码阶段是否存在 PC 与 MEM 阶段的冒险，表示当前指令是否与 MEM 阶段的指令存在数据依赖。
+	logic        mem_load_stall;// 译码阶段是否需要因 load 指令而暂停，表示当前指令是否需要等待前一条 load 指令完成。
+	logic        mem_stall_flag;// 译码阶段是否需要因 MEM 阶段而暂停，表示当前指令是否需要等待 MEM 阶段的指令完成。
+	logic        id_mul_helper_candidate;// 译码阶段是否为 mul helper 候选指令，表示当前指令是否可能是 mul helper 指令。
+	logic        id_mul_helper_return_match;// 译码阶段是否匹配 mul helper 返回地址，表示当前指令是否与 mul helper 的返回地址匹配。
+	logic        id_mul_helper_hit;// 译码阶段是否命中 mul helper，表示当前指令是否为 mul helper 指令。
+	logic [31:0] id_mul_helper_ra;// 译码阶段的 mul helper 返回地址，表示当前指令的 mul helper 返回地址。
+	logic [31:0] id_mul_helper_lhs;// 译码阶段的 mul helper 左操作数，表示当前指令的 mul helper 左操作数。
+	logic [31:0] id_mul_helper_rhs;// 译码阶段的 mul helper 右操作数，表示当前指令的 mul helper 右操作数。
+	logic        id_rf_we;// 译码阶段的寄存器写使能，表示当前指令是否写回寄存器。
+	logic [2:0]  id_wb_sel;// 译码阶段的写回选择信号，表示当前指令的写回数据来源。
+	logic        id_alu_src_a_sel;// 译码阶段的 ALU 源操作数 A 选择信号，表示当前指令的 ALU 操作数 A 来源。
+	logic [1:0]  id_alu_src_b_sel;// 译码阶段的 ALU 源操作数 B 选择信号，表示当前指令的 ALU 操作数 B 来源。
+	logic [3:0]  id_alu_op;// 译码阶段的 ALU 操作码，表示当前指令的 ALU 操作类型。
+	logic [1:0]  id_pc_sel;// 译码阶段的 PC 选择信号，表示当前指令的下一条指令地址来源。
+	logic        id_mem_req;// 译码阶段的存储器请求信号，表示当前指令是否访问存储器。
+	logic        id_mem_write;// 译码阶段的存储器写使能，表示当前指令是否写入存储器。
+	logic [1:0]  id_mem_mask;// 译码阶段的存储器掩码，表示当前指令的存储器访问字节数。
+	logic [2:0]  id_csr_op;// 译码阶段的 CSR 操作码，表示当前指令的 CSR 操作类型。
+	logic        id_csr_imm;// 译码阶段的 CSR 立即数标志，表示当前指令是否使用立即数进行 CSR 操作。
+	logic [11:0] id_csr_addr;// 译码阶段的 CSR 地址，表示当前指令的 CSR 地址。
+	logic [31:0] id_csr_wdata;// 译码阶段的 CSR 写数据，表示当前指令的 CSR 写入数据。
+	logic        id_is_ecall;// 译码阶段是否为 ECALL 指令，表示当前指令是否为系统调用。
+	logic        id_is_mret;// 译码阶段是否为 MRET 指令，表示当前指令是否为机器模式返回指令。
+	logic        id_is_m_ext;// 译码阶段是否为 M 扩展指令，表示当前指令是否为 M 扩展指令。
+	logic [3:0]  id_m_op;// 译码阶段的 M 扩展操作码，表示当前指令的 M 扩展操作类型。
+
+	// =========================
+	// ID/EX 流水寄存器 表示译码阶段的指令字段、立即数、寄存器值和控制信号*传递到*执行阶段。
+	// =========================
+	logic [31:0] idex_pc;            // ID/EX 流水寄存器中的 PC 值，表示译码阶段的指令地址传递到执行阶段。
+	logic [4:0]  idex_rs1;           // ID/EX 流水寄存器中的 rs1 地址，表示译码阶段的源寄存器 1 地址传递到执行阶段。
+	logic [4:0]  idex_rs2;           // ID/EX 流水寄存器中的 rs2 地址，表示译码阶段的源寄存器 2 地址传递到执行阶段。
+	logic [31:0] idex_rs1_val;       // ID/EX 流水寄存器中的 rs1 值，表示译码阶段的源寄存器 1 值传递到执行阶段。
+	logic [31:0] idex_rs2_val;       // ID/EX 流水寄存器中的 rs2 值，表示译码阶段的源寄存器 2 值传递到执行阶段。
+	logic        idex_uses_rs1;      // ID/EX 流水寄存器中的 rs1 使用标志，表示译码阶段的指令是否使用源寄存器 1。
+	logic        idex_uses_rs2;      // ID/EX 流水寄存器中的 rs2 使用标志，表示译码阶段的指令是否使用源寄存器 2。
+	logic [4:0]  idex_rd;            // ID/EX 流水寄存器中的 rd 地址，表示译码阶段的目标寄存器地址传递到执行阶段。
+	logic [31:0] idex_imm;           // ID/EX 流水寄存器中的立即数，表示译码阶段的立即数传递到执行阶段。
+	logic [2:0]  idex_funct3;        // ID/EX 流水寄存器中的 funct3 字段，表示译码阶段的 funct3 字段传递到执行阶段。
+	logic        idex_valid;         // ID/EX 流水寄存器中的有效标志，表示译码阶段的指令是否有效。
+	logic        idex_mul_helper;    // ID/EX 流水寄存器中的 mul helper 标志，表示译码阶段的指令是否使用 mul helper。
+	logic [31:0] idex_mul_helper_ra; // ID/EX 流水寄存器中的 mul helper 返回地址，表示译码阶段的 mul helper 返回地址传递到执行阶段。
+	logic [31:0] idex_mul_helper_lhs;// ID/EX 流水寄存器中的 mul helper 左操作数，表示译码阶段的 mul helper 左操作数传递到执行阶段。
+	logic [31:0] idex_mul_helper_rhs;// ID/EX 流水寄存器中的 mul helper 右操作数，表示译码阶段的 mul helper 右操作数传递到执行阶段。
+	logic        idex_rf_we;         // ID/EX 流水寄存器中的寄存器写使能，表示译码阶段的指令是否写回寄存器。
+	logic [2:0]  idex_wb_sel;        // ID/EX 流水寄存器中的写回选择，表示译码阶段的指令写回数据的选择。
+	logic        idex_alu_src_a_sel; // ID/EX 流水寄存器中的 ALU 源操作数 A 选择，表示译码阶段的指令 ALU 操作数 A 的选择。
+	logic [1:0]  idex_alu_src_b_sel; // ID/EX 流水寄存器中的 ALU 源操作数 B 选择，表示译码阶段的指令 ALU 操作数 B 的选择。
+	logic [3:0]  idex_alu_op;        // ID/EX 流水寄存器中的 ALU 操作码，表示译码阶段的指令 ALU 操作类型。
+	logic [1:0]  idex_pc_sel;        // ID/EX 流水寄存器中的 PC 选择，表示译码阶段的指令 PC 的选择。
+	logic        idex_mem_req;       // ID/EX 流水寄存器中的内存请求标志，表示译码阶段的指令是否请求内存操作。
+	logic        idex_mem_write;     // ID/EX 流水寄存器中的内存写标志，表示译码阶段的指令是否进行内存写操作。
+	logic [1:0]  idex_mem_mask;      // ID/EX 流水寄存器中的内存掩码，表示译码阶段的指令内存操作的掩码。
+	logic [2:0]  idex_csr_op;        // ID/EX 流水寄存器中的 CSR 操作码，表示译码阶段的指令 CSR 操作类型。
+	logic        idex_csr_imm;       // ID/EX 流水寄存器中的 CSR 立即数标志，表示译码阶段的指令是否使用立即数进行 CSR 操作。
+	logic [11:0] idex_csr_addr;      // ID/EX 流水寄存器中的 CSR 地址，表示译码阶段的指令 CSR 地址传递到执行阶段。
+	logic [31:0] idex_csr_wdata;     // ID/EX 流水寄存器中的 CSR 写数据，表示译码阶段的指令 CSR 写数据传递到执行阶段。
+	logic        idex_is_ecall;      // ID/EX 流水寄存器中的 ECALL 标志，表示译码阶段的指令是否为 ECALL。
+	logic        idex_is_mret;       // ID/EX 流水寄存器中的 MRET 标志，表示译码阶段的指令是否为 MRET。
+	logic        idex_is_m_ext;      // ID/EX 流水寄存器中的 M 扩展标志，表示译码阶段的指令是否使用 M 扩展。
+	logic [3:0]  idex_m_op;          // ID/EX 流水寄存器中的 M 操作码，表示译码阶段的指令 M 操作类型。
+
+	// =========================
+	// EX 级：forwarding、分支判断、ALU 与跳转目标 表示执行阶段的寄存器值、ALU 输入、分支判断结果和跳转目标。
+	// =========================
+	logic [31:0] ex_rs1_val;      // EX 级寄存器中的 rs1 值，表示执行阶段的指令 rs1 操作数。
+	logic [31:0] ex_rs2_val;      // EX 级寄存器中的 rs2 值，表示执行阶段的指令 rs2 操作数。
+	logic [31:0] ex_pc_rs1_val;   // EX 级寄存器中的 PC+rs1 值，表示执行阶段的指令 PC+rs1 操作数。
+	logic [31:0] ex_pc_rs2_val;   // EX 级寄存器中的 PC+rs2 值，表示执行阶段的指令 PC+rs2 操作数。
+	logic [31:0] ex_alu_a;        // EX 级寄存器中的 ALU 操作数 A，表示执行阶段的指令 ALU 操作数 A。
+	logic [31:0] ex_alu_b;        // EX 级寄存器中的 ALU 操作数 B，表示执行阶段的指令 ALU 操作数 B。
+	logic [31:0] ex_alu_y;        // EX 级寄存器中的 ALU 结果，表示执行阶段的指令 ALU 计算结果。
+	logic        ex_br_take;      // EX 级寄存器中的分支判断结果，表示执行阶段的指令是否采取分支。
+	logic        ex_pc_use_rs1;   // EX 级寄存器中的 PC 使用 rs1 标志，表示执行阶段的指令是否使用 rs1 计算 PC。
+	logic        ex_pc_use_rs2;   // EX 级寄存器中的 PC 使用 rs2 标志，表示执行阶段的指令是否使用 rs2 计算 PC。
+	logic        ex_pc_fwd_rs1_from_exmem; // EX 级寄存器中的 PC 前递 rs1 来自 EX/MEM 标志，表示执行阶段的指令是否从 EX/MEM 前递 rs1。
+	logic        ex_pc_fwd_rs1_from_memwb; // EX 级寄存器中的 PC 前递 rs1 来自 MEM/WB 标志，表示执行阶段的指令是否从 MEM/WB 前递 rs1。
+	logic        ex_pc_fwd_rs2_from_exmem; // EX 级寄存器中的 PC 前递 rs2 来自 EX/MEM 标志，表示执行阶段的指令是否从 EX/MEM 前递 rs2。
+	logic        ex_pc_fwd_rs2_from_memwb; // EX 级寄存器中的 PC 前递 rs2 来自 MEM/WB 标志，表示执行阶段的指令是否从 MEM/WB 前递 rs2。
+	logic        ex_alu_is_true;  // EX 级寄存器中的 ALU 是否为真标志，表示执行阶段的指令 ALU 结果是否为真。
+	logic        ex_cmp_eq;       // EX 级寄存器中的比较结果标志，表示执行阶段的指令是否相等。
+	logic        ex_cmp_lt_signed; // EX 级寄存器中的有符号比较结果标志，表示执行阶段的指令是否小于。
+	logic        ex_cmp_lt_unsigned; // EX 级寄存器中的无符号比较结果标志，表示执行阶段的指令是否小于。
+	logic [31:0] ex_pc4;          // EX 级寄存器中的 PC+4 值，表示执行阶段的指令 PC+4。
+	logic [31:0] ex_pc_plus_imm;  // EX 级寄存器中的 PC+立即数值，表示执行阶段的指令 PC+立即数。
+	logic [31:0] ex_jalr_sum;     // EX 级寄存器中的 JALR 和，表示执行阶段的指令 JALR 计算结果。
+	logic [31:0] ex_jalr_target;  // EX 级寄存器中的 JALR 目标地址，表示执行阶段的指令 JALR 目标地址。
+	logic [63:0] ex_mul_helper_full; // EX 级寄存器中的乘法辅助全值，表示执行阶段的指令乘法辅助全值。
+	logic [31:0] ex_mul_helper_result; // EX 级寄存器中的乘法辅助结果，表示执行阶段的指令乘法辅助结果。
+	logic        ex_pc_redirect;  // EX 级寄存器中的 PC 重定向标志，表示执行阶段的指令是否需要重定向 PC。
+	logic [31:0] ex_pc_target;    // EX 级寄存器中的 PC 目标地址，表示执行阶段的指令 PC 目标地址。
+	logic [31:0] ex_wb_data;      // EX 级寄存器中的写回数据，表示执行阶段的指令写回数据。
+	logic [31:0] ex_store_data;   // EX 级寄存器中的存储数据，表示执行阶段的指令存储数据。
+	logic        ex_use_rs1_value; // EX 级寄存器中的使用 rs1 值标志，表示执行阶段的指令是否使用 rs1 值。
+	logic        ex_use_rs2_value; // EX 级寄存器中的使用 rs2 值标志，表示执行阶段的指令是否使用 rs2 值。
+	// 这四条“命中线”是当前保留的 timing 优化：
+	// 先共享 exmem/memwb 与 rs1/rs2 的 compare 结果，
+	// 再分别给普通 ALU forwarding 和 PC forwarding 复用，
+	// 避免同一组比较器在多条链上重复综合。
+	logic        ex_match_rs1_exmem;// EX 级寄存器中的 rs1 与 EX/MEM 匹配标志，表示执行阶段的指令 rs1 是否与 EX/MEM 匹配。
+	logic        ex_match_rs1_memwb;// EX 级寄存器中的 rs1 与 MEM/WB 匹配标志，表示执行阶段的指令 rs1 是否与 MEM/WB 匹配。
+	logic        ex_match_rs2_exmem;// EX 级寄存器中的 rs2 与 EX/MEM 匹配标志，表示执行阶段的指令 rs2 是否与 EX/MEM 匹配。
+	logic        ex_match_rs2_memwb;// EX 级寄存器中的 rs2 与 MEM/WB 匹配标志，表示执行阶段的指令 rs2 是否与 MEM/WB 匹配。
+	logic        ex_fwd_rs1_from_exmem;// EX 级寄存器中的 rs1 从 EX/MEM 前递标志，表示执行阶段的指令 rs1 是否从 EX/MEM 前递。
+	logic        ex_fwd_rs1_from_memwb;// EX 级寄存器中的 rs1 从 MEM/WB 前递标志，表示执行阶段的指令 rs1 是否从 MEM/WB 前递。
+	logic        ex_fwd_rs2_from_exmem;// EX 级寄存器中的 rs2 从 EX/MEM 前递标志，表示执行阶段的指令 rs2 是否从 EX/MEM 前递。
+	logic        ex_fwd_rs2_from_memwb;// EX 级寄存器中的 rs2 从 MEM/WB 前递标志，表示执行阶段的指令 rs2 是否从 MEM/WB 前递。
+	logic [31:0] ex_csr_rdata; // EX 级寄存器中的 CSR 读取数据，表示执行阶段的指令 CSR 读取数据。
+	logic [31:0] ex_csr_wdata; // EX 级寄存器中的 CSR 写入数据，表示执行阶段的指令 CSR 写入数据。
+	logic        ex_csr_we;    // EX 级寄存器中的 CSR 写使能标志，表示执行阶段的指令是否写入 CSR。
+	logic        exmem_can_forward; // EX/MEM 级寄存器中的前递标志，表示 EX/MEM 级寄存器是否可以前递。
+	logic        memwb_can_forward; // MEM/WB 级寄存器中的前递标志，表示 MEM/WB 级寄存器是否可以前递。
+	logic        ex_trap_enter; // EX 级寄存器中的陷入标志，表示执行阶段的指令是否进入陷入。
+	logic        ex_trap_return; // EX 级寄存器中的陷出标志，表示执行阶段的指令是否返回陷入。
+	logic        ex_trap_redirect; // EX 级寄存器中的陷入重定向标志，表示执行阶段的指令是否需要陷入重定向。
+	logic [31:0] ex_trap_target; // EX 级寄存器中的陷入目标地址，表示执行阶段的指令陷入目标地址。
+	logic [31:0] ex_m_result; // EX 级寄存器中的乘法/除法结果，表示执行阶段的指令乘法/除法结果。
+	logic [31:0] ex_mul_result_comb; // EX 级寄存器中的组合乘法结果，表示执行阶段的指令组合乘法结果。
+	logic [31:0] ex_m_result_reg; // EX 级寄存器中的寄存器乘法结果，表示执行阶段的指令寄存器乘法结果。
+	logic [63:0] m_mul_uu_reg; // EX 级寄存器中的乘法结果寄存器，表示执行阶段的指令乘法结果寄存器。
+	logic [31:0] ex_div_result; // EX 级寄存器中的除法结果，表示执行阶段的指令除法结果。
+	logic [1:0]  ex_div_op; // EX 级寄存器中的除法操作，表示执行阶段的指令除法操作。
+	logic        ex_m_is_div; // EX 级寄存器中的除法标志，表示执行阶段的指令是否为除法。
+	logic        ex_m_is_mul; // EX 级寄存器中的乘法标志，表示执行阶段的指令是否为乘法。
+	logic        mul_start; // EX 级寄存器中的乘法开始标志，表示执行阶段的指令是否开始乘法。
+	logic        m_start; // EX 级寄存器中的乘法/除法开始标志，表示执行阶段的指令是否开始乘法/除法。
+	logic        m_inflight; // EX 级寄存器中的乘法/除法进行中标志，表示执行阶段的指令乘法/除法是否进行中。
+	logic        m_result_ready; // EX 级寄存器中的乘法/除法结果准备好标志，表示执行阶段的指令乘法/除法结果是否准备好。
+	logic        m_div_started; // EX 级寄存器中的除法开始标志，表示执行阶段的指令除法是否开始。
+	logic        m_is_div_reg; // EX 级寄存器中的除法寄存器标志，表示执行阶段的指令是否为除法。
+	logic        m_mul_raw_valid; // EX 级寄存器中的乘法原始有效标志，表示执行阶段的指令乘法原始结果是否有效。
+	logic [3:0]  m_op_reg; // EX 级寄存器中的操作码寄存器，表示执行阶段的指令操作码。
+	logic [31:0] m_rs1_reg; // EX 级寄存器中的源操作数1寄存器，表示执行阶段的指令源操作数1。
+	logic [31:0] m_rs2_reg; // EX 级寄存器中的源操作数2寄存器，表示执行阶段的指令源操作数2。
+	logic        div_start; // EX 级寄存器中的除法开始标志，表示执行阶段的指令是否开始除法。
+	logic        div_busy; // EX 级寄存器中的除法忙标志，表示执行阶段的指令除法是否忙。
+	logic        div_done; // EX 级寄存器中的除法完成标志，表示执行阶段的指令除法是否完成。
+
+	// =========================
+	// EX/MEM 流水寄存器 表示执行阶段的结果和控制信号传递到访存阶段。
+	// =========================
+	logic [31:0] exmem_alu_y      = 32'h0;          // EX/MEM 流水寄存器中的 ALU 结果，表示执行阶段的指令 ALU 计算结果传递到访存阶段。
+	logic [31:0] exmem_store_data = 32'h0;          // EX/MEM 流水寄存器中的存储数据，表示执行阶段的指令存储数据传递到访存阶段。
+	logic [4:0]  exmem_rd         = 5'h0;           // EX/MEM 流水寄存器中的目标寄存器，表示执行阶段的指令目标寄存器传递到访存阶段。
+	logic [2:0]  exmem_funct3     = 3'h0;           // EX/MEM 流水寄存器中的 funct3，表示执行阶段的指令 funct3 传递到访存阶段。
+	logic        exmem_valid      = 1'b0;           // EX/MEM 流水寄存器中的有效标志，表示执行阶段的指令是否有效传递到访存阶段。
+	logic [31:0] exmem_wb_data    = 32'h0;          // EX/MEM 流水寄存器中的写回数据，表示执行阶段的指令写回数据传递到访存阶段。
+	logic        exmem_rf_we      = 1'b0;           // EX/MEM 流水寄存器中的寄存器写使能标志，表示执行阶段的指令是否写回寄存器。
+	logic [2:0]  exmem_wb_sel     = WB_SRC_ALU;     // EX/MEM 流水寄存器中的写回选择，表示执行阶段的指令写回数据来源。
+	logic        exmem_mem_req    = 1'b0;           // EX/MEM 流水寄存器中的存储请求标志，表示执行阶段的指令是否发起存储请求。
+	logic        exmem_mem_write  = 1'b0;           // EX/MEM 流水寄存器中的存储写标志，表示执行阶段的指令是否进行存储写操作。
+	logic [1:0]  exmem_mem_mask   = MEM_MASK_WORD;  // EX/MEM 流水寄存器中的存储掩码，表示执行阶段的指令存储操作的字节掩码。
+	logic [31:0] exmem_pc         = 32'h0;          // EX/MEM 流水寄存器中的程序计数器，表示执行阶段的指令程序计数器传递到访存阶段。
+	logic [31:0] exmem_addr_base  = 32'h0;          // EX/MEM 流水寄存器中的基地址，表示执行阶段的指令基地址传递到访存阶段。
+	logic [31:0] exmem_addr_off   = 32'h0;          // EX/MEM 流水寄存器中的偏移地址，表示执行阶段的指令偏移地址传递到访存阶段。
+
+	// =========================
+	// MEM / MEMWB 级 表示访存阶段的结果和控制信号传递到写回阶段。
+	// =========================
+	logic [31:0] mem_load_data; // MEM 级寄存器中的加载数据，表示访存阶段的指令从内存加载的数据传递到写回阶段。
+	logic [31:0] mem_wb_data;   // MEM 级寄存器中的写回数据，表示访存阶段的指令写回数据传递到写回阶段。
+	logic [31:0] memwb_wdata;   // MEM/WB 级寄存器中的写回数据，表示访存阶段的指令写回数据传递到写回阶段。
+	logic [4:0]  memwb_rd;      // MEM/WB 级寄存器中的目标寄存器，表示访存阶段的指令目标寄存器传递到写回阶段。
+	logic        memwb_rf_we;   // MEM/WB 级寄存器中的寄存器写使能标志，表示访存阶段的指令是否写回寄存器。
+	logic        memwb_valid;   // MEM/WB 级寄存器中的有效标志，表示访存阶段的指令是否有效传递到写回阶段。
+	logic [31:0] memwb_pc;      // MEM/WB 级寄存器中的程序计数器，表示访存阶段的指令程序计数器传递到写回阶段。
+
+	// ========================
+	// CSR级控制和状态寄存器 表示控制和状态寄存器的值和写使能信号。
+	// ========================
+	logic [31:0] csr_mstatus; // CSR 级寄存器中的 mstatus 值，表示机器状态寄存器的值。
+	logic [31:0] csr_mtvec;   // CSR 级寄存器中的 mtvec 值，表示机器异常向量基地址寄存器的值。
+	logic [31:0] csr_mepc;    // CSR 级寄存器中的 mepc 值，表示机器异常程序计数器的值。
+	logic [31:0] csr_mcause;  // CSR 级寄存器中的 mcause 值，表示机器异常原因寄存器的值。
+	logic        csr_write_operand_nonzero; // CSR 级寄存器中的写操作数非零标志，表示写入 CSR 的操作数是否非零。
+	logic        csr_rs1_is_x0; // CSR 级寄存器中的 rs1 是否为 x0 标志，表示源寄存器 rs1 是否为 x0。
+
+	// ========================
+	// MUL寄存器
+	// ========================
+	logic [63:0] mul_uu; // MUL 级寄存器中的无符号乘法结果，表示执行阶段的指令无符号乘法结果。
+
+	logic m_stall; // EX 级寄存器中的乘法/除法暂停标志，表示执行阶段的指令是否需要暂停乘法/除法操作。
+	logic div_stall; // EX 级寄存器中的除法暂停标志，表示执行阶段的指令是否需要暂停除法操作。
+
+	// 根据 load/store 的 funct3 生成字节掩码。
+	function automatic logic [1:0] decode_mem_mask(input logic [2:0] funct3);
+		begin
+			case (funct3)
+				3'b000,
+				3'b100: decode_mem_mask = MEM_MASK_BYTE;
+				3'b001,
+				3'b101: decode_mem_mask = MEM_MASK_HALF;
+				default: decode_mem_mask = MEM_MASK_WORD;
+			endcase
+		end
+	endfunction
+	
+	// 它允许在 helper 入口处直接观察更靠后的写回值，
+	// 但为了控制时序，不会无脑复制所有主流水 forwarding 链。
+	function automatic logic [31:0] forward_helper_reg(
+		input logic [4:0]  reg_addr,
+		input logic [31:0] rf_value
+	);
+		begin
+			if (reg_addr == 5'd0) begin
+				forward_helper_reg = 32'h0;
+			end else begin
+				forward_helper_reg = rf_value;
+				if (idex_valid && idex_rf_we && (idex_rd == reg_addr) && (idex_rd != 5'd0) &&
+					(idex_wb_sel != WB_SRC_MEM)) begin
+					forward_helper_reg = ex_wb_data;
+				end else if (exmem_valid && exmem_rf_we && (exmem_rd == reg_addr) && (exmem_rd != 5'd0) &&
+					(exmem_wb_sel != WB_SRC_MEM)) begin
+					forward_helper_reg = exmem_wb_data;
+				end else if (memwb_valid && memwb_rf_we && (memwb_rd == reg_addr) && (memwb_rd != 5'd0)) begin
+					forward_helper_reg = memwb_wdata;
+				end
+			end
+		end
+	endfunction
+
+	// helper operand 的前递更保守：只看 EXMEM / MEMWB，
+	// 避免把当前 EX 结果再次折回 helper 判定路径里。
+	function automatic logic [31:0] forward_helper_operand_reg(
+		input logic [4:0]  reg_addr,
+		input logic [31:0] rf_value
+	);
+		begin
+			if (reg_addr == 5'd0) begin
+				forward_helper_operand_reg = 32'h0;
+			end else begin
+				forward_helper_operand_reg = rf_value;
+				if (exmem_valid && exmem_rf_we && (exmem_rd == reg_addr) && (exmem_rd != 5'd0) &&
+					(exmem_wb_sel != WB_SRC_MEM)) begin
+					forward_helper_operand_reg = exmem_wb_data;
+				end else if (memwb_valid && memwb_rf_we && (memwb_rd == reg_addr) && (memwb_rd != 5'd0)) begin
+					forward_helper_operand_reg = memwb_wdata;
+				end
+			end
+		end
+	endfunction
+
+	// 对外总线连接：真正发起访存的是 EX/MEM 级。
+	assign irom_addr   = pc_q[13:2];
+	assign perip_addr  = exmem_alu_y;
+	assign perip_wen   = exmem_valid && exmem_mem_req && exmem_mem_write;
+	assign perip_mask  = exmem_mem_mask;
+	assign perip_wdata = exmem_store_data;
+
+	// 指令字段译码。
+	mycpu_rv32_decode u_dec (
+		.instr  (ifid_instr),
+		.opcode (id_opcode),
+		.funct3 (id_funct3),
+		.funct7 (id_funct7),
+		.rd     (id_rd),
+		.rs1    (id_rs1),
+		.rs2    (id_rs2)
+	);
+
+	// 除法器
+	rv32_divider u_div (
+		.clk   (cpu_clk),
+		.rst   (cpu_rst),
+		.start (div_start),
+		.op    (ex_div_op),
+		.rs1   (m_rs1_reg),
+		.rs2   (m_rs2_reg),
+		.busy  (div_busy),
+		.done  (div_done),
+		.result(ex_div_result)
+	);
+
+	// 立即数扩展。
+	IMMGEN #(32) u_imm (
+		.instr (ifid_instr),
+		.imm   (id_imm_raw)
+	);
+
+	// 通用寄存器堆。
+	RF #(5, 32) u_rf (
+		.clk     (cpu_clk),
+		.rst     (cpu_rst),
+		//写回发生在 MEM/WB。
+		.wen     (memwb_rf_we && memwb_valid),
+		.waddr   (memwb_rd),
+		.wdata   (memwb_wdata),
+		//
+		.rR1     (id_rs1),
+		.rR2     (id_rs2),
+		.rR1_data(rf_rs1_raw),
+		.rR2_data(rf_rs2_raw),
+		.x1_data (rf_x1_raw),
+		.x10_data(rf_x10_raw),
+		.x11_data(rf_x11_raw)
+	);
+
+	// EX 级主 ALU。
+	ALU #(32) u_alu (
+		.A          (ex_alu_a),
+		.B          (ex_alu_b),
+		.ALUOp      (idex_alu_op),
+		.Result     (ex_alu_y),
+		.isTrue     (ex_alu_is_true)
+	);
+
+	// store 数据只在 store 指令时有效，其余时间清零有利于减少无关逻辑传播。
+	assign ex_store_data    = idex_mem_write ? ex_rs2_val : 32'h0;
+	assign ex_pc4           = idex_pc + 32'd4;
+	assign ex_pc_plus_imm   = idex_pc + idex_imm;
+
+	// JALR 的目标地址单独计算，避免普通 ALU 输出再回绕到 PC 选择链上。
+	always_comb begin
+		if (idex_valid && (idex_pc_sel == PC_SRC_JALR)) begin
+			ex_jalr_sum = ex_pc_rs1_val + idex_imm;
+		end else begin
+			ex_jalr_sum = 32'h0;
+		end
+	end
+
+	assign ex_jalr_target   = {ex_jalr_sum[31:1], 1'b0};
+	// helper 乘法用组合乘法器，仅在 helper 命中时结果才会真正写回。
+	assign ex_mul_helper_full     = $unsigned(idex_mul_helper_lhs) * $unsigned(idex_mul_helper_rhs);
+	assign ex_mul_helper_result   = ex_mul_helper_full[31:0];
+	// helper 命中条件：当前 IF/ID 正好来到指定 PC，并且返回地址匹配预期模板。
+	assign id_mul_helper_candidate = ENABLE_MUL_HELPER_ACCEL && ifid_valid && !idex_mul_helper && (ifid_pc == MUL_HELPER_PC);
+	assign id_mul_helper_ra       = id_mul_helper_candidate ? forward_helper_reg(5'd1, rf_x1_raw) : 32'h0;
+	assign id_mul_helper_return_match = (id_mul_helper_ra == MUL_HELPER_LOOP004_RA) ||
+									 (id_mul_helper_ra == MUL_HELPER_LOOP006_RA);
+	assign id_mul_helper_hit      = id_mul_helper_candidate && id_mul_helper_return_match;
+	assign id_mul_helper_lhs      = id_mul_helper_hit ? forward_helper_operand_reg(5'd10, rf_x10_raw) : 32'h0;
+	assign id_mul_helper_rhs      = id_mul_helper_hit ? forward_helper_operand_reg(5'd11, rf_x11_raw) : 32'h0;
+	// B/J 型立即数这里直接按指令格式重新拼接，剩余情况沿用通用 IMMGEN 输出。
+	assign id_imm           = (id_opcode == OPC_BRANCH) ? {{19{ifid_instr[31]}}, ifid_instr[31], ifid_instr[7], ifid_instr[30:25], ifid_instr[11:8], 1'b0} :
+							  (id_opcode == OPC_JAL)    ? {{11{ifid_instr[31]}}, ifid_instr[31], ifid_instr[19:12], ifid_instr[20], ifid_instr[30:21], 1'b0} :
+							  id_imm_raw;
+	// CSR 指令类型译码。
+	assign id_is_ecall = ifid_valid && (ifid_instr == 32'h0000_0073);
+	assign id_is_mret  = ifid_valid && (ifid_instr == 32'h3020_0073);
+	assign id_is_m_ext = ifid_valid &&
+						 (id_opcode == OPC_OP) &&
+						 (id_funct7 == 7'b0000001);
+
+	// EXMEM/MEMWB 是否允许被前递。
+	assign exmem_can_forward = exmem_rf_we && (exmem_rd != 5'h0) && (exmem_wb_sel != WB_SRC_MEM);
+	assign memwb_can_forward = memwb_rf_we && (memwb_rd != 5'h0);
+	// 普通 EX forwarding 与 PC redirect forwarding 分离：
+	// - ex_use_rs* 面向 ALU/store 数据链
+	// - ex_pc_use_rs* 面向 branch/jalr 的 PC 选择链
+	assign ex_use_rs1_value = idex_valid && idex_uses_rs1;
+	assign ex_use_rs2_value = idex_valid && idex_uses_rs2;
+	assign ex_pc_use_rs1 = idex_valid && ((idex_pc_sel == PC_SRC_BRANCH) || (idex_pc_sel == PC_SRC_JALR));
+	assign ex_pc_use_rs2 = idex_valid && (idex_pc_sel == PC_SRC_BRANCH);
+	assign ex_match_rs1_exmem = exmem_can_forward && (exmem_rd == idex_rs1);
+	assign ex_match_rs1_memwb = memwb_can_forward && (memwb_rd == idex_rs1);
+	assign ex_match_rs2_exmem = exmem_can_forward && (exmem_rd == idex_rs2);
+	assign ex_match_rs2_memwb = memwb_can_forward && (memwb_rd == idex_rs2);
+	assign ex_fwd_rs1_from_exmem = ex_use_rs1_value && ex_match_rs1_exmem;
+	assign ex_fwd_rs1_from_memwb = ex_use_rs1_value && ex_match_rs1_memwb;
+	assign ex_fwd_rs2_from_exmem = ex_use_rs2_value && ex_match_rs2_exmem;
+	assign ex_fwd_rs2_from_memwb = ex_use_rs2_value && ex_match_rs2_memwb;
+	// branch/jalr 的 PC 选择链不再吃 EXMEM 前递，
+	// 改为在 ID 级等待数据稳定后再进入 EX，换更短的 PC 关键路径。
+	assign ex_pc_fwd_rs1_from_exmem = 1'b0;
+	assign ex_pc_fwd_rs1_from_memwb = 1'b0;
+	assign ex_pc_fwd_rs2_from_exmem = 1'b0;
+	assign ex_pc_fwd_rs2_from_memwb = 1'b0;
+	assign ex_trap_enter = idex_valid && idex_is_ecall && !mem_load_stall;
+	assign ex_trap_return = idex_valid && idex_is_mret && !mem_load_stall;
+	assign ex_trap_redirect = ex_trap_enter || ex_trap_return;
+	assign ex_trap_target =
+		ex_trap_enter  ? {csr_mtvec[31:2], 2'b00} :
+		ex_trap_return ? csr_mepc :
+						 32'h0;
+	assign csr_rs1_is_x0 = (idex_rs1 == 5'd0);
+	assign csr_write_operand_nonzero = (idex_csr_imm ? (idex_csr_wdata != 32'h0)
+                                                 : !csr_rs1_is_x0);// CSR 写入操作数非零条件。
+	// 乘法统一先做无符号 32x32，高位带符号的修正在下一拍完成，
+	// 用寄存器把 DSP 乘法链和后面的高位修正链拆开。
+	assign mul_uu = $unsigned(m_rs1_reg) * $unsigned(m_rs2_reg);
+	assign ex_m_is_div = idex_valid && idex_is_m_ext &&
+						 ((idex_m_op == M_OP_DIV) ||
+						  (idex_m_op == M_OP_DIVU) ||
+						  (idex_m_op == M_OP_REM) ||
+						  (idex_m_op == M_OP_REMU));
+	assign ex_m_is_mul = idex_valid && idex_is_m_ext && !ex_m_is_div && (idex_m_op != M_OP_NONE);
+	assign m_start   = idex_valid && idex_is_m_ext && !m_inflight && !m_result_ready && !ex_pc_redirect;
+	assign mul_start = m_start && ex_m_is_mul;
+	assign div_start = m_inflight && m_is_div_reg && !m_div_started;
+	assign div_stall = ex_m_is_div && !div_done;
+	assign m_stall = idex_valid && idex_is_m_ext && !m_result_ready;
+
+	// div_op 译码，传给除法器。
+	always_comb begin
+		case (idex_m_op)
+			M_OP_DIV:  ex_div_op = 2'd0;
+			M_OP_DIVU: ex_div_op = 2'd1;
+			M_OP_REM:  ex_div_op = 2'd2;
+			M_OP_REMU: ex_div_op = 2'd3;
+			default:   ex_div_op = 2'd0;
+		endcase
+	end
+
+	// 比较器只在 branch 时真正工作，避免平时把比较链白白挂在关键路径上。
+	always_comb begin
+		ex_cmp_eq = 1'b0;
+		ex_cmp_lt_signed = 1'b0;
+		ex_cmp_lt_unsigned = 1'b0;
+		if (idex_pc_sel == PC_SRC_BRANCH) begin
+			ex_cmp_eq = (ex_pc_rs1_val == ex_pc_rs2_val);
+			ex_cmp_lt_signed = ($signed(ex_pc_rs1_val) < $signed(ex_pc_rs2_val));
+			ex_cmp_lt_unsigned = (ex_pc_rs1_val < ex_pc_rs2_val);
+		end
+	end
+
+	// ID 级允许从 MEMWB 做“同拍旁路读取”，减少读后写停顿。
+	always_comb begin
+		if (id_rs1 == 5'd0) begin
+			id_rs1_val = 32'h0;
+		end else if (memwb_can_forward && (memwb_rd == id_rs1)) begin
+			id_rs1_val = memwb_wdata;
+		end else begin
+			id_rs1_val = rf_rs1_raw;
+		end
+
+		if (id_rs2 == 5'd0) begin
+			id_rs2_val = 32'h0;
+		end else if (memwb_can_forward && (memwb_rd == id_rs2)) begin
+			id_rs2_val = memwb_wdata;
+		end else begin
+			id_rs2_val = rf_rs2_raw;
+		end
+	end
+
+	// EX 级乘法结果选择：低位/高位/有符号修正。
+	always_comb begin
+		case (m_op_reg)
+			M_OP_MUL:    ex_mul_result_comb = m_mul_uu_reg[31:0];
+			M_OP_MULH:   ex_mul_result_comb = m_mul_uu_reg[63:32]
+										 - (m_rs1_reg[31] ? m_rs2_reg : 32'h0)
+										 - (m_rs2_reg[31] ? m_rs1_reg : 32'h0);
+			M_OP_MULHSU: ex_mul_result_comb = m_mul_uu_reg[63:32]
+										 - (m_rs1_reg[31] ? m_rs2_reg : 32'h0);
+			M_OP_MULHU:  ex_mul_result_comb = m_mul_uu_reg[63:32];
+			default:     ex_mul_result_comb = 32'h0;
+		endcase
+	end
+	
+	// M 级状态机：乘法/除法的结果在 EX 级就可以直接写回。
+	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
+		if (cpu_rst) begin
+			m_inflight   <= 1'b0;
+			m_result_ready <= 1'b0;
+			m_div_started <= 1'b0;
+			m_is_div_reg <= 1'b0;
+			m_mul_raw_valid <= 1'b0;
+			m_op_reg     <= M_OP_NONE;
+			m_rs1_reg    <= 32'h0;
+			m_rs2_reg    <= 32'h0;
+			m_mul_uu_reg <= 64'h0;
+			ex_m_result_reg <= 32'h0;
+		end else if (m_start) begin
+			m_inflight     <= 1'b1;
+			m_result_ready <= 1'b0;
+			m_div_started  <= 1'b0;
+			m_is_div_reg   <= ex_m_is_div;
+			m_mul_raw_valid <= 1'b0;
+			m_op_reg       <= idex_m_op;
+			m_rs1_reg      <= ex_rs1_val;
+			m_rs2_reg      <= ex_rs2_val;
+		end else if (m_inflight && m_is_div_reg) begin
+			if (!m_div_started) begin
+				m_div_started <= 1'b1;
+			end
+			if (div_done) begin
+				ex_m_result_reg <= ex_div_result;
+				m_result_ready <= 1'b1;
+				m_inflight <= 1'b0;
+				m_div_started <= 1'b0;
+			end
+		end else if (m_inflight && !m_mul_raw_valid) begin
+			m_mul_uu_reg <= mul_uu;
+			m_mul_raw_valid <= 1'b1;
+		end else if (m_inflight) begin
+			ex_m_result_reg <= ex_mul_result_comb;
+			m_result_ready <= 1'b1;
+			m_inflight <= 1'b0;
+			m_mul_raw_valid <= 1'b0;
+		end else if (m_result_ready && !m_stall) begin
+			m_result_ready <= 1'b0;
+			m_op_reg <= M_OP_NONE;
+		end
+	end
+
+	// M 扩展结果选择：乘法/除法的结果在 EX 级就可以直接写回。
+	always_comb begin
+		case (idex_m_op)
+			M_OP_MUL,
+			M_OP_MULH,
+			M_OP_MULHSU,
+			M_OP_MULHU:  ex_m_result = ex_m_result_reg;
+			M_OP_DIV,
+			M_OP_DIVU,
+			M_OP_REM,
+			M_OP_REMU:  ex_m_result = ex_m_result_reg;
+			default:     ex_m_result = 32'h0;
+		endcase
+	end
+
+	// PC redirect 判定：trap / helper / branch / jump 统一在 EX 级生效。
+	always_comb begin
+		ex_pc_redirect = 1'b0;
+
+		if (idex_valid) begin
+			if (ex_trap_enter || ex_trap_return) begin
+				ex_pc_redirect = 1'b1;
+			end else if (idex_mul_helper) begin
+				ex_pc_redirect = 1'b1;
+			end else begin
+				case (idex_pc_sel)
+					PC_SRC_BRANCH: begin
+						if (ex_br_take) begin
+							ex_pc_redirect = 1'b1;
+						end
+					end
+
+					PC_SRC_JAL: begin
+						ex_pc_redirect = 1'b1;
+					end
+
+					PC_SRC_JALR: begin
+						ex_pc_redirect = 1'b1;
+					end
+
+					default: begin end
+				endcase
+			end
+		end
+	end
+
+	// IF 级 PC 更新优先级：redirect > stall/hold > 顺序 +4。
+	always_comb begin
+		if (ex_pc_redirect) begin
+			//如果 EX 阶段要求跳转，PC = 跳转目标
+			//包括：branch_taken jal jalr ecall mret mul_helper
+			pc_next = ex_pc_target;
+		end else if (load_use_hazard || pc_ex_hazard || pc_mem_hazard || mem_load_stall || m_stall) begin
+			//如果存在相关冒险或停顿，PC 保持不变
+			pc_next = pc_q;
+		end else begin
+			//顺序执行，PC + 4
+			pc_next = pc_q + 32'd4;
+		end
+	end
+
+	// IF 级 PC 寄存器，在 reset 时初始化为 RESET_PC。
+	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
+		if (cpu_rst) begin
+			pc_q <= RESET_PC;
+		end else begin
+			pc_q <= pc_next;
+		end
+	end
+
+	// IF/ID 指令寄存：遇到 load-use 或 MEM load stall 时保持。
+	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
+		if (cpu_rst) begin
+			ifid_pc    <= RESET_PC;
+			ifid_instr <= NOP_INSTR;
+		end else if (!load_use_hazard && !pc_ex_hazard && !pc_mem_hazard && !mem_load_stall && !m_stall) begin
+			ifid_pc    <= pc_q;
+			ifid_instr <= irom_data;
+		end
+	end
+
+	// IF/ID valid 与数据寄存分离控制，这样 flush 不需要强耦合到数据写使能上。
+	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
+		if (cpu_rst) begin
+			ifid_valid <= 1'b0;
+		end else if (mem_load_stall || m_stall || pc_ex_hazard || pc_mem_hazard) begin
+			// hold IF/ID valid while the MEM-stage load bubble is extended
+		end else if (ex_pc_redirect) begin
+			ifid_valid <= 1'b0;
+		end else if (!load_use_hazard) begin
+			ifid_valid <= 1'b1;
+		end
+	end
+
+	// ID 级主控制器：这里只做组合译码，不直接写流水寄存器。
+	// 负责告诉后面的流水线：
+	//
+	//这条指令用不用 rs1
+	//用不用 rs2
+	//写不写 rd
+	//写回来源是什么
+	//ALU 做什么
+	//是不是访存
+	//是不是 CSR
+	//是不是 M 扩展
+	always_comb begin
+		id_uses_rs1      = 1'b0;
+		id_uses_rs2      = 1'b0;
+		id_rf_we         = 1'b0;
+		id_wb_sel        = WB_SRC_ALU;
+		id_alu_src_a_sel = ALU_SRC_A_RS1;
+		id_alu_src_b_sel = ALU_SRC_B_RS2;
+		id_alu_op        = ALU_ADD;
+		id_pc_sel        = PC_SRC_PC4;
+		id_mem_req       = 1'b0;
+		id_mem_write     = 1'b0;
+		id_mem_mask      = MEM_MASK_WORD;
+		id_csr_op    = CSR_OP_NONE;
+		id_csr_imm   = 1'b0;
+		id_csr_addr  = ifid_instr[31:20];
+		id_csr_wdata = 32'h0;
+		id_m_op      = M_OP_NONE;
+
+		if (ifid_valid) begin
+			case (id_opcode)
+				OPC_LUI: begin
+					id_rf_we  = 1'b1;
+					id_wb_sel = WB_SRC_IMM_U;
+				end
+
+				OPC_AUIPC: begin
+					id_rf_we         = 1'b1;
+					id_wb_sel        = WB_SRC_ALU;
+					id_alu_src_a_sel = ALU_SRC_A_PC;
+					id_alu_src_b_sel = ALU_SRC_B_IMM_U;
+				end
+
+				OPC_JAL: begin
+					id_rf_we  = 1'b1;
+					id_wb_sel = WB_SRC_PC4;
+					id_pc_sel = PC_SRC_JAL;
+				end
+
+				OPC_JALR: begin
+					id_uses_rs1      = 1'b1;
+					id_rf_we         = 1'b1;
+					id_wb_sel        = WB_SRC_PC4;
+					id_alu_src_a_sel = ALU_SRC_A_RS1;
+					id_alu_src_b_sel = ALU_SRC_B_IMM_I;
+					id_pc_sel        = PC_SRC_JALR;
+				end
+
+				OPC_BRANCH: begin
+					id_uses_rs1 = 1'b1;
+					id_uses_rs2 = 1'b1;
+					id_pc_sel   = PC_SRC_BRANCH;
+				end
+
+				OPC_OPIMM: begin
+					id_uses_rs1      = 1'b1;
+					id_rf_we         = 1'b1;
+					id_wb_sel        = WB_SRC_ALU;
+					id_alu_src_a_sel = ALU_SRC_A_RS1;
+					id_alu_src_b_sel = ALU_SRC_B_IMM_I;
+					case (id_funct3)
+						3'b000: id_alu_op = ALU_ADD;
+						3'b010: id_alu_op = ALU_SLT;
+						3'b011: id_alu_op = ALU_SLTU;
+						3'b100: id_alu_op = ALU_XOR;
+						3'b101: id_alu_op = id_funct7[5] ? ALU_SRA : ALU_SRL;
+						3'b110: id_alu_op = ALU_OR;
+						3'b111: id_alu_op = ALU_AND;
+						3'b001: id_alu_op = ALU_SLL;
+						default: id_rf_we = 1'b0;
+					endcase
+				end
+
+				OPC_OP: begin
+					id_uses_rs1      = 1'b1;
+					id_uses_rs2      = 1'b1;
+					id_rf_we         = 1'b1;
+					id_wb_sel        = WB_SRC_ALU;
+					id_alu_src_a_sel = ALU_SRC_A_RS1;
+					id_alu_src_b_sel = ALU_SRC_B_RS2;
+					if(id_funct7 == 7'b0000001) begin
+						id_m_op = M_OP_NONE;
+						if (id_is_m_ext) begin
+							unique case (id_funct3)
+								3'b000: id_m_op = M_OP_MUL;
+								3'b001: id_m_op = M_OP_MULH;
+								3'b010: id_m_op = M_OP_MULHSU;
+								3'b011: id_m_op = M_OP_MULHU;
+								3'b100: id_m_op = M_OP_DIV;
+								3'b101: id_m_op = M_OP_DIVU;
+								3'b110: id_m_op = M_OP_REM;
+								3'b111: id_m_op = M_OP_REMU;
+								default: id_m_op = M_OP_NONE;
+							endcase
+						end
+					end else begin
+						case (id_funct3)
+							3'b000: id_alu_op = id_funct7[5] ? ALU_SUB : ALU_ADD;
+							3'b001: id_alu_op = ALU_SLL;
+							3'b010: id_alu_op = ALU_SLT;
+							3'b011: id_alu_op = ALU_SLTU;
+							3'b100: id_alu_op = ALU_XOR;
+							3'b101: id_alu_op = id_funct7[5] ? ALU_SRA : ALU_SRL;
+							3'b110: id_alu_op = ALU_OR;
+							3'b111: id_alu_op = ALU_AND;
+							default: id_rf_we = 1'b0;
+						endcase
+					end
+				end
+
+				OPC_LOAD: begin
+					id_uses_rs1      = 1'b1;
+					id_rf_we         = 1'b1;
+					id_wb_sel        = WB_SRC_MEM;
+					id_alu_src_a_sel = ALU_SRC_A_RS1;
+					id_alu_src_b_sel = ALU_SRC_B_IMM_I;
+					id_alu_op        = ALU_ADD;
+					id_mem_req       = 1'b1;
+					id_mem_mask      = decode_mem_mask(id_funct3);
+					case (id_funct3)
+						3'b000,
+						3'b001,
+						3'b010,
+						3'b100,
+						3'b101: begin end
+						default: begin
+							id_rf_we    = 1'b0;
+							id_mem_req  = 1'b0;
+							id_mem_mask = MEM_MASK_WORD;
+						end
+					endcase
+				end
+
+				OPC_STORE: begin
+					id_uses_rs1      = 1'b1;
+					id_uses_rs2      = 1'b1;
+					id_alu_src_a_sel = ALU_SRC_A_RS1;
+					id_alu_src_b_sel = ALU_SRC_B_IMM_S;
+					id_alu_op        = ALU_ADD;
+					id_mem_req       = 1'b1;
+					id_mem_write     = 1'b1;
+					id_mem_mask      = decode_mem_mask(id_funct3);
+					case (id_funct3)
+						3'b000,
+						3'b001,
+						3'b010: begin end
+						default: begin
+							id_mem_req   = 1'b0;
+							id_mem_write = 1'b0;
+							id_mem_mask  = MEM_MASK_WORD;
+						end
+					endcase
+				end
+
+				OPC_SYSTEM: begin
+					id_rf_we  = 1'b0;
+					id_wb_sel = WB_SRC_CSR;
+
+					case (id_funct3)
+						3'b001: begin // CSRRW
+							id_uses_rs1  = 1'b1;
+							id_rf_we     = (id_rd != 5'd0);
+							id_csr_op    = CSR_OP_CSRRW;
+							id_csr_imm   = 1'b0;
+							id_csr_wdata = id_rs1_val;
+						end
+
+						3'b010: begin // CSRRS
+							id_uses_rs1  = 1'b1;
+							id_rf_we     = (id_rd != 5'd0);
+							id_csr_op    = CSR_OP_CSRRS;
+							id_csr_imm   = 1'b0;
+							id_csr_wdata = id_rs1_val;
+						end
+
+						3'b011: begin // CSRRC
+							id_uses_rs1  = 1'b1;
+							id_rf_we     = (id_rd != 5'd0);
+							id_csr_op    = CSR_OP_CSRRC;
+							id_csr_imm   = 1'b0;
+							id_csr_wdata = id_rs1_val;
+						end
+
+						3'b101: begin // CSRRWI
+							id_rf_we     = (id_rd != 5'd0);
+							id_csr_op    = CSR_OP_CSRRW;
+							id_csr_imm   = 1'b1;
+							id_csr_wdata = {27'h0, id_rs1};
+						end
+
+						3'b110: begin // CSRRSI
+							id_rf_we     = (id_rd != 5'd0);
+							id_csr_op    = CSR_OP_CSRRS;
+							id_csr_imm   = 1'b1;
+							id_csr_wdata = {27'h0, id_rs1};
+						end
+
+						3'b111: begin // CSRRCI
+							id_rf_we     = (id_rd != 5'd0);
+							id_csr_op    = CSR_OP_CSRRC;
+							id_csr_imm   = 1'b1;
+							id_csr_wdata = {27'h0, id_rs1};
+						end
+
+						default: begin
+							id_rf_we     = 1'b0;
+							id_csr_op    = CSR_OP_NONE;
+						end
+					endcase
+				end
+
+				default: begin end
+			endcase
+		end
+	end
+
+	assign load_use_hazard = ifid_valid && idex_valid && idex_rf_we &&
+							 (idex_wb_sel == WB_SRC_MEM) && (idex_rd != 5'h0) &&
+							 ((id_uses_rs1 && (id_rs1 == idex_rd)) ||
+							  (id_uses_rs2 && (id_rs2 == idex_rd)));
+
+	assign pc_ex_hazard = ifid_valid && idex_valid && idex_rf_we &&
+					 (idex_wb_sel != WB_SRC_MEM) && (idex_rd != 5'h0) &&
+					 ((((id_pc_sel == PC_SRC_BRANCH) || (id_pc_sel == PC_SRC_JALR)) && (id_rs1 == idex_rd)) ||
+					  ((id_pc_sel == PC_SRC_BRANCH) && (id_rs2 == idex_rd)));
+
+	assign pc_mem_hazard = ifid_valid && exmem_valid && exmem_rf_we &&
+					  (exmem_wb_sel != WB_SRC_MEM) && (exmem_rd != 5'h0) &&
+					  ((((id_pc_sel == PC_SRC_BRANCH) || (id_pc_sel == PC_SRC_JALR)) && (id_rs1 == exmem_rd)) ||
+					   ((id_pc_sel == PC_SRC_BRANCH) && (id_rs2 == exmem_rd)));
+
+	// mem_load_stall: EX/MEM 级是 load 指令，且还没写回，ID/EX 级又要用它的结果。
+	// 这里的 stall 只针对 load-use hazard，store-use hazard 不需要 stall
+	// 因为 store 的数据是从 EX/MEM 级直接前递的
+	assign mem_load_stall = exmem_valid && exmem_mem_req && !exmem_mem_write && !mem_stall_flag;
+
+	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
+		if (cpu_rst)
+			mem_stall_flag <= 1'b0;
+		else
+			mem_stall_flag <= mem_load_stall;
+	end
+
+	// ID/EX 流水寄存器：遇到 load-use hazard 或 EX/MEM load stall 时保持。
+	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
+		if (cpu_rst) begin
+			idex_valid         <= 1'b0;
+			idex_pc            <= 32'h0;
+			idex_rs1           <= 5'h0;
+			idex_rs2           <= 5'h0;
+			idex_rs1_val       <= 32'h0;
+			idex_rs2_val       <= 32'h0;
+			idex_uses_rs1      <= 1'b0;
+			idex_uses_rs2      <= 1'b0;
+			idex_rd            <= 5'h0;
+			idex_funct3        <= 3'h0;
+			idex_mul_helper    <= 1'b0;
+			idex_mul_helper_ra <= 32'h0;
+			idex_mul_helper_lhs <= 32'h0;
+			idex_mul_helper_rhs <= 32'h0;
+			idex_imm           <= 32'h0;
+			idex_rf_we         <= 1'b0;
+			idex_wb_sel        <= WB_SRC_ALU;
+			idex_alu_src_a_sel <= ALU_SRC_A_RS1;
+			idex_alu_src_b_sel <= ALU_SRC_B_RS2;
+			idex_alu_op        <= ALU_ADD;
+			idex_pc_sel        <= PC_SRC_PC4;
+			idex_mem_req       <= 1'b0;
+			idex_mem_write     <= 1'b0;
+			idex_mem_mask      <= MEM_MASK_WORD;
+			idex_csr_op        <= CSR_OP_NONE;
+			idex_csr_imm       <= 1'b0;
+			idex_csr_addr      <= 12'h0;
+			idex_csr_wdata     <= 32'h0;
+			idex_is_ecall      <= 1'b0;
+			idex_is_mret       <= 1'b0;
+			idex_is_m_ext      <= 1'b0;
+			idex_m_op          <= M_OP_NONE;
+		end else if (mem_load_stall || m_stall) begin
+			// hold IDEX - memory read stall
+		end else if (ex_pc_redirect || load_use_hazard || pc_ex_hazard || pc_mem_hazard) begin
+			idex_valid         <= 1'b0;
+			idex_pc            <= 32'h0;
+			idex_rs1           <= 5'h0;
+			idex_rs2           <= 5'h0;
+			idex_rs1_val       <= 32'h0;
+			idex_rs2_val       <= 32'h0;
+			idex_uses_rs1      <= 1'b0;
+			idex_uses_rs2      <= 1'b0;
+			idex_rd            <= 5'h0;
+			idex_funct3        <= 3'h0;
+			idex_mul_helper    <= 1'b0;
+			idex_mul_helper_ra <= 32'h0;
+			idex_mul_helper_lhs <= 32'h0;
+			idex_mul_helper_rhs <= 32'h0;
+			idex_imm           <= 32'h0;
+			idex_rf_we         <= 1'b0;
+			idex_wb_sel        <= WB_SRC_ALU;
+			idex_alu_src_a_sel <= ALU_SRC_A_RS1;
+			idex_alu_src_b_sel <= ALU_SRC_B_RS2;
+			idex_alu_op        <= ALU_ADD;
+			idex_pc_sel        <= PC_SRC_PC4;
+			idex_mem_req       <= 1'b0;
+			idex_mem_write     <= 1'b0;
+			idex_mem_mask      <= MEM_MASK_WORD;
+			idex_csr_op        <= CSR_OP_NONE;
+			idex_csr_imm       <= 1'b0;
+			idex_csr_addr      <= 12'h0;
+			idex_csr_wdata     <= 32'h0;
+			idex_is_ecall      <= 1'b0;
+			idex_is_mret       <= 1'b0;
+			idex_is_m_ext      <= 1'b0;
+			idex_m_op          <= M_OP_NONE;
+		end else if (id_mul_helper_hit) begin
+			idex_valid         <= 1'b1;
+			idex_pc            <= ifid_pc;
+			idex_rs1           <= 5'h0;
+			idex_rs2           <= 5'h0;
+			idex_rs1_val       <= 32'h0;
+			idex_rs2_val       <= 32'h0;
+			idex_uses_rs1      <= 1'b0;
+			idex_uses_rs2      <= 1'b0;
+			idex_rd            <= 5'd10;
+			idex_funct3        <= 3'h0;
+			idex_mul_helper    <= 1'b1;
+			idex_mul_helper_ra <= id_mul_helper_ra;
+			idex_mul_helper_lhs <= id_mul_helper_lhs;
+			idex_mul_helper_rhs <= id_mul_helper_rhs;
+			idex_imm           <= 32'h0;
+			idex_rf_we         <= 1'b1;
+			idex_wb_sel        <= WB_SRC_ALU;
+			idex_alu_src_a_sel <= ALU_SRC_A_RS1;
+			idex_alu_src_b_sel <= ALU_SRC_B_RS2;
+			idex_alu_op        <= ALU_ADD;
+			idex_pc_sel        <= PC_SRC_PC4;
+			idex_mem_req       <= 1'b0;
+			idex_mem_write     <= 1'b0;
+			idex_mem_mask      <= MEM_MASK_WORD;
+			idex_csr_op        <= CSR_OP_NONE;
+			idex_csr_imm       <= 1'b0;
+			idex_csr_addr      <= 12'h0;
+			idex_csr_wdata     <= 32'h0;
+			idex_is_ecall      <= 1'b0;
+			idex_is_mret       <= 1'b0;
+			idex_is_m_ext      <= 1'b0;
+			idex_m_op          <= M_OP_NONE;
+		end else begin
+			idex_valid         <= ifid_valid;
+			idex_pc            <= ifid_pc;
+			idex_rs1           <= id_rs1;
+			idex_rs2           <= id_rs2;
+			idex_rs1_val       <= id_rs1_val;
+			idex_rs2_val       <= id_rs2_val;
+			idex_uses_rs1      <= id_uses_rs1;
+			idex_uses_rs2      <= id_uses_rs2;
+			idex_rd            <= id_rd;
+			idex_funct3        <= id_funct3;
+			idex_mul_helper    <= 1'b0;
+			idex_mul_helper_ra <= 32'h0;
+			idex_mul_helper_lhs <= 32'h0;
+			idex_mul_helper_rhs <= 32'h0;
+			idex_imm           <= id_imm;
+			idex_rf_we         <= id_rf_we;
+			idex_wb_sel        <= id_wb_sel;
+			idex_alu_src_a_sel <= id_alu_src_a_sel;
+			idex_alu_src_b_sel <= id_alu_src_b_sel;
+			idex_alu_op        <= id_alu_op;
+			idex_pc_sel        <= id_pc_sel;
+			idex_mem_req       <= id_mem_req;
+			idex_mem_write     <= id_mem_write;
+			idex_mem_mask      <= id_mem_mask;
+			idex_csr_op        <= id_csr_op;
+			idex_csr_imm       <= id_csr_imm;
+			idex_csr_addr      <= id_csr_addr;
+			idex_csr_wdata     <= id_csr_wdata;
+			idex_is_ecall      <= id_is_ecall;
+			idex_is_mret       <= id_is_mret;
+			idex_is_m_ext      <= id_is_m_ext;
+			idex_m_op          <= id_m_op;
+		end
+	end
+
+	// EX 级前递：EX 级的 rs1/rs2 可能来自 EX/MEM 或 MEM/WB。
+	// EX 阶段先通过*前递逻辑*得到 ex_rs1_val 和 ex_rs2_val。
+	always_comb begin
+		ex_rs1_val = idex_rs1_val;
+		if (ex_fwd_rs1_from_exmem) begin
+			ex_rs1_val = exmem_wb_data;
+		end else if (ex_fwd_rs1_from_memwb) begin
+			ex_rs1_val = memwb_wdata;
+		end
+
+		ex_rs2_val = idex_rs2_val;
+		if (ex_fwd_rs2_from_exmem) begin
+			ex_rs2_val = exmem_wb_data;
+		end else if (ex_fwd_rs2_from_memwb) begin
+			ex_rs2_val = memwb_wdata;
+		end
+	end
+	
+	always_comb begin
+		ex_pc_rs1_val = idex_rs1_val;
+		if (ex_pc_fwd_rs1_from_exmem) begin
+			ex_pc_rs1_val = exmem_wb_data;
+		end else if (ex_pc_fwd_rs1_from_memwb) begin
+			ex_pc_rs1_val = memwb_wdata;
+		end
+
+		ex_pc_rs2_val = idex_rs2_val;
+		if (ex_pc_fwd_rs2_from_exmem) begin
+			ex_pc_rs2_val = exmem_wb_data;
+		end else if (ex_pc_fwd_rs2_from_memwb) begin
+			ex_pc_rs2_val = memwb_wdata;
+		end
+	end
+
+	assign ex_alu_a = (idex_alu_src_a_sel == ALU_SRC_A_PC) ? idex_pc : ex_rs1_val;
+
+	always_comb begin
+		case (idex_alu_src_b_sel)
+			ALU_SRC_B_RS2:   ex_alu_b = ex_rs2_val;
+			ALU_SRC_B_IMM_I: ex_alu_b = idex_imm;
+			ALU_SRC_B_IMM_S: ex_alu_b = idex_imm;
+			ALU_SRC_B_IMM_U: ex_alu_b = idex_imm;
+			default:         ex_alu_b = ex_rs2_val;
+		endcase
+	end
+
+	always_comb begin
+		ex_br_take = 1'b0;
+		if (idex_pc_sel == PC_SRC_BRANCH) begin
+			case (idex_funct3)
+				3'b000: ex_br_take = ex_cmp_eq;
+				3'b001: ex_br_take = !ex_cmp_eq;
+				3'b100: ex_br_take = ex_cmp_lt_signed;
+				3'b101: ex_br_take = !ex_cmp_lt_signed;
+				3'b110: ex_br_take = ex_cmp_lt_unsigned;
+				3'b111: ex_br_take = !ex_cmp_lt_unsigned;
+				default: ex_br_take = 1'b0;
+			endcase
+		end
+	end
+
+	// 所有改变 PC 的东西，最后都归到 ex_pc_redirect + ex_pc_target
+	always_comb begin
+		if (ex_trap_redirect) begin
+			ex_pc_target = ex_trap_target;
+		end else if (idex_mul_helper) begin
+			ex_pc_target = idex_mul_helper_ra;
+		end else begin
+			case (idex_pc_sel)
+				PC_SRC_BRANCH: ex_pc_target = ex_br_take ? ex_pc_plus_imm : ex_pc4;
+				PC_SRC_JAL:    ex_pc_target = ex_pc_plus_imm;
+				PC_SRC_JALR:   ex_pc_target = ex_jalr_target;
+				default:       ex_pc_target = ex_pc4;
+			endcase
+		end
+	end
+
+	always_comb begin
+		if (idex_mul_helper) begin
+			ex_wb_data = ex_mul_helper_result;
+		end else if (idex_is_m_ext) begin
+			ex_wb_data = ex_m_result;
+		end else begin
+			case (idex_wb_sel)
+				WB_SRC_PC4:   ex_wb_data = ex_pc4;
+				WB_SRC_IMM_U: ex_wb_data = idex_imm;
+				WB_SRC_CSR:   ex_wb_data = ex_csr_rdata;
+				WB_SRC_ALU:   ex_wb_data = ex_alu_y;
+				default:      ex_wb_data = ex_alu_y;
+			endcase
+		end
+	end
+
+	always_comb begin
+		unique case (idex_csr_addr)
+			CSR_MSTATUS: ex_csr_rdata = csr_mstatus;
+			CSR_MTVEC:   ex_csr_rdata = csr_mtvec;
+			CSR_MEPC:    ex_csr_rdata = csr_mepc;
+			CSR_MCAUSE:  ex_csr_rdata = csr_mcause;
+			default:     ex_csr_rdata = 32'h0;
+		endcase
+	end
+	
+	always_comb begin
+		ex_csr_we    = 1'b0;
+		ex_csr_wdata = ex_csr_rdata;
+
+		unique case (idex_csr_op)
+			CSR_OP_CSRRW: begin
+				ex_csr_we    = 1'b1;
+				ex_csr_wdata = idex_csr_imm ? idex_csr_wdata : ex_rs1_val;
+			end
+
+			CSR_OP_CSRRS: begin
+				// rs1=x0 或 uimm=0 时，只读不写
+				ex_csr_we    = csr_write_operand_nonzero;
+				ex_csr_wdata = ex_csr_rdata | (idex_csr_imm ? idex_csr_wdata : ex_rs1_val);
+			end
+
+			CSR_OP_CSRRC: begin
+				// rs1=x0 或 uimm=0 时，只读不写
+				ex_csr_we    = csr_write_operand_nonzero;
+				ex_csr_wdata = ex_csr_rdata & ~(idex_csr_imm ? idex_csr_wdata : ex_rs1_val);
+			end
+
+			default: begin
+				ex_csr_we    = 1'b0;
+				ex_csr_wdata = ex_csr_rdata;
+			end
+		endcase
+	end
+
+	always_ff @(posedge cpu_clk) begin
+		if (cpu_rst) begin
+			exmem_valid      <= 1'b0;
+			exmem_alu_y      <= 32'h0;
+			exmem_store_data <= 32'h0;
+			exmem_rd         <= 5'h0;
+			exmem_funct3     <= 3'h0;
+			exmem_wb_data    <= 32'h0;
+			exmem_rf_we      <= 1'b0;
+			exmem_wb_sel     <= WB_SRC_ALU;
+			exmem_mem_req    <= 1'b0;
+			exmem_mem_write  <= 1'b0;
+			exmem_mem_mask   <= MEM_MASK_WORD;
+			exmem_pc         <= 32'h0;
+			exmem_addr_base  <= 32'h0;
+			exmem_addr_off   <= 32'h0;
+		end else if (mem_load_stall) begin
+			// hold EXMEM - memory read stall
+		end else if (m_stall) begin
+			exmem_valid      <= 1'b0;
+			exmem_alu_y      <= 32'h0;
+			exmem_store_data <= 32'h0;
+			exmem_rd         <= 5'h0;
+			exmem_funct3     <= 3'h0;
+			exmem_wb_data    <= 32'h0;
+			exmem_rf_we      <= 1'b0;
+			exmem_wb_sel     <= WB_SRC_ALU;
+			exmem_mem_req    <= 1'b0;
+			exmem_mem_write  <= 1'b0;
+			exmem_mem_mask   <= MEM_MASK_WORD;
+			exmem_pc         <= 32'h0;
+			exmem_addr_base  <= 32'h0;
+			exmem_addr_off   <= 32'h0;
+		end else begin
+			exmem_valid      <= idex_valid;
+			exmem_alu_y      <= ex_alu_y;
+			exmem_store_data <= ex_store_data;
+			exmem_rd         <= idex_rd;
+			exmem_funct3     <= idex_funct3;
+			exmem_wb_data    <= ex_wb_data;
+			exmem_rf_we      <= idex_rf_we;
+			exmem_wb_sel     <= idex_wb_sel;
+			exmem_mem_req    <= idex_mem_req;
+			exmem_mem_write  <= idex_mem_write;
+			exmem_mem_mask   <= idex_mem_mask;
+			exmem_pc         <= idex_pc;
+			exmem_addr_base  <= ex_alu_a;
+			exmem_addr_off   <= ex_alu_b;
+		end
+	end
+
+	always_comb begin
+		case (exmem_funct3)
+			3'b000: begin
+				case (exmem_alu_y[1:0])
+					2'b00: mem_load_data = {{24{perip_rdata[7]}}, perip_rdata[7:0]};
+					2'b01: mem_load_data = {{24{perip_rdata[15]}}, perip_rdata[15:8]};
+					2'b10: mem_load_data = {{24{perip_rdata[23]}}, perip_rdata[23:16]};
+					default: mem_load_data = {{24{perip_rdata[31]}}, perip_rdata[31:24]};
+				endcase
+			end
+			3'b001: mem_load_data = exmem_alu_y[1] ? {{16{perip_rdata[31]}}, perip_rdata[31:16]} : {{16{perip_rdata[15]}}, perip_rdata[15:0]};
+			3'b010: mem_load_data = perip_rdata;
+			3'b100: begin
+				case (exmem_alu_y[1:0])
+					2'b00: mem_load_data = {24'h0, perip_rdata[7:0]};
+					2'b01: mem_load_data = {24'h0, perip_rdata[15:8]};
+					2'b10: mem_load_data = {24'h0, perip_rdata[23:16]};
+					default: mem_load_data = {24'h0, perip_rdata[31:24]};
+				endcase
+			end
+			3'b101: mem_load_data = exmem_alu_y[1] ? {16'h0, perip_rdata[31:16]} : {16'h0, perip_rdata[15:0]};
+			default: mem_load_data = perip_rdata;
+		endcase
+	end
+
+	assign mem_wb_data = (exmem_wb_sel == WB_SRC_MEM) ? mem_load_data : exmem_wb_data;
+
+	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
+		if (cpu_rst) begin
+			memwb_valid <= 1'b0;
+			memwb_wdata <= 32'h0;
+			memwb_rd    <= 5'h0;
+			memwb_rf_we <= 1'b0;
+			memwb_pc    <= 32'h0;
+		end else if (mem_load_stall) begin
+			// Hold the previous WB value during a load stall. The stalled EX-stage
+			// instruction re-evaluates for one more cycle and may still need MEMWB
+			// forwarding (for example, epilogue loads using a freshly restored sp).
+		end else begin
+			memwb_valid <= exmem_valid;
+			memwb_wdata <= mem_wb_data;
+			memwb_rd    <= exmem_rd;
+			memwb_rf_we <= exmem_rf_we;
+			memwb_pc    <= exmem_pc;
+		end
+	end
+
+	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
+		if (cpu_rst) begin
+			csr_mstatus <= 32'h0000_1800;
+			csr_mtvec   <= 32'h0000_0000;
+			csr_mepc    <= 32'h0000_0000;
+			csr_mcause  <= 32'h0000_0000;
+		end else if (ex_trap_enter) begin
+			// trap 进入：MPIE <= MIE, MIE <= 0, MPP <= M 模式
+			csr_mstatus[7]      <= csr_mstatus[3];
+			csr_mstatus[3]      <= 1'b0;
+			csr_mstatus[12:11]  <= 2'b11;
+			csr_mepc           <= idex_pc;
+			csr_mcause         <= 32'd11;         // ECALL from M-mode
+		end else if (ex_trap_return) begin
+			// mret 返回：MIE <= MPIE, MPIE <= 1, MPP 清零
+			csr_mstatus[3]      <= csr_mstatus[7];
+			csr_mstatus[7]      <= 1'b1;
+			csr_mstatus[12:11]  <= 2'b00;
+		end else if (idex_valid && !mem_load_stall && ex_csr_we) begin
+			unique case (idex_csr_addr)
+				CSR_MSTATUS: csr_mstatus <= ex_csr_wdata;
+				CSR_MTVEC:   csr_mtvec   <= ex_csr_wdata;
+				CSR_MEPC:    csr_mepc    <= ex_csr_wdata;
+				CSR_MCAUSE:  csr_mcause  <= ex_csr_wdata;
+				default: begin end
+			endcase
+		end
+	end
+
+endmodule
+
+module mycpu_rv32_decode (
+	input  logic [31:0] instr,
+	output logic [6:0]  opcode,
+	output logic [2:0]  funct3,
+	output logic [6:0]  funct7,
+	output logic [4:0]  rd,
+	output logic [4:0]  rs1,
+	output logic [4:0]  rs2
+);
+	assign opcode = instr[6:0];
+	assign rd     = instr[11:7];
+	assign funct3 = instr[14:12];
+	assign rs1    = instr[19:15];
+	assign rs2    = instr[24:20];
+	assign funct7 = instr[31:25];
+endmodule

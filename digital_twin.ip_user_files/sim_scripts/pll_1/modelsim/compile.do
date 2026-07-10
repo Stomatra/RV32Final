@@ -7,13 +7,13 @@ vlib modelsim_lib/msim/xil_defaultlib
 vmap xpm modelsim_lib/msim/xpm
 vmap xil_defaultlib modelsim_lib/msim/xil_defaultlib
 
-vlog -work xpm  -incr -mfcu  -sv "+incdir+../../../ipstatic" "+incdir+../../../../digital_twin.gen/sources_1/ip/pll" \
-"D:/Vivado/2023.2/data/ip/xpm/xpm_cdc/hdl/xpm_cdc.sv" \
+vlog -work xpm  -incr -mfcu  -sv "+incdir+../../../ipstatic" "+incdir+../../../../../../../AMDDesignTools/2025.2/Vivado/data/rsb/busdef" "+incdir+../../../../digital_twin.gen/sources_1/ip/pll" \
+"E:/AMDDesignTools/2025.2/Vivado/data/ip/xpm/xpm_cdc/hdl/xpm_cdc.sv" \
 
 vcom -work xpm  -93  \
-"D:/Vivado/2023.2/data/ip/xpm/xpm_VCOMP.vhd" \
+"E:/AMDDesignTools/2025.2/Vivado/data/ip/xpm/xpm_VCOMP.vhd" \
 
-vlog -work xil_defaultlib  -incr -mfcu  "+incdir+../../../ipstatic" "+incdir+../../../../digital_twin.gen/sources_1/ip/pll" \
+vlog -work xil_defaultlib  -incr -mfcu  "+incdir+../../../ipstatic" "+incdir+../../../../../../../AMDDesignTools/2025.2/Vivado/data/rsb/busdef" "+incdir+../../../../digital_twin.gen/sources_1/ip/pll" \
 "../../../../digital_twin.gen/sources_1/ip/pll/pll_clk_wiz.v" \
 "../../../../digital_twin.gen/sources_1/ip/pll/pll.v" \
 

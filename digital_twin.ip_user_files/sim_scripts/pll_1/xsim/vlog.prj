@@ -1,4 +1,4 @@
-verilog xil_defaultlib --include "../../../../digital_twin.gen/sources_1/ip/pll" \
+verilog xil_defaultlib -i "../../../../../../../AMDDesignTools/2025.2/Vivado/data/rsb/busdef" --include "../../../../digital_twin.gen/sources_1/ip/pll" \
 "../../../../digital_twin.gen/sources_1/ip/pll/pll_clk_wiz.v" \
 "../../../../digital_twin.gen/sources_1/ip/pll/pll.v" \
 

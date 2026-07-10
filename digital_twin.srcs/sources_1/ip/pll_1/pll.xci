@@ -50,7 +50,7 @@
         "SECONDARY_IN_JITTER": [ { "value": "0.010", "resolve_type": "user", "format": "float", "usage": "all" } ],
         "CLKIN1_JITTER_PS": [ { "value": "50.0", "value_src": "user", "resolve_type": "user", "format": "float", "usage": "all" } ],
         "CLKIN2_JITTER_PS": [ { "value": "100.0", "resolve_type": "user", "format": "float", "usage": "all" } ],
-        "CLKOUT1_USED": [ { "value": "true", "resolve_type": "user", "format": "bool", "usage": "all" } ],
+        "CLKOUT1_USED": [ { "value": "true", "value_src": "user", "resolve_type": "user", "format": "bool", "usage": "all" } ],
         "CLKOUT2_USED": [ { "value": "true", "value_src": "user", "resolve_type": "user", "format": "bool", "usage": "all" } ],
         "CLKOUT3_USED": [ { "value": "false", "resolve_type": "user", "format": "bool", "usage": "all" } ],
         "CLKOUT4_USED": [ { "value": "false", "resolve_type": "user", "format": "bool", "usage": "all" } ],
@@ -682,5 +682,5 @@
       }
     }
   },
-  "checksum": "3395c9cd"
+  "checksum": "00368443"
 }

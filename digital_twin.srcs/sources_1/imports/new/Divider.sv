@@ -3,13 +3,13 @@ module rv32_divider (
     input  logic        rst,
 
     input  logic        start,
-    input  logic [1:0]  op,
-    input  logic [31:0] rs1,
-    input  logic [31:0] rs2,
+    input  logic [1:0]  op,//选择DIV/DIVU/REM/REMU
+    input  logic [31:0] rs1,//被除数
+    input  logic [31:0] rs2,//除数
 
-    output logic        busy,
-    output logic        done,
-    output logic [31:0] result
+    output logic        busy,//除法器正在工作
+    output logic        done,//除法器完成工作
+    output logic [31:0] result//除法器结果
 );
 
     localparam logic [1:0] DIV_OP_DIV  = 2'd0;
@@ -19,15 +19,18 @@ module rv32_divider (
 
     logic [5:0]  cnt;
 
-    logic        signed_op;
-    logic        want_rem;
+    logic        signed_op;//是否是有符号除法
+    logic        want_rem;//是否需要余数
     logic        quotient_neg;
     logic        remainder_neg;
 
     logic [31:0] dividend_orig;
-    logic [31:0] divisor_abs;
 
+    //如果是有符号除法，并且 rs2 是负数：divisor_abs = abs(rs2)
+    logic [31:0] divisor_abs;
+    //如果是有符号除法，并且 rs1 是负数：dividend_shift = abs(rs1)
     logic [31:0] dividend_shift;
+    
     logic [31:0] quotient;
     logic [32:0] remainder;
 
@@ -37,6 +40,7 @@ module rv32_divider (
     logic        div_by_zero;
     logic        signed_overflow;
 
+    // 计算最终结果的符号。
     assign quotient_final  = quotient_neg  ? (~quotient + 32'd1) : quotient;
     assign remainder_final = remainder_neg ? (~remainder[31:0] + 32'd1) : remainder[31:0];
 
@@ -48,16 +52,16 @@ module rv32_divider (
             busy           <= 1'b0;
             done           <= 1'b0;
             result         <= 32'h0;
-            cnt            <= 6'd0;
-            dividend_orig  <= 32'h0;
-            dividend_shift <= 32'h0;
-            divisor_abs    <= 32'h0;
-            quotient       <= 32'h0;
-            remainder      <= 33'h0;
-            quotient_neg   <= 1'b0;
-            remainder_neg  <= 1'b0;
-            div_by_zero    <= 1'b0;
-            signed_overflow <= 1'b0;
+            cnt            <= 6'd0;//计数器，做32轮除法
+            dividend_orig  <= 32'h0;//被除数原值
+            dividend_shift <= 32'h0;//被除数移位值
+            divisor_abs    <= 32'h0;//除数绝对值
+            quotient       <= 32'h0;//商
+            remainder      <= 33'h0;//余数
+            quotient_neg   <= 1'b0;//商是否需要取负
+            remainder_neg  <= 1'b0;//余数是否需要取负
+            div_by_zero    <= 1'b0;//除零标志
+            signed_overflow <= 1'b0;//有符号溢出标志
         end else begin
             done <= 1'b0;
 
@@ -74,8 +78,9 @@ module rv32_divider (
                 remainder_neg <= signed_op && rs1[31];
 
                 dividend_orig <= rs1;
+                //如果是有符号除法，并且 rs2 是负数：divisor_abs = abs(rs2)
                 divisor_abs  <= (signed_op && rs2[31]) ? (~rs2 + 32'd1) : rs2;
-
+                //如果是有符号除法，并且 rs1 是负数：dividend_shift = abs(rs1)
                 dividend_shift <= (signed_op && rs1[31]) ? (~rs1 + 32'd1) : rs1;
                 quotient       <= 32'h0;
                 remainder      <= 33'h0;

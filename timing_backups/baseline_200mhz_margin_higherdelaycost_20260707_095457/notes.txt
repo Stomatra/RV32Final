@@ -1,0 +1,3 @@
+route_directive=HigherDelayCost
+wns=0.251
+tns=0.000

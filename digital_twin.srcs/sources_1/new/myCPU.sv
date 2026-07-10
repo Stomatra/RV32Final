@@ -21,308 +21,310 @@ module myCPU #(
 	// 2. 外设/数据口：统一访问 DRAM、计数器和 MMIO。
 
 	// 复位后从固定 Boot 地址开始执行。
-	localparam logic [31:0] RESET_PC      = 32'h8000_0000;
+	localparam logic [31:0] RESET_PC      = 32'h8000_0000;// 重置 PC 地址
 	// NOP 采用 addi x0, x0, 0。
-	localparam logic [31:0] NOP_INSTR     = 32'h0000_0013;
+	localparam logic [31:0] NOP_INSTR     = 32'h0000_0013;// NOP 指令
 	// mul helper 相关地址用于识别“乘法辅助例程入口”和它可能的返回点。
-	localparam logic [31:0] MUL_HELPER_PC = 32'h8000_1fa8;
-	localparam logic [31:0] MUL_HELPER_LOOP004_RA = 32'h8000_04c8;
-	localparam logic [31:0] MUL_HELPER_LOOP006_RA = 32'h8000_0734;
+	localparam logic [31:0] MUL_HELPER_PC = 32'h8000_1fa8;// mul helper 入口地址
+	localparam logic [31:0] MUL_HELPER_LOOP004_RA = 32'h8000_04c8;// mul helper 循环004返回地址
+	localparam logic [31:0] MUL_HELPER_LOOP006_RA = 32'h8000_0734;// mul helper 循环006返回地址
 
 	// RV32I 基本 opcode 编码。
-	localparam logic [6:0]  OPC_LUI       = 7'b0110111;
-	localparam logic [6:0]  OPC_AUIPC     = 7'b0010111;
-	localparam logic [6:0]  OPC_JAL       = 7'b1101111;
-	localparam logic [6:0]  OPC_JALR      = 7'b1100111;
-	localparam logic [6:0]  OPC_BRANCH    = 7'b1100011;
-	localparam logic [6:0]  OPC_LOAD      = 7'b0000011;
-	localparam logic [6:0]  OPC_STORE     = 7'b0100011;
-	localparam logic [6:0]  OPC_OPIMM     = 7'b0010011;
-	localparam logic [6:0]  OPC_OP        = 7'b0110011;
-	localparam logic [6:0]  OPC_SYSTEM    = 7'b1110011;
+	localparam logic [6:0]  OPC_LUI       = 7'b0110111; // LUI 指令，主要负责加载高 20 位立即数到寄存器。
+	localparam logic [6:0]  OPC_AUIPC     = 7'b0010111; // AUIPC 指令，用于将当前 PC 加上一个立即数并存储到寄存器中，常用于生成 PC 相对地址。
+	localparam logic [6:0]  OPC_JAL       = 7'b1101111; // JAL 指令，用于无条件跳转并保存返回地址。
+	localparam logic [6:0]  OPC_JALR      = 7'b1100111; // JALR 指令，用于寄存器间接跳转并保存返回地址。
+	localparam logic [6:0]  OPC_BRANCH    = 7'b1100011; // 分支指令，用于条件跳转。
+	localparam logic [6:0]  OPC_LOAD      = 7'b0000011; // 加载指令，用于从内存读取数据。
+	localparam logic [6:0]  OPC_STORE     = 7'b0100011; // 存储指令，用于向内存写入数据。
+	localparam logic [6:0]  OPC_OPIMM     = 7'b0010011; // 立即数操作指令，用于对寄存器和立即数进行算术或逻辑操作。
+	localparam logic [6:0]  OPC_OP        = 7'b0110011; // 寄存器操作指令，用于对两个寄存器进行算术或逻辑操作。
+	localparam logic [6:0]  OPC_SYSTEM    = 7'b1110011; // 系统指令，用于特权操作和环境调用。
 
 	// ALU 控制码。
-	localparam logic [3:0]  ALU_ADD       = 4'd0;
-	localparam logic [3:0]  ALU_SUB       = 4'd1;
-	localparam logic [3:0]  ALU_AND       = 4'd2;
-	localparam logic [3:0]  ALU_OR        = 4'd3;
-	localparam logic [3:0]  ALU_XOR       = 4'd4;
-	localparam logic [3:0]  ALU_SLT       = 4'd5;
-	localparam logic [3:0]  ALU_SLTU      = 4'd6;
-	localparam logic [3:0]  ALU_SLL       = 4'd7;
-	localparam logic [3:0]  ALU_SRL       = 4'd8;
-	localparam logic [3:0]  ALU_SRA       = 4'd9;
+	localparam logic [3:0]  ALU_ADD       = 4'd0;// ALU 执行加法操作。
+	localparam logic [3:0]  ALU_SUB       = 4'd1;// ALU 执行减法操作。
+	localparam logic [3:0]  ALU_AND       = 4'd2;// ALU 执行按位与操作。
+	localparam logic [3:0]  ALU_OR        = 4'd3;// ALU 执行按位或操作。
+	localparam logic [3:0]  ALU_XOR       = 4'd4;// ALU 执行按位异或操作。
+	localparam logic [3:0]  ALU_SLT       = 4'd5;// ALU 执行有符号小于比较操作。
+	localparam logic [3:0]  ALU_SLTU      = 4'd6;// ALU 执行无符号小于比较操作。
+	localparam logic [3:0]  ALU_SLL       = 4'd7;// ALU 执行逻辑左移操作。
+	localparam logic [3:0]  ALU_SRL       = 4'd8;// ALU 执行逻辑右移操作。
+	localparam logic [3:0]  ALU_SRA       = 4'd9;// ALU 执行算术右移操作。
 
 	// ALU A 端输入来源：rs1 或 PC。
-	localparam logic        ALU_SRC_A_RS1 = 1'b0;
-	localparam logic        ALU_SRC_A_PC  = 1'b1;
+	localparam logic        ALU_SRC_A_RS1 = 1'b0;// ALU A 端输入来自寄存器 rs1。
+	localparam logic        ALU_SRC_A_PC  = 1'b1;// ALU A 端输入来自当前 PC。
 
 	// ALU B 端输入来源：rs2 / I-type 立即数 / S-type 立即数 / U-type 立即数。
-	localparam logic [1:0]  ALU_SRC_B_RS2   = 2'd0;
-	localparam logic [1:0]  ALU_SRC_B_IMM_I = 2'd1;
-	localparam logic [1:0]  ALU_SRC_B_IMM_S = 2'd2;
-	localparam logic [1:0]  ALU_SRC_B_IMM_U = 2'd3;
+	localparam logic [1:0]  ALU_SRC_B_RS2   = 2'd0;// ALU B 端输入来自寄存器 rs2。
+	localparam logic [1:0]  ALU_SRC_B_IMM_I = 2'd1;// ALU B 端输入来自 I 型立即数。
+	localparam logic [1:0]  ALU_SRC_B_IMM_S = 2'd2;// ALU B 端输入来自 S 型立即数。
+	localparam logic [1:0]  ALU_SRC_B_IMM_U = 2'd3;// ALU B 端输入来自 U 型立即数。
 
 	// WB 选择：ALU 结果、内存返回、PC+4 或 U 型立即数。
-	localparam logic [2:0]  WB_SRC_ALU    = 3'd0;
-	localparam logic [2:0]  WB_SRC_MEM    = 3'd1;
-	localparam logic [2:0]  WB_SRC_PC4    = 3'd2;
-	localparam logic [2:0]  WB_SRC_IMM_U  = 3'd3;
-	localparam logic [2:0]  WB_SRC_CSR    = 3'd4;
+	localparam logic [2:0]  WB_SRC_ALU    = 3'd0;// 写回数据选择 ALU 结果。
+	localparam logic [2:0]  WB_SRC_MEM    = 3'd1;// 写回数据选择内存返回数据。
+	localparam logic [2:0]  WB_SRC_PC4    = 3'd2;// 写回数据选择 PC + 4。
+	localparam logic [2:0]  WB_SRC_IMM_U  = 3'd3;// 写回数据选择 U 型立即数。
+	localparam logic [2:0]  WB_SRC_CSR    = 3'd4;// 写回数据选择 CSR 寄存器值。
 
 	// PC 下一拍来源。
-	localparam logic [1:0]  PC_SRC_PC4    = 2'd0;
-	localparam logic [1:0]  PC_SRC_BRANCH = 2'd1;
-	localparam logic [1:0]  PC_SRC_JAL    = 2'd2;
-	localparam logic [1:0]  PC_SRC_JALR   = 2'd3;
+	localparam logic [1:0]  PC_SRC_PC4    = 2'd0;// PC 下一拍选择 PC + 4。
+	localparam logic [1:0]  PC_SRC_BRANCH = 2'd1;// PC 下一拍选择分支目标地址。
+	localparam logic [1:0]  PC_SRC_JAL    = 2'd2;// PC 下一拍选择 JAL 指令目标地址。
+	localparam logic [1:0]  PC_SRC_JALR   = 2'd3;// PC 下一拍选择 JALR 指令目标地址。
 
 	// 数据口写掩码：字节 / 半字 / 整字。
-	localparam logic [1:0]  MEM_MASK_BYTE = 2'b00;
-	localparam logic [1:0]  MEM_MASK_HALF = 2'b01;
-	localparam logic [1:0]  MEM_MASK_WORD = 2'b10;
+	localparam logic [1:0]  MEM_MASK_BYTE = 2'b00;// 数据口写掩码选择字节。
+	localparam logic [1:0]  MEM_MASK_HALF = 2'b01;// 数据口写掩码选择半字。
+	localparam logic [1:0]  MEM_MASK_WORD = 2'b10;// 数据口写掩码选择整字。
 
 	//CSR地址常量
-	localparam logic [11:0] CSR_MSTATUS = 12'h300;
-	localparam logic [11:0] CSR_MTVEC   = 12'h305;
-	localparam logic [11:0] CSR_MEPC    = 12'h341;
-	localparam logic [11:0] CSR_MCAUSE  = 12'h342;
+	localparam logic [11:0] CSR_MSTATUS = 12'h300;// CSR 寄存器 MSTATUS 地址，用于保存处理器状态。
+	localparam logic [11:0] CSR_MTVEC   = 12'h305;// CSR 寄存器 MTVEC 地址，用于保存异常向量基地址。
+	localparam logic [11:0] CSR_MEPC    = 12'h341;// CSR 寄存器 MEPC 地址，用于保存异常返回地址。
+	localparam logic [11:0] CSR_MCAUSE  = 12'h342;// CSR 寄存器 MCAUSE 地址，用于保存异常原因。
 
 	//CSR指令类型
-	localparam logic [2:0] CSR_OP_NONE  = 3'd0;
-	localparam logic [2:0] CSR_OP_CSRRW = 3'd1;
-	localparam logic [2:0] CSR_OP_CSRRS = 3'd2;
-	localparam logic [2:0] CSR_OP_CSRRC = 3'd3;
-	localparam logic [2:0] CSR_OP_ECALL = 3'd4;
-	localparam logic [2:0] CSR_OP_MRET  = 3'd5;
+	localparam logic [2:0] CSR_OP_NONE  = 3'd0;// CSR 操作类型 NONE，表示没有 CSR 操作。
+	localparam logic [2:0] CSR_OP_CSRRW = 3'd1;// CSR 操作类型 CSRRW，表示读写 CSR。
+	localparam logic [2:0] CSR_OP_CSRRS = 3'd2;// CSR 操作类型 CSRRS，表示读置位 CSR。
+	localparam logic [2:0] CSR_OP_CSRRC = 3'd3;// CSR 操作类型 CSRRC，表示读清除 CSR。
+	localparam logic [2:0] CSR_OP_ECALL = 3'd4;// CSR 操作类型 ECALL，表示环境调用。
+	localparam logic [2:0] CSR_OP_MRET  = 3'd5;// CSR 操作类型 MRET，表示从机器模式返回。
 
 	//M指令类型
-	localparam logic [3:0] M_OP_NONE   = 4'd0;
-	localparam logic [3:0] M_OP_MUL    = 4'd1;
-	localparam logic [3:0] M_OP_MULH   = 4'd2;
-	localparam logic [3:0] M_OP_MULHSU = 4'd3;
-	localparam logic [3:0] M_OP_MULHU  = 4'd4;
-	localparam logic [3:0] M_OP_DIV    = 4'd5;
-	localparam logic [3:0] M_OP_DIVU   = 4'd6;
-	localparam logic [3:0] M_OP_REM    = 4'd7;
-	localparam logic [3:0] M_OP_REMU   = 4'd8;
+	localparam logic [3:0] M_OP_NONE   = 4'd0;// M 指令类型 NONE，表示没有 M 扩展操作。
+	localparam logic [3:0] M_OP_MUL    = 4'd1;// M 指令类型 MUL，表示乘法操作。
+	localparam logic [3:0] M_OP_MULH   = 4'd2;// M 指令类型 MULH，表示有符号乘法高位操作。
+	localparam logic [3:0] M_OP_MULHSU = 4'd3;// M 指令类型 MULHSU，表示有符号乘法高位操作（混合符号）。
+	localparam logic [3:0] M_OP_MULHU  = 4'd4;// M 指令类型 MULHU，表示无符号乘法高位操作。
+	localparam logic [3:0] M_OP_DIV    = 4'd5;// M 指令类型 DIV，表示有符号除法操作。
+	localparam logic [3:0] M_OP_DIVU   = 4'd6;// M 指令类型 DIVU，表示无符号除法操作。
+	localparam logic [3:0] M_OP_REM    = 4'd7;// M 指令类型 REM，表示有符号取模操作。
+	localparam logic [3:0] M_OP_REMU   = 4'd8;// M 指令类型 REMU，表示无符号取模操作。
 
 	// =========================
 	// IF 级与 IF/ID 流水寄存器 表示取指令阶段的 PC、指令和有效位。
 	// =========================
-	logic [31:0] pc_q;
-	logic [31:0] pc_next;
+	// 板级 ILA 抓跑飞时只保留少量控制面探针，避免拖累 200MHz 路径。
+	logic [31:0] pc_q;      // 当前 PC 寄存器，表示当前正在执行的指令的地址。
+	logic [31:0] pc_next;   // 下一拍 PC 值，表示下一条指令的地址。
 
-	logic [31:0] ifid_pc;
-	logic [31:0] ifid_instr;
-	logic        ifid_valid;
+	logic [31:0] ifid_pc;    // IF/ID 流水寄存器中的 PC 值，表示取指阶段的指令地址。
+	logic [31:0] ifid_instr; // IF/ID 流水寄存器中的指令值，表示取指阶段的指令内容。
+	logic        ifid_valid; // IF/ID 流水寄存器中的有效位，表示取指阶段的指令是否有效。
 
 	// =========================
 	// ID 级译码与冒险检测 表示译码阶段的指令字段、立即数、寄存器值和控制信号。
 	// =========================
-	logic [6:0]  id_opcode;
-	logic [6:0]  id_funct7;
-	logic [2:0]  id_funct3;
-	logic [4:0]  id_rd;
-	logic [4:0]  id_rs1;
-	logic [4:0]  id_rs2;
-	logic [31:0] id_imm_raw;
-	logic [31:0] id_imm;
-	logic [31:0] id_rs1_val;
-	logic [31:0] id_rs2_val;
-	logic [31:0] rf_rs1_raw;
-	logic [31:0] rf_rs2_raw;
-	logic [31:0] rf_x1_raw;
-	logic [31:0] rf_x10_raw;
-	logic [31:0] rf_x11_raw;
-	logic        id_uses_rs1;
-	logic        id_uses_rs2;
-	logic        load_use_hazard;
-	logic        pc_ex_hazard;
-	logic        pc_mem_hazard;
-	logic        mem_load_stall;
-	logic        mem_stall_flag;
-	logic        id_mul_helper_candidate;
-	logic        id_mul_helper_return_match;
-	logic        id_mul_helper_hit;
-	logic [31:0] id_mul_helper_ra;
-	logic [31:0] id_mul_helper_lhs;
-	logic [31:0] id_mul_helper_rhs;
-	logic        id_rf_we;
-	logic [2:0]  id_wb_sel;
-	logic        id_alu_src_a_sel;
-	logic [1:0]  id_alu_src_b_sel;
-	logic [3:0]  id_alu_op;
-	logic [1:0]  id_pc_sel;
-	logic        id_mem_req;
-	logic        id_mem_write;
-	logic [1:0]  id_mem_mask;
-	logic [2:0]  id_csr_op;
-	logic        id_csr_imm;
-	logic [11:0] id_csr_addr;
-	logic [31:0] id_csr_wdata;
-	logic        id_is_ecall;
-	logic        id_is_mret;
-	logic        id_is_m_ext;
-	logic [3:0]  id_m_op;
+	logic [6:0]  id_opcode; // 译码阶段的指令操作码，表示当前指令的类型。
+	logic [6:0]  id_funct7; // 译码阶段的指令功能码7位，表示当前指令的具体操作。
+	logic [2:0]  id_funct3; // 译码阶段的指令功能码3位，表示当前指令的具体操作。
+	logic [4:0]  id_rd;     // 译码阶段的目标寄存器地址，表示当前指令的写回寄存器。
+	logic [4:0]  id_rs1;    // 译码阶段的源寄存器1地址，表示当前指令的第一个操作数寄存器。
+	logic [4:0]  id_rs2;    // 译码阶段的源寄存器2地址，表示当前指令的第二个操作数寄存器。
+	logic [31:0] id_imm_raw;// 译码阶段的原始立即数，表示当前指令的立即数值。
+	logic [31:0] id_imm;    // 译码阶段的立即数，表示当前指令的立即数值。
+	logic [31:0] id_rs1_val;// 译码阶段的源寄存器1值，表示当前指令的第一个操作数值。
+	logic [31:0] id_rs2_val;// 译码阶段的源寄存器2值，表示当前指令的第二个操作数值。
+	logic [31:0] rf_rs1_raw;// 译码阶段的源寄存器1原始值，表示当前指令的第一个操作数原始值。
+	logic [31:0] rf_rs2_raw;// 译码阶段的源寄存器2原始值，表示当前指令的第二个操作数原始值。
+	logic [31:0] rf_x1_raw; // 译码阶段的寄存器 x1 原始值，表示当前指令的寄存器 x1 的原始值。
+	logic [31:0] rf_x10_raw;// 译码阶段的寄存器 x10 原始值，表示当前指令的寄存器 x10 的原始值。
+	logic [31:0] rf_x11_raw;// 译码阶段的寄存器 x11 原始值，表示当前指令的寄存器 x11 的原始值。
+	logic        id_uses_rs1;// 译码阶段是否使用源寄存器1，表示当前指令是否使用源寄存器1。
+	logic        id_uses_rs2;// 译码阶段是否使用源寄存器2，表示当前指令是否使用源寄存器2。
+	logic        load_use_hazard;// 译码阶段是否存在 load-use 冒险，表示当前指令是否与前一条 load 指令存在数据依赖。
+	logic        pc_ex_hazard;// 译码阶段是否存在 PC 与 EX 阶段的冒险，表示当前指令是否与 EX 阶段的指令存在数据依赖。
+	logic        pc_mem_hazard;// 译码阶段是否存在 PC 与 MEM 阶段的冒险，表示当前指令是否与 MEM 阶段的指令存在数据依赖。
+	logic        mem_load_stall;// 译码阶段是否需要因 load 指令而暂停，表示当前指令是否需要等待前一条 load 指令完成。
+	logic        mem_stall_flag;// 译码阶段是否需要因 MEM 阶段而暂停，表示当前指令是否需要等待 MEM 阶段的指令完成。
+	logic        id_mul_helper_candidate;// 译码阶段是否为 mul helper 候选指令，表示当前指令是否可能是 mul helper 指令。
+	logic        id_mul_helper_return_match;// 译码阶段是否匹配 mul helper 返回地址，表示当前指令是否与 mul helper 的返回地址匹配。
+	logic        id_mul_helper_hit;// 译码阶段是否命中 mul helper，表示当前指令是否为 mul helper 指令。
+	logic [31:0] id_mul_helper_ra;// 译码阶段的 mul helper 返回地址，表示当前指令的 mul helper 返回地址。
+	logic [31:0] id_mul_helper_lhs;// 译码阶段的 mul helper 左操作数，表示当前指令的 mul helper 左操作数。
+	logic [31:0] id_mul_helper_rhs;// 译码阶段的 mul helper 右操作数，表示当前指令的 mul helper 右操作数。
+	logic        id_rf_we;// 译码阶段的寄存器写使能，表示当前指令是否写回寄存器。
+	logic [2:0]  id_wb_sel;// 译码阶段的写回选择信号，表示当前指令的写回数据来源。
+	logic        id_alu_src_a_sel;// 译码阶段的 ALU 源操作数 A 选择信号，表示当前指令的 ALU 操作数 A 来源。
+	logic [1:0]  id_alu_src_b_sel;// 译码阶段的 ALU 源操作数 B 选择信号，表示当前指令的 ALU 操作数 B 来源。
+	logic [3:0]  id_alu_op;// 译码阶段的 ALU 操作码，表示当前指令的 ALU 操作类型。
+	logic [1:0]  id_pc_sel;// 译码阶段的 PC 选择信号，表示当前指令的下一条指令地址来源。
+	logic        id_mem_req;// 译码阶段的存储器请求信号，表示当前指令是否访问存储器。
+	logic        id_mem_write;// 译码阶段的存储器写使能，表示当前指令是否写入存储器。
+	logic [1:0]  id_mem_mask;// 译码阶段的存储器掩码，表示当前指令的存储器访问字节数。
+	logic [2:0]  id_csr_op;// 译码阶段的 CSR 操作码，表示当前指令的 CSR 操作类型。
+	logic        id_csr_imm;// 译码阶段的 CSR 立即数标志，表示当前指令是否使用立即数进行 CSR 操作。
+	logic [11:0] id_csr_addr;// 译码阶段的 CSR 地址，表示当前指令的 CSR 地址。
+	logic [31:0] id_csr_wdata;// 译码阶段的 CSR 写数据，表示当前指令的 CSR 写入数据。
+	logic        id_is_ecall;// 译码阶段是否为 ECALL 指令，表示当前指令是否为系统调用。
+	logic        id_is_mret;// 译码阶段是否为 MRET 指令，表示当前指令是否为机器模式返回指令。
+	logic        id_is_m_ext;// 译码阶段是否为 M 扩展指令，表示当前指令是否为 M 扩展指令。
+	logic [3:0]  id_m_op;// 译码阶段的 M 扩展操作码，表示当前指令的 M 扩展操作类型。
 
 	// =========================
 	// ID/EX 流水寄存器 表示译码阶段的指令字段、立即数、寄存器值和控制信号*传递到*执行阶段。
 	// =========================
-	logic [31:0] idex_pc;
-	logic [4:0]  idex_rs1;
-	logic [4:0]  idex_rs2;
-	logic [31:0] idex_rs1_val;
-	logic [31:0] idex_rs2_val;
-	logic        idex_uses_rs1;
-	logic        idex_uses_rs2;
-	logic [4:0]  idex_rd;
-	logic [31:0] idex_imm;
-	logic [2:0]  idex_funct3;
-	logic        idex_valid;
-	logic        idex_mul_helper;
-	logic [31:0] idex_mul_helper_ra;
-	logic [31:0] idex_mul_helper_lhs;
-	logic [31:0] idex_mul_helper_rhs;
-	logic        idex_rf_we;
-	logic [2:0]  idex_wb_sel;
-	logic        idex_alu_src_a_sel;
-	logic [1:0]  idex_alu_src_b_sel;
-	logic [3:0]  idex_alu_op;
-	logic [1:0]  idex_pc_sel;
-	logic        idex_mem_req;
-	logic        idex_mem_write;
-	logic [1:0]  idex_mem_mask;
-	logic [2:0]  idex_csr_op;
-	logic        idex_csr_imm;
-	logic [11:0] idex_csr_addr;
-	logic [31:0] idex_csr_wdata;
-	logic        idex_is_ecall;
-	logic        idex_is_mret;
-	logic        idex_is_m_ext;
-	logic [3:0]  idex_m_op;
+	logic [4:0]  idex_rs1;           // ID/EX 流水寄存器中的 rs1 地址，表示译码阶段的源寄存器 1 地址传递到执行阶段。
+	logic [4:0]  idex_rs2;           // ID/EX 流水寄存器中的 rs2 地址，表示译码阶段的源寄存器 2 地址传递到执行阶段。
+	logic [31:0] idex_rs1_val;       // ID/EX 流水寄存器中的 rs1 值，表示译码阶段的源寄存器 1 值传递到执行阶段。
+	logic [31:0] idex_rs2_val;       // ID/EX 流水寄存器中的 rs2 值，表示译码阶段的源寄存器 2 值传递到执行阶段。
+	logic        idex_uses_rs1;      // ID/EX 流水寄存器中的 rs1 使用标志，表示译码阶段的指令是否使用源寄存器 1。
+	logic        idex_uses_rs2;      // ID/EX 流水寄存器中的 rs2 使用标志，表示译码阶段的指令是否使用源寄存器 2。
+	logic [4:0]  idex_rd;            // ID/EX 流水寄存器中的 rd 地址，表示译码阶段的目标寄存器地址传递到执行阶段。
+	logic [31:0] idex_imm;           // ID/EX 流水寄存器中的立即数，表示译码阶段的立即数传递到执行阶段。
+	logic [31:0] idex_pc;            // ID/EX 流水寄存器中的 PC 值，表示译码阶段的指令地址传递到执行阶段。
+	logic [31:0] idex_instr;         // ID/EX 流水寄存器中的指令字，供调试观察 EX 同拍控制流。
+	logic [2:0]  idex_funct3;        // ID/EX 流水寄存器中的 funct3 字段，表示译码阶段的 funct3 字段传递到执行阶段。
+	logic        idex_valid;         // ID/EX 流水寄存器中的有效标志，表示译码阶段的指令是否有效。
+	logic        idex_mul_helper;    // ID/EX 流水寄存器中的 mul helper 标志，表示译码阶段的指令是否使用 mul helper。
+	logic [31:0] idex_mul_helper_ra; // ID/EX 流水寄存器中的 mul helper 返回地址，表示译码阶段的 mul helper 返回地址传递到执行阶段。
+	logic [31:0] idex_mul_helper_lhs;// ID/EX 流水寄存器中的 mul helper 左操作数，表示译码阶段的 mul helper 左操作数传递到执行阶段。
+	logic [31:0] idex_mul_helper_rhs;// ID/EX 流水寄存器中的 mul helper 右操作数，表示译码阶段的 mul helper 右操作数传递到执行阶段。
+	logic        idex_rf_we;         // ID/EX 流水寄存器中的寄存器写使能，表示译码阶段的指令是否写回寄存器。
+	logic [2:0]  idex_wb_sel;        // ID/EX 流水寄存器中的写回选择，表示译码阶段的指令写回数据的选择。
+	logic        idex_alu_src_a_sel; // ID/EX 流水寄存器中的 ALU 源操作数 A 选择，表示译码阶段的指令 ALU 操作数 A 的选择。
+	logic [1:0]  idex_alu_src_b_sel; // ID/EX 流水寄存器中的 ALU 源操作数 B 选择，表示译码阶段的指令 ALU 操作数 B 的选择。
+	logic [3:0]  idex_alu_op;        // ID/EX 流水寄存器中的 ALU 操作码，表示译码阶段的指令 ALU 操作类型。
+	logic [1:0]  idex_pc_sel;        // ID/EX 流水寄存器中的 PC 选择，表示译码阶段的指令 PC 的选择。
+	logic        idex_mem_req;       // ID/EX 流水寄存器中的内存请求标志，表示译码阶段的指令是否请求内存操作。
+	logic        idex_mem_write;     // ID/EX 流水寄存器中的内存写标志，表示译码阶段的指令是否进行内存写操作。
+	logic [1:0]  idex_mem_mask;      // ID/EX 流水寄存器中的内存掩码，表示译码阶段的指令内存操作的掩码。
+	logic [2:0]  idex_csr_op;        // ID/EX 流水寄存器中的 CSR 操作码，表示译码阶段的指令 CSR 操作类型。
+	logic        idex_csr_imm;       // ID/EX 流水寄存器中的 CSR 立即数标志，表示译码阶段的指令是否使用立即数进行 CSR 操作。
+	logic [11:0] idex_csr_addr;      // ID/EX 流水寄存器中的 CSR 地址，表示译码阶段的指令 CSR 地址传递到执行阶段。
+	logic [31:0] idex_csr_wdata;     // ID/EX 流水寄存器中的 CSR 写数据，表示译码阶段的指令 CSR 写数据传递到执行阶段。
+	logic        idex_is_ecall;      // ID/EX 流水寄存器中的 ECALL 标志，表示译码阶段的指令是否为 ECALL。
+	logic        idex_is_mret;       // ID/EX 流水寄存器中的 MRET 标志，表示译码阶段的指令是否为 MRET。
+	logic        idex_is_m_ext;      // ID/EX 流水寄存器中的 M 扩展标志，表示译码阶段的指令是否使用 M 扩展。
+	logic [3:0]  idex_m_op;          // ID/EX 流水寄存器中的 M 操作码，表示译码阶段的指令 M 操作类型。
 
 	// =========================
 	// EX 级：forwarding、分支判断、ALU 与跳转目标 表示执行阶段的寄存器值、ALU 输入、分支判断结果和跳转目标。
 	// =========================
-	logic [31:0] ex_rs1_val;
-	logic [31:0] ex_rs2_val;
-	logic [31:0] ex_pc_rs1_val;
-	logic [31:0] ex_pc_rs2_val;
-	logic [31:0] ex_alu_a;
-	logic [31:0] ex_alu_b;
-	logic [31:0] ex_alu_y;
-	logic        ex_br_take;
-	logic        ex_pc_use_rs1;
-	logic        ex_pc_use_rs2;
-	logic        ex_pc_fwd_rs1_from_exmem;
-	logic        ex_pc_fwd_rs1_from_memwb;
-	logic        ex_pc_fwd_rs2_from_exmem;
-	logic        ex_pc_fwd_rs2_from_memwb;
-	logic        ex_alu_is_true;
-	logic        ex_cmp_eq;
-	logic        ex_cmp_lt_signed;
-	logic        ex_cmp_lt_unsigned;
-	logic [31:0] ex_pc4;
-	logic [31:0] ex_pc_plus_imm;
-	logic [31:0] ex_jalr_sum;
-	logic [31:0] ex_jalr_target;
-	logic [63:0] ex_mul_helper_full;
-	logic [31:0] ex_mul_helper_result;
-	logic        ex_pc_redirect;
-	logic [31:0] ex_pc_target;
-	logic [31:0] ex_wb_data;
-	logic [31:0] ex_store_data;
-	logic        ex_use_rs1_value;
-	logic        ex_use_rs2_value;
+	logic [31:0] ex_rs1_val;      // EX 级寄存器中的 rs1 值，表示执行阶段的指令 rs1 操作数。
+	logic [31:0] ex_rs2_val;      // EX 级寄存器中的 rs2 值，表示执行阶段的指令 rs2 操作数。
+	logic [31:0] ex_pc_rs1_val;   // EX 级寄存器中的 PC+rs1 值，表示执行阶段的指令 PC+rs1 操作数。
+	logic [31:0] ex_pc_rs2_val;   // EX 级寄存器中的 PC+rs2 值，表示执行阶段的指令 PC+rs2 操作数。
+	logic [31:0] ex_alu_a;        // EX 级寄存器中的 ALU 操作数 A，表示执行阶段的指令 ALU 操作数 A。
+	logic [31:0] ex_alu_b;        // EX 级寄存器中的 ALU 操作数 B，表示执行阶段的指令 ALU 操作数 B。
+	logic [31:0] ex_alu_y;        // EX 级寄存器中的 ALU 结果，表示执行阶段的指令 ALU 计算结果。
+	logic        ex_br_take;      // EX 级寄存器中的分支判断结果，表示执行阶段的指令是否采取分支。
+	logic        ex_pc_use_rs1;   // EX 级寄存器中的 PC 使用 rs1 标志，表示执行阶段的指令是否使用 rs1 计算 PC。
+	logic        ex_pc_use_rs2;   // EX 级寄存器中的 PC 使用 rs2 标志，表示执行阶段的指令是否使用 rs2 计算 PC。
+	logic        ex_pc_fwd_rs1_from_exmem; // EX 级寄存器中的 PC 前递 rs1 来自 EX/MEM 标志，表示执行阶段的指令是否从 EX/MEM 前递 rs1。
+	logic        ex_pc_fwd_rs1_from_memwb; // EX 级寄存器中的 PC 前递 rs1 来自 MEM/WB 标志，表示执行阶段的指令是否从 MEM/WB 前递 rs1。
+	logic        ex_pc_fwd_rs2_from_exmem; // EX 级寄存器中的 PC 前递 rs2 来自 EX/MEM 标志，表示执行阶段的指令是否从 EX/MEM 前递 rs2。
+	logic        ex_pc_fwd_rs2_from_memwb; // EX 级寄存器中的 PC 前递 rs2 来自 MEM/WB 标志，表示执行阶段的指令是否从 MEM/WB 前递 rs2。
+	logic        ex_alu_is_true;  // EX 级寄存器中的 ALU 是否为真标志，表示执行阶段的指令 ALU 结果是否为真。
+	logic        ex_cmp_eq;       // EX 级寄存器中的比较结果标志，表示执行阶段的指令是否相等。
+	logic        ex_cmp_lt_signed; // EX 级寄存器中的有符号比较结果标志，表示执行阶段的指令是否小于。
+	logic        ex_cmp_lt_unsigned; // EX 级寄存器中的无符号比较结果标志，表示执行阶段的指令是否小于。
+	logic [31:0] ex_pc4;          // EX 级寄存器中的 PC+4 值，表示执行阶段的指令 PC+4。
+	logic [31:0] ex_pc_plus_imm;  // EX 级寄存器中的 PC+立即数值，表示执行阶段的指令 PC+立即数。
+	logic [31:0] ex_jalr_sum;     // EX 级寄存器中的 JALR 和，表示执行阶段的指令 JALR 计算结果。
+	logic [31:0] ex_jalr_target;  // EX 级寄存器中的 JALR 目标地址，表示执行阶段的指令 JALR 目标地址。
+	logic [63:0] ex_mul_helper_full; // EX 级寄存器中的乘法辅助全值，表示执行阶段的指令乘法辅助全值。
+	logic [31:0] ex_mul_helper_result; // EX 级寄存器中的乘法辅助结果，表示执行阶段的指令乘法辅助结果。
+	logic        ex_pc_redirect;  // EX 级寄存器中的 PC 重定向标志，表示执行阶段的指令是否需要重定向 PC。
+	logic [31:0] ex_pc_target;    // EX 级寄存器中的 PC 目标地址，表示执行阶段的指令 PC 目标地址。
+	logic [31:0] ex_wb_data;      // EX 级寄存器中的写回数据，表示执行阶段的指令写回数据。
+	logic [31:0] ex_store_data;   // EX 级寄存器中的存储数据，表示执行阶段的指令存储数据。
+	logic        ex_use_rs1_value; // EX 级寄存器中的使用 rs1 值标志，表示执行阶段的指令是否使用 rs1 值。
+	logic        ex_use_rs2_value; // EX 级寄存器中的使用 rs2 值标志，表示执行阶段的指令是否使用 rs2 值。
 	// 这四条“命中线”是当前保留的 timing 优化：
 	// 先共享 exmem/memwb 与 rs1/rs2 的 compare 结果，
 	// 再分别给普通 ALU forwarding 和 PC forwarding 复用，
 	// 避免同一组比较器在多条链上重复综合。
-	logic        ex_match_rs1_exmem;
-	logic        ex_match_rs1_memwb;
-	logic        ex_match_rs2_exmem;
-	logic        ex_match_rs2_memwb;
-	logic        ex_fwd_rs1_from_exmem;
-	logic        ex_fwd_rs1_from_memwb;
-	logic        ex_fwd_rs2_from_exmem;
-	logic        ex_fwd_rs2_from_memwb;
-	logic [31:0] ex_csr_rdata;
-	logic [31:0] ex_csr_wdata;
-	logic        ex_csr_we;
-	logic        exmem_can_forward;
-	logic        memwb_can_forward;
-	logic        ex_trap_enter;
-	logic        ex_trap_return;
-	logic        ex_trap_redirect;
-	logic [31:0] ex_trap_target;
-	logic [31:0] ex_m_result;
-	logic [31:0] ex_mul_result_comb;
-	logic [31:0] ex_m_result_reg;
-	logic [63:0] m_mul_uu_reg;
-	logic [31:0] ex_div_result;
-	logic [1:0]  ex_div_op;
-	logic        ex_m_is_div;
-	logic        ex_m_is_mul;
-	logic        mul_start;
-	logic        m_start;
-	logic        m_inflight;
-	logic        m_result_ready;
-	logic        m_div_started;
-	logic        m_is_div_reg;
-	logic        m_mul_raw_valid;
-	logic [3:0]  m_op_reg;
-	logic [31:0] m_rs1_reg;
-	logic [31:0] m_rs2_reg;
-	logic        div_start;
-	logic        div_busy;
-	logic        div_done;
+	logic        ex_match_rs1_exmem;// EX 级寄存器中的 rs1 与 EX/MEM 匹配标志，表示执行阶段的指令 rs1 是否与 EX/MEM 匹配。
+	logic        ex_match_rs1_memwb;// EX 级寄存器中的 rs1 与 MEM/WB 匹配标志，表示执行阶段的指令 rs1 是否与 MEM/WB 匹配。
+	logic        ex_match_rs2_exmem;// EX 级寄存器中的 rs2 与 EX/MEM 匹配标志，表示执行阶段的指令 rs2 是否与 EX/MEM 匹配。
+	logic        ex_match_rs2_memwb;// EX 级寄存器中的 rs2 与 MEM/WB 匹配标志，表示执行阶段的指令 rs2 是否与 MEM/WB 匹配。
+	logic        ex_fwd_rs1_from_exmem;// EX 级寄存器中的 rs1 从 EX/MEM 前递标志，表示执行阶段的指令 rs1 是否从 EX/MEM 前递。
+	logic        ex_fwd_rs1_from_memwb;// EX 级寄存器中的 rs1 从 MEM/WB 前递标志，表示执行阶段的指令 rs1 是否从 MEM/WB 前递。
+	logic        ex_fwd_rs2_from_exmem;// EX 级寄存器中的 rs2 从 EX/MEM 前递标志，表示执行阶段的指令 rs2 是否从 EX/MEM 前递。
+	logic        ex_fwd_rs2_from_memwb;// EX 级寄存器中的 rs2 从 MEM/WB 前递标志，表示执行阶段的指令 rs2 是否从 MEM/WB 前递。
+	logic [31:0] ex_csr_rdata; // EX 级寄存器中的 CSR 读取数据，表示执行阶段的指令 CSR 读取数据。
+	logic [31:0] ex_csr_wdata; // EX 级寄存器中的 CSR 写入数据，表示执行阶段的指令 CSR 写入数据。
+	logic        ex_csr_we;    // EX 级寄存器中的 CSR 写使能标志，表示执行阶段的指令是否写入 CSR。
+	logic        exmem_can_forward; // EX/MEM 级寄存器中的前递标志，表示 EX/MEM 级寄存器是否可以前递。
+	logic        memwb_can_forward; // MEM/WB 级寄存器中的前递标志，表示 MEM/WB 级寄存器是否可以前递。
+	logic        ex_trap_enter; // EX 级寄存器中的陷入标志，表示执行阶段的指令是否进入陷入。
+	logic        ex_trap_return; // EX 级寄存器中的陷出标志，表示执行阶段的指令是否返回陷入。
+	logic        ex_trap_redirect; // EX 级寄存器中的陷入重定向标志，表示执行阶段的指令是否需要陷入重定向。
+	logic [31:0] ex_trap_target; // EX 级寄存器中的陷入目标地址，表示执行阶段的指令陷入目标地址。
+	logic [31:0] ex_m_result; // EX 级寄存器中的乘法/除法结果，表示执行阶段的指令乘法/除法结果。
+	logic [31:0] ex_mul_result_comb; // EX 级寄存器中的组合乘法结果，表示执行阶段的指令组合乘法结果。
+	logic [31:0] ex_m_result_reg; // EX 级寄存器中的寄存器乘法结果，表示执行阶段的指令寄存器乘法结果。
+	logic [63:0] m_mul_uu_reg; // EX 级寄存器中的乘法结果寄存器，表示执行阶段的指令乘法结果寄存器。
+	logic [31:0] ex_div_result; // EX 级寄存器中的除法结果，表示执行阶段的指令除法结果。
+	logic [1:0]  ex_div_op; // EX 级寄存器中的除法操作，表示执行阶段的指令除法操作。
+	logic        ex_m_is_div; // EX 级寄存器中的除法标志，表示执行阶段的指令是否为除法。
+	logic        ex_m_is_mul; // EX 级寄存器中的乘法标志，表示执行阶段的指令是否为乘法。
+	logic        mul_start; // EX 级寄存器中的乘法开始标志，表示执行阶段的指令是否开始乘法。
+	logic        m_start; // EX 级寄存器中的乘法/除法开始标志，表示执行阶段的指令是否开始乘法/除法。
+	logic        m_inflight; // EX 级寄存器中的乘法/除法进行中标志，表示执行阶段的指令乘法/除法是否进行中。
+	logic        m_result_ready; // EX 级寄存器中的乘法/除法结果准备好标志，表示执行阶段的指令乘法/除法结果是否准备好。
+	logic        m_div_started; // EX 级寄存器中的除法开始标志，表示执行阶段的指令除法是否开始。
+	logic        m_is_div_reg; // EX 级寄存器中的除法寄存器标志，表示执行阶段的指令是否为除法。
+	logic        m_mul_raw_valid; // EX 级寄存器中的乘法原始有效标志，表示执行阶段的指令乘法原始结果是否有效。
+	logic [3:0]  m_op_reg; // EX 级寄存器中的操作码寄存器，表示执行阶段的指令操作码。
+	logic [31:0] m_rs1_reg; // EX 级寄存器中的源操作数1寄存器，表示执行阶段的指令源操作数1。
+	logic [31:0] m_rs2_reg; // EX 级寄存器中的源操作数2寄存器，表示执行阶段的指令源操作数2。
+	logic        div_start; // EX 级寄存器中的除法开始标志，表示执行阶段的指令是否开始除法。
+	logic        div_busy; // EX 级寄存器中的除法忙标志，表示执行阶段的指令除法是否忙。
+	logic        div_done; // EX 级寄存器中的除法完成标志，表示执行阶段的指令除法是否完成。
 
 	// =========================
 	// EX/MEM 流水寄存器 表示执行阶段的结果和控制信号传递到访存阶段。
 	// =========================
-	logic [31:0] exmem_alu_y      = 32'h0;
-	logic [31:0] exmem_store_data = 32'h0;
-	logic [4:0]  exmem_rd         = 5'h0;
-	logic [2:0]  exmem_funct3     = 3'h0;
-	logic        exmem_valid      = 1'b0;
-	logic [31:0] exmem_wb_data    = 32'h0;
-	logic        exmem_rf_we      = 1'b0;
-	logic [2:0]  exmem_wb_sel     = WB_SRC_ALU;
-	logic        exmem_mem_req    = 1'b0;
-	logic        exmem_mem_write  = 1'b0;
-	logic [1:0]  exmem_mem_mask   = MEM_MASK_WORD;
-	logic [31:0] exmem_pc         = 32'h0;
-	logic [31:0] exmem_addr_base  = 32'h0;
-	logic [31:0] exmem_addr_off   = 32'h0;
+	logic [31:0] exmem_alu_y      = 32'h0;          // EX/MEM 流水寄存器中的 ALU 结果，表示执行阶段的指令 ALU 计算结果传递到访存阶段。
+	logic [31:0] exmem_store_data = 32'h0;          // EX/MEM 流水寄存器中的存储数据，表示执行阶段的指令存储数据传递到访存阶段。
+	logic [4:0]  exmem_rd         = 5'h0;           // EX/MEM 流水寄存器中的目标寄存器，表示执行阶段的指令目标寄存器传递到访存阶段。
+	logic [2:0]  exmem_funct3     = 3'h0;           // EX/MEM 流水寄存器中的 funct3，表示执行阶段的指令 funct3 传递到访存阶段。
+	logic        exmem_valid      = 1'b0;           // EX/MEM 流水寄存器中的有效标志，表示执行阶段的指令是否有效传递到访存阶段。
+	logic [31:0] exmem_wb_data    = 32'h0;          // EX/MEM 流水寄存器中的写回数据，表示执行阶段的指令写回数据传递到访存阶段。
+	logic        exmem_rf_we      = 1'b0;           // EX/MEM 流水寄存器中的寄存器写使能标志，表示执行阶段的指令是否写回寄存器。
+	logic [2:0]  exmem_wb_sel     = WB_SRC_ALU;     // EX/MEM 流水寄存器中的写回选择，表示执行阶段的指令写回数据来源。
+	logic        exmem_mem_req    = 1'b0;           // EX/MEM 流水寄存器中的存储请求标志，表示执行阶段的指令是否发起存储请求。
+	logic        exmem_mem_write  = 1'b0;           // EX/MEM 流水寄存器中的存储写标志，表示执行阶段的指令是否进行存储写操作。
+	logic [1:0]  exmem_mem_mask   = MEM_MASK_WORD;  // EX/MEM 流水寄存器中的存储掩码，表示执行阶段的指令存储操作的字节掩码。
+	logic [31:0] exmem_pc         = 32'h0;          // EX/MEM 流水寄存器中的程序计数器，表示执行阶段的指令程序计数器传递到访存阶段。
+	logic [31:0] exmem_addr_base  = 32'h0;          // EX/MEM 流水寄存器中的基地址，表示执行阶段的指令基地址传递到访存阶段。
+	logic [31:0] exmem_addr_off   = 32'h0;          // EX/MEM 流水寄存器中的偏移地址，表示执行阶段的指令偏移地址传递到访存阶段。
 
 	// =========================
 	// MEM / MEMWB 级 表示访存阶段的结果和控制信号传递到写回阶段。
 	// =========================
-	logic [31:0] mem_load_data;
-	logic [31:0] mem_wb_data;
-	logic [31:0] memwb_wdata;
-	logic [4:0]  memwb_rd;
-	logic        memwb_rf_we;
-	logic        memwb_valid;
-	logic [31:0] memwb_pc;
+	logic [31:0] mem_load_data; // MEM 级寄存器中的加载数据，表示访存阶段的指令从内存加载的数据传递到写回阶段。
+	logic [31:0] mem_wb_data;   // MEM 级寄存器中的写回数据，表示访存阶段的指令写回数据传递到写回阶段。
+	logic [31:0] memwb_wdata;   // MEM/WB 级寄存器中的写回数据，表示访存阶段的指令写回数据传递到写回阶段。
+	logic [4:0]  memwb_rd;      // MEM/WB 级寄存器中的目标寄存器，表示访存阶段的指令目标寄存器传递到写回阶段。
+	logic        memwb_rf_we;   // MEM/WB 级寄存器中的寄存器写使能标志，表示访存阶段的指令是否写回寄存器。
+	logic        memwb_valid;   // MEM/WB 级寄存器中的有效标志，表示访存阶段的指令是否有效传递到写回阶段。
+	logic [31:0] memwb_pc;      // MEM/WB 级寄存器中的程序计数器，表示访存阶段的指令程序计数器传递到写回阶段。
 
 	// ========================
 	// CSR级控制和状态寄存器 表示控制和状态寄存器的值和写使能信号。
 	// ========================
-	logic [31:0] csr_mstatus;
-	logic [31:0] csr_mtvec;
-	logic [31:0] csr_mepc;
-	logic [31:0] csr_mcause;
-	logic        csr_write_operand_nonzero;
-	logic        csr_rs1_is_x0;
+	logic [31:0] csr_mstatus; // CSR 级寄存器中的 mstatus 值，表示机器状态寄存器的值。
+	logic [31:0] csr_mtvec;   // CSR 级寄存器中的 mtvec 值，表示机器异常向量基地址寄存器的值。
+	logic [31:0] csr_mepc;    // CSR 级寄存器中的 mepc 值，表示机器异常程序计数器的值。
+	logic [31:0] csr_mcause;  // CSR 级寄存器中的 mcause 值，表示机器异常原因寄存器的值。
+	logic        csr_write_operand_nonzero; // CSR 级寄存器中的写操作数非零标志，表示写入 CSR 的操作数是否非零。
+	logic        csr_rs1_is_x0; // CSR 级寄存器中的 rs1 是否为 x0 标志，表示源寄存器 rs1 是否为 x0。
 
 	// ========================
 	// MUL寄存器
 	// ========================
-	logic [63:0] mul_uu;
+	logic [63:0] mul_uu; // MUL 级寄存器中的无符号乘法结果，表示执行阶段的指令无符号乘法结果。
 
-	logic m_stall;
-	logic div_stall;
+	logic m_stall; // EX 级寄存器中的乘法/除法暂停标志，表示执行阶段的指令是否需要暂停乘法/除法操作。
+	logic div_stall; // EX 级寄存器中的除法暂停标志，表示执行阶段的指令是否需要暂停除法操作。
 
 	// 根据 load/store 的 funct3 生成字节掩码。
 	function automatic logic [1:0] decode_mem_mask(input logic [2:0] funct3);
@@ -497,16 +499,20 @@ module myCPU #(
 	assign ex_match_rs1_memwb = memwb_can_forward && (memwb_rd == idex_rs1);
 	assign ex_match_rs2_exmem = exmem_can_forward && (exmem_rd == idex_rs2);
 	assign ex_match_rs2_memwb = memwb_can_forward && (memwb_rd == idex_rs2);
+
+	// 这四条“命中线”是当前保留的 timing 优化：
+	// 先共享 exmem/memwb 与 rs1/rs2 的 compare 结果，
+	// 再分别给普通 ALU forwarding 和 PC forwarding 复用，
+	// 避免同一组比较器在多条链上重复综合。
 	assign ex_fwd_rs1_from_exmem = ex_use_rs1_value && ex_match_rs1_exmem;
 	assign ex_fwd_rs1_from_memwb = ex_use_rs1_value && ex_match_rs1_memwb;
 	assign ex_fwd_rs2_from_exmem = ex_use_rs2_value && ex_match_rs2_exmem;
 	assign ex_fwd_rs2_from_memwb = ex_use_rs2_value && ex_match_rs2_memwb;
-	// branch/jalr 的 PC 选择链不再吃 EXMEM 前递，
-	// 改为在 ID 级等待数据稳定后再进入 EX，换更短的 PC 关键路径。
+	//为了避免load-branch冒险，现在重新开启forwarding，后续可以考虑增加branch预测来优化。
 	assign ex_pc_fwd_rs1_from_exmem = 1'b0;
-	assign ex_pc_fwd_rs1_from_memwb = 1'b0;
+	assign ex_pc_fwd_rs1_from_memwb = ex_pc_use_rs1 && ex_match_rs1_memwb;
 	assign ex_pc_fwd_rs2_from_exmem = 1'b0;
-	assign ex_pc_fwd_rs2_from_memwb = 1'b0;
+	assign ex_pc_fwd_rs2_from_memwb = ex_pc_use_rs2 && ex_match_rs2_memwb;
 	assign ex_trap_enter = idex_valid && idex_is_ecall && !mem_load_stall;
 	assign ex_trap_return = idex_valid && idex_is_mret && !mem_load_stall;
 	assign ex_trap_redirect = ex_trap_enter || ex_trap_return;
@@ -516,7 +522,7 @@ module myCPU #(
 						 32'h0;
 	assign csr_rs1_is_x0 = (idex_rs1 == 5'd0);
 	assign csr_write_operand_nonzero = (idex_csr_imm ? (idex_csr_wdata != 32'h0)
-                                                 : !csr_rs1_is_x0);
+                                                 : !csr_rs1_is_x0);// CSR 写入操作数非零条件。
 	// 乘法统一先做无符号 32x32，高位带符号的修正在下一拍完成，
 	// 用寄存器把 DSP 乘法链和后面的高位修正链拆开。
 	assign mul_uu = $unsigned(m_rs1_reg) * $unsigned(m_rs2_reg);
@@ -695,7 +701,7 @@ module myCPU #(
 		end
 	end
 
-	// IF 级 PC 寄存器。
+	// IF 级 PC 寄存器，在 reset 时初始化为 RESET_PC。
 	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
 		if (cpu_rst) begin
 			pc_q <= RESET_PC;
@@ -986,6 +992,7 @@ module myCPU #(
 		if (cpu_rst) begin
 			idex_valid         <= 1'b0;
 			idex_pc            <= 32'h0;
+			idex_instr         <= NOP_INSTR;
 			idex_rs1           <= 5'h0;
 			idex_rs2           <= 5'h0;
 			idex_rs1_val       <= 32'h0;
@@ -1021,6 +1028,7 @@ module myCPU #(
 		end else if (ex_pc_redirect || load_use_hazard || pc_ex_hazard || pc_mem_hazard) begin
 			idex_valid         <= 1'b0;
 			idex_pc            <= 32'h0;
+			idex_instr         <= NOP_INSTR;
 			idex_rs1           <= 5'h0;
 			idex_rs2           <= 5'h0;
 			idex_rs1_val       <= 32'h0;
@@ -1054,6 +1062,7 @@ module myCPU #(
 		end else if (id_mul_helper_hit) begin
 			idex_valid         <= 1'b1;
 			idex_pc            <= ifid_pc;
+			idex_instr         <= ifid_instr;
 			idex_rs1           <= 5'h0;
 			idex_rs2           <= 5'h0;
 			idex_rs1_val       <= 32'h0;
@@ -1087,6 +1096,7 @@ module myCPU #(
 		end else begin
 			idex_valid         <= ifid_valid;
 			idex_pc            <= ifid_pc;
+			idex_instr         <= ifid_instr;
 			idex_rs1           <= id_rs1;
 			idex_rs2           <= id_rs2;
 			idex_rs1_val       <= id_rs1_val;
@@ -1222,7 +1232,7 @@ module myCPU #(
 			default:     ex_csr_rdata = 32'h0;
 		endcase
 	end
-
+	
 	always_comb begin
 		ex_csr_we    = 1'b0;
 		ex_csr_wdata = ex_csr_rdata;
