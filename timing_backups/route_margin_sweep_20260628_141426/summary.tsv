@@ -1,7 +1,0 @@
-route_directive	wns	report	dcp
-Default	0.007	E:/Projects/1Aprojects/RV32Final/timing_backups/route_margin_sweep_20260628_141426/timing_Default.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/route_margin_sweep_20260628_141426/top_Default.dcp
-Explore	-0.145	E:/Projects/1Aprojects/RV32Final/timing_backups/route_margin_sweep_20260628_141426/timing_Explore.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/route_margin_sweep_20260628_141426/top_Explore.dcp
-AggressiveExplore	-0.145	E:/Projects/1Aprojects/RV32Final/timing_backups/route_margin_sweep_20260628_141426/timing_AggressiveExplore.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/route_margin_sweep_20260628_141426/top_AggressiveExplore.dcp
-NoTimingRelaxation	-0.082	E:/Projects/1Aprojects/RV32Final/timing_backups/route_margin_sweep_20260628_141426/timing_NoTimingRelaxation.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/route_margin_sweep_20260628_141426/top_NoTimingRelaxation.dcp
-MoreGlobalIterations	-0.053	E:/Projects/1Aprojects/RV32Final/timing_backups/route_margin_sweep_20260628_141426/timing_MoreGlobalIterations.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/route_margin_sweep_20260628_141426/top_MoreGlobalIterations.dcp
-HigherDelayCost	-0.098	E:/Projects/1Aprojects/RV32Final/timing_backups/route_margin_sweep_20260628_141426/timing_HigherDelayCost.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/route_margin_sweep_20260628_141426/top_HigherDelayCost.dcp

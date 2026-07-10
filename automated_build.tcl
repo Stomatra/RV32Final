@@ -1,5 +1,12 @@
 
-open_project digital_twin.xpr
+set repo_dir [file normalize [file dirname [info script]]]
+set build_dir [file join $repo_dir build]
+file mkdir $build_dir
+set project_file [file join $repo_dir build vivado digital_twin.xpr]
+if {![file exists $project_file]} {
+    source [file join $repo_dir scripts recreate_vivado_project.tcl]
+}
+open_project $project_file
 
 # Synthesis
 puts "\n===== SYNTHESIS ====="
@@ -10,7 +17,7 @@ wait_on_run synth_1
 # Check synthesis
 open_run synth_1
 puts [get_property STATS.SYNTHESIZED [get_runs synth_1]]
-report_timing_summary -file synth_timing_summary.txt
+report_timing_summary -file [file join $build_dir synth_timing_summary.txt]
 close_run synth_1
 
 # Implementation
@@ -26,11 +33,12 @@ wait_on_run impl_1
 
 # Report timing
 open_run impl_1
-report_timing_summary -file impl_timing_summary.txt
+report_timing_summary -file [file join $build_dir impl_timing_summary.txt]
 puts "\nTiming Report:"
-catch {exec grep -i "slack" impl_timing_summary.txt}
+catch {exec grep -i "slack" [file join $build_dir impl_timing_summary.txt]}
 close_run impl_1
 
 puts "\n===== BUILD COMPLETE ====="
-puts "Bitfile: digital_twin.runs/impl_1/top.bit"
+set bitfile [file join [get_property DIRECTORY [current_project]] digital_twin.runs impl_1 top.bit]
+puts "Bitfile: $bitfile"
 close_project

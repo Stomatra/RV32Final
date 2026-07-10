@@ -1,6 +1,0 @@
-freq_mhz	wns	status	report	dcp
-200.0	-0.223	ok	E:/Projects/1Aprojects/RV32Final/timing_backups/mmcm_freq_sweep_explore_20260628_201500/timing_mmcm_200p0.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/mmcm_freq_sweep_explore_20260628_201500/top_mmcm_200p0.dcp
-200.5	-0.307	ok	E:/Projects/1Aprojects/RV32Final/timing_backups/mmcm_freq_sweep_explore_20260628_201500/timing_mmcm_200p5.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/mmcm_freq_sweep_explore_20260628_201500/top_mmcm_200p5.dcp
-201.0	-0.257	ok	E:/Projects/1Aprojects/RV32Final/timing_backups/mmcm_freq_sweep_explore_20260628_201500/timing_mmcm_201p0.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/mmcm_freq_sweep_explore_20260628_201500/top_mmcm_201p0.dcp
-201.5	-0.231	ok	E:/Projects/1Aprojects/RV32Final/timing_backups/mmcm_freq_sweep_explore_20260628_201500/timing_mmcm_201p5.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/mmcm_freq_sweep_explore_20260628_201500/top_mmcm_201p5.dcp
-202.0	-0.314	ok	E:/Projects/1Aprojects/RV32Final/timing_backups/mmcm_freq_sweep_explore_20260628_201500/timing_mmcm_202p0.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/mmcm_freq_sweep_explore_20260628_201500/top_mmcm_202p0.dcp

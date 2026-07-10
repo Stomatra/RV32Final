@@ -1,5 +1,0 @@
-name	wns	report	dcp	status
-cpin_place_route	0.001	E:/Projects/1Aprojects/RV32Final/timing_backups/postroute_forced_physopt_20260628_152631/timing_cpin_place_route.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/postroute_forced_physopt_20260628_152631/top_cpin_place_route.dcp	ok
-fanout_cpin_route	NA	E:/Projects/1Aprojects/RV32Final/timing_backups/postroute_forced_physopt_20260628_152631/timing_fanout_cpin_route.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/postroute_forced_physopt_20260628_152631/top_fanout_cpin_route.dcp	ERROR: [Common 17-39] 'phys_opt_design' failed due to earlier errors.
-
-lut_cpin_route	0.001	E:/Projects/1Aprojects/RV32Final/timing_backups/postroute_forced_physopt_20260628_152631/timing_lut_cpin_route.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/postroute_forced_physopt_20260628_152631/top_lut_cpin_route.dcp	ok

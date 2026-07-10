@@ -1,5 +1,0 @@
-name	phys_directive	route_directive	wns	report	dcp
-explore	Explore	Explore	-0.067	E:/Projects/1Aprojects/RV32Final/timing_backups/impl_margin_sweep_20260628_134818/timing_explore.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/impl_margin_sweep_20260628_134818/top_explore.dcp
-aggr_route	Explore	AggressiveExplore	-0.067	E:/Projects/1Aprojects/RV32Final/timing_backups/impl_margin_sweep_20260628_134818/timing_aggr_route.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/impl_margin_sweep_20260628_134818/top_aggr_route.dcp
-more_global	Explore	MoreGlobalIterations	-0.091	E:/Projects/1Aprojects/RV32Final/timing_backups/impl_margin_sweep_20260628_134818/timing_more_global.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/impl_margin_sweep_20260628_134818/top_more_global.dcp
-no_relax	Explore	NoTimingRelaxation	-0.014	E:/Projects/1Aprojects/RV32Final/timing_backups/impl_margin_sweep_20260628_134818/timing_no_relax.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/impl_margin_sweep_20260628_134818/top_no_relax.dcp

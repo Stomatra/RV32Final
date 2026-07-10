@@ -1,5 +1,0 @@
-directive	wns	report	dcp	status
-Explore	NA	E:/Projects/1Aprojects/RV32Final/timing_backups/place_explore_compare_20260701_215305/timing_Explore.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/place_explore_compare_20260701_215305/top_Explore.dcp	ERROR: [Common 17-39] 'opt_design' failed due to earlier errors.
-
-AggressiveExplore	NA	E:/Projects/1Aprojects/RV32Final/timing_backups/place_explore_compare_20260701_215305/timing_AggressiveExplore.rpt	E:/Projects/1Aprojects/RV32Final/timing_backups/place_explore_compare_20260701_215305/top_AggressiveExplore.dcp	ERROR: [Common 17-39] 'opt_design' failed due to earlier errors.
-
