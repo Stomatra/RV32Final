@@ -55,6 +55,8 @@ digital_twin.srcs/sources_1/imports/VerilogProjects/
 # Scratch files.
 tmp_*
 digital_twin.srcs/tmp_*
+scripts/probe_*.tcl
+scripts/rebuild_bit_fix_*.tcl
 *_backup_*
 *.bak
 
