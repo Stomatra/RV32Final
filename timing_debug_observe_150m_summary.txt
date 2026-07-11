@@ -1,0 +1,7 @@
+DEBUG_DEFINE=DEBUG_OBSERVE_MMIO
+DEBUG_BIT=E:/Projects/1Aprojects/RV32Final/top_debug_observe_withoutmext_irom_v2_150m.bit
+TIMING_REPORT=E:/Projects/1Aprojects/RV32Final/timing_debug_observe_150m.rpt
+PATHS_REPORT=E:/Projects/1Aprojects/RV32Final/timing_debug_observe_150m_paths.rpt
+WORST_SETUP_SLACK=0.431
+WORST_SETUP_SOURCE=student_top_inst/Core_cpu/memwb_rf_we_reg/C
+WORST_SETUP_DESTINATION=student_top_inst/Core_cpu/pc_q_reg[2]/D

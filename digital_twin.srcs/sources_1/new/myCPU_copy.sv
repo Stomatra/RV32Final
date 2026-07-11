@@ -86,7 +86,6 @@ module myCPU #(
 	localparam logic [11:0] CSR_MTVEC   = 12'h305;// CSR 寄存器 MTVEC 地址，用于保存异常向量基地址。
 	localparam logic [11:0] CSR_MEPC    = 12'h341;// CSR 寄存器 MEPC 地址，用于保存异常返回地址。
 	localparam logic [11:0] CSR_MCAUSE  = 12'h342;// CSR 寄存器 MCAUSE 地址，用于保存异常原因。
-	localparam logic [11:0] CSR_MSCRATCH = 12'h340;// CSR 寄存器 MSCRATCH 地址，用于保存临时数据。
 
 	//CSR指令类型
 	localparam logic [2:0] CSR_OP_NONE  = 3'd0;// CSR 操作类型 NONE，表示没有 CSR 操作。
@@ -138,10 +137,10 @@ module myCPU #(
 	logic [31:0] rf_x11_raw;// 译码阶段的寄存器 x11 原始值，表示当前指令的寄存器 x11 的原始值。
 	logic        id_uses_rs1;// 译码阶段是否使用源寄存器1，表示当前指令是否使用源寄存器1。
 	logic        id_uses_rs2;// 译码阶段是否使用源寄存器2，表示当前指令是否使用源寄存器2。
-	logic        load_use_ex_hazard;// 译码阶段是否存在 load-use 冒险，表示当前指令是否与前一条 load 指令存在数据依赖。
-	logic        load_use_mem_hazard;
+	logic        load_use_hazard;// 译码阶段是否存在 load-use 冒险，表示当前指令是否与前一条 load 指令存在数据依赖。
 	logic        pc_ex_hazard;// 译码阶段是否存在 PC 与 EX 阶段的冒险，表示当前指令是否与 EX 阶段的指令存在数据依赖。
 	logic        pc_mem_hazard;// 译码阶段是否存在 PC 与 MEM 阶段的冒险，表示当前指令是否与 MEM 阶段的指令存在数据依赖。
+	logic        pc_load_use_hazard;// 译码阶段是否存在 PC 与 load-use 冒险，表示当前指令是否与前一条 load 指令存在数据依赖。
 	logic        mem_load_stall;// 译码阶段是否需要因 load 指令而暂停，表示当前指令是否需要等待前一条 load 指令完成。
 	logic        mem_stall_flag;// 译码阶段是否需要因 MEM 阶段而暂停，表示当前指令是否需要等待 MEM 阶段的指令完成。
 	logic        id_mul_helper_candidate;// 译码阶段是否为 mul helper 候选指令，表示当前指令是否可能是 mul helper 指令。
@@ -309,7 +308,7 @@ module myCPU #(
 	logic        memwb_rf_we;   // MEM/WB 级寄存器中的寄存器写使能标志，表示访存阶段的指令是否写回寄存器。
 	logic        memwb_valid;   // MEM/WB 级寄存器中的有效标志，表示访存阶段的指令是否有效传递到写回阶段。
 	logic [31:0] memwb_pc;      // MEM/WB 级寄存器中的程序计数器，表示访存阶段的指令程序计数器传递到写回阶段。
- 
+
 	// ========================
 	// CSR级控制和状态寄存器 表示控制和状态寄存器的值和写使能信号。
 	// ========================
@@ -317,8 +316,7 @@ module myCPU #(
 	logic [31:0] csr_mtvec;   // CSR 级寄存器中的 mtvec 值，表示机器异常向量基地址寄存器的值。
 	logic [31:0] csr_mepc;    // CSR 级寄存器中的 mepc 值，表示机器异常程序计数器的值。
 	logic [31:0] csr_mcause;  // CSR 级寄存器中的 mcause 值，表示机器异常原因寄存器的值。
-	logic [31:0] csr_mscratch; // CSR 级寄存器中的 mscratch 值，表示机器临时寄存器的值。
- 	logic        csr_write_operand_nonzero; // CSR 级寄存器中的写操作数非零标志，表示写入 CSR 的操作数是否非零。
+	logic        csr_write_operand_nonzero; // CSR 级寄存器中的写操作数非零标志，表示写入 CSR 的操作数是否非零。
 	logic        csr_rs1_is_x0; // CSR 级寄存器中的 rs1 是否为 x0 标志，表示源寄存器 rs1 是否为 x0。
 
 	// ========================
@@ -490,7 +488,8 @@ module myCPU #(
 
 	// EXMEM/MEMWB 是否允许被前递。
 	assign exmem_can_forward = exmem_valid && exmem_rf_we && (exmem_rd != 5'h0) && (exmem_wb_sel != WB_SRC_MEM);
-	assign memwb_can_forward = memwb_valid && memwb_rf_we && (memwb_rd != 5'h0);
+    assign memwb_can_forward = memwb_valid && memwb_rf_we && (memwb_rd != 5'h0);
+	// 普通 EX forwarding 与 PC redirect forwarding 分离：
 	// - ex_use_rs* 面向 ALU/store 数据链
 	// - ex_pc_use_rs* 面向 branch/jalr 的 PC 选择链
 	assign ex_use_rs1_value = idex_valid && idex_uses_rs1;
@@ -510,7 +509,7 @@ module myCPU #(
 	assign ex_fwd_rs1_from_memwb = ex_use_rs1_value && ex_match_rs1_memwb;
 	assign ex_fwd_rs2_from_exmem = ex_use_rs2_value && ex_match_rs2_exmem;
 	assign ex_fwd_rs2_from_memwb = ex_use_rs2_value && ex_match_rs2_memwb;
-	//现在关闭forwarding，避免 timing 过长，load-branch冒险的解决方案为再等一拍。
+	//为了避免load-branch冒险，现在重新开启forwarding，后续可以考虑增加branch预测来优化。
 	assign ex_pc_fwd_rs1_from_exmem = 1'b0;
 	assign ex_pc_fwd_rs1_from_memwb = 1'b0;
 	assign ex_pc_fwd_rs2_from_exmem = 1'b0;
@@ -694,7 +693,7 @@ module myCPU #(
 			//如果 EX 阶段要求跳转，PC = 跳转目标
 			//包括：branch_taken jal jalr ecall mret mul_helper
 			pc_next = ex_pc_target;
-		end else if (load_use_ex_hazard || load_use_mem_hazard || pc_ex_hazard || pc_mem_hazard || mem_load_stall || m_stall) begin
+		end else if (load_use_hazard || pc_ex_hazard || pc_mem_hazard || pc_load_use_hazard || mem_load_stall || m_stall) begin
 			//如果存在相关冒险或停顿，PC 保持不变
 			pc_next = pc_q;
 		end else begin
@@ -717,7 +716,7 @@ module myCPU #(
 		if (cpu_rst) begin
 			ifid_pc    <= RESET_PC;
 			ifid_instr <= NOP_INSTR;
-		end else if (!load_use_ex_hazard && !load_use_mem_hazard && !pc_ex_hazard && !pc_mem_hazard && !mem_load_stall && !m_stall) begin
+		end else if (!load_use_hazard && !pc_ex_hazard && !pc_mem_hazard && !pc_load_use_hazard && !mem_load_stall && !m_stall) begin
 			ifid_pc    <= pc_q;
 			ifid_instr <= irom_data;
 		end
@@ -727,11 +726,11 @@ module myCPU #(
 	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
 		if (cpu_rst) begin
 			ifid_valid <= 1'b0;
-		end else if (mem_load_stall || m_stall || pc_ex_hazard || pc_mem_hazard) begin
+		end else if (mem_load_stall || m_stall || pc_ex_hazard || pc_mem_hazard || pc_load_use_hazard) begin
 			// hold IF/ID valid while the MEM-stage load bubble is extended
 		end else if (ex_pc_redirect) begin
 			ifid_valid <= 1'b0;
-		end else if (!(load_use_ex_hazard || load_use_mem_hazard)) begin
+		end else if (!load_use_hazard) begin
 			ifid_valid <= 1'b1;
 		end
 	end
@@ -962,15 +961,10 @@ module myCPU #(
 		end
 	end
 
-	assign load_use_ex_hazard = ifid_valid && idex_valid && idex_rf_we &&
+	assign load_use_hazard = ifid_valid && idex_valid && idex_rf_we &&
 							 (idex_wb_sel == WB_SRC_MEM) && (idex_rd != 5'h0) &&
 							 ((id_uses_rs1 && (id_rs1 == idex_rd)) ||
 							  (id_uses_rs2 && (id_rs2 == idex_rd)));
-
-	assign load_use_mem_hazard = ifid_valid && exmem_valid && exmem_rf_we &&
-					  (exmem_wb_sel == WB_SRC_MEM) && (exmem_rd != 5'h0) &&
-					  ((((id_pc_sel == PC_SRC_BRANCH) || (id_pc_sel == PC_SRC_JALR)) && (id_rs1 == exmem_rd)) ||
-					   ((id_pc_sel == PC_SRC_BRANCH) && (id_rs2 == exmem_rd)));
 
 	assign pc_ex_hazard = ifid_valid && idex_valid && idex_rf_we &&
 					 (idex_wb_sel != WB_SRC_MEM) && (idex_rd != 5'h0) &&
@@ -979,6 +973,10 @@ module myCPU #(
 
 	assign pc_mem_hazard = ifid_valid && exmem_valid && exmem_rf_we &&
 					  (exmem_wb_sel != WB_SRC_MEM) && (exmem_rd != 5'h0) &&
+					  ((((id_pc_sel == PC_SRC_BRANCH) || (id_pc_sel == PC_SRC_JALR)) && (id_rs1 == exmem_rd)) ||
+					   ((id_pc_sel == PC_SRC_BRANCH) && (id_rs2 == exmem_rd)));
+	assign pc_load_use_hazard = ifid_valid && exmem_valid && exmem_rf_we &&
+					  (exmem_wb_sel == WB_SRC_MEM) && (exmem_rd != 5'h0) &&
 					  ((((id_pc_sel == PC_SRC_BRANCH) || (id_pc_sel == PC_SRC_JALR)) && (id_rs1 == exmem_rd)) ||
 					   ((id_pc_sel == PC_SRC_BRANCH) && (id_rs2 == exmem_rd)));
 
@@ -1032,7 +1030,7 @@ module myCPU #(
 			idex_m_op          <= M_OP_NONE;
 		end else if (mem_load_stall || m_stall) begin
 			// hold IDEX - memory read stall
-		end else if (ex_pc_redirect || load_use_ex_hazard || load_use_mem_hazard || pc_ex_hazard || pc_mem_hazard ) begin
+		end else if (ex_pc_redirect || load_use_hazard || pc_ex_hazard || pc_mem_hazard || pc_load_use_hazard) begin
 			idex_valid         <= 1'b0;
 			idex_pc            <= 32'h0;
 			idex_instr         <= NOP_INSTR;
@@ -1236,7 +1234,6 @@ module myCPU #(
 			CSR_MTVEC:   ex_csr_rdata = csr_mtvec;
 			CSR_MEPC:    ex_csr_rdata = csr_mepc;
 			CSR_MCAUSE:  ex_csr_rdata = csr_mcause;
-			CSR_MSCRATCH: ex_csr_rdata = csr_mscratch;
 			default:     ex_csr_rdata = 32'h0;
 		endcase
 	end
@@ -1374,7 +1371,6 @@ module myCPU #(
 			csr_mtvec   <= 32'h0000_0000;
 			csr_mepc    <= 32'h0000_0000;
 			csr_mcause  <= 32'h0000_0000;
-			csr_mscratch <= 32'h0000_0000;
 		end else if (ex_trap_enter) begin
 			// trap 进入：MPIE <= MIE, MIE <= 0, MPP <= M 模式
 			csr_mstatus[7]      <= csr_mstatus[3];
@@ -1393,7 +1389,6 @@ module myCPU #(
 				CSR_MTVEC:   csr_mtvec   <= ex_csr_wdata;
 				CSR_MEPC:    csr_mepc    <= ex_csr_wdata;
 				CSR_MCAUSE:  csr_mcause  <= ex_csr_wdata;
-				CSR_MSCRATCH: csr_mscratch <= ex_csr_wdata;
 				default: begin end
 			endcase
 		end

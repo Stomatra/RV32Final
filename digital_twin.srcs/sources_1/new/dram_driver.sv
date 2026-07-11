@@ -58,6 +58,22 @@ module dram_driver(
 		end
 		`endif
 
+		// Init words synced from E:/jyd2026/withoutMext/demo/dram.coe.
+		dram_lane0[16'd0] = 8'h00;
+		dram_lane1[16'd0] = 8'h00;
+		dram_lane2[16'd0] = 8'h00;
+		dram_lane3[16'd0] = 8'h00;
+
+		dram_lane0[16'd1] = 8'h00;
+		dram_lane1[16'd1] = 8'h00;
+		dram_lane2[16'd1] = 8'h00;
+		dram_lane3[16'd1] = 8'h00;
+
+		dram_lane0[16'd2] = 8'h00;
+		dram_lane1[16'd2] = 8'h00;
+		dram_lane2[16'd2] = 8'h00;
+		dram_lane3[16'd2] = 8'h00;
+
 		dram_lane0[16'd3] = 8'hcd;
 		dram_lane1[16'd3] = 8'hab;
 		dram_lane2[16'd3] = 8'h34;
@@ -68,10 +84,41 @@ module dram_driver(
 		dram_lane2[16'd4] = 8'h66;
 		dram_lane3[16'd4] = 8'h55;
 
+		dram_lane0[16'd5] = 8'h00;
+		dram_lane1[16'd5] = 8'h00;
+		dram_lane2[16'd5] = 8'h00;
+		dram_lane3[16'd5] = 8'h00;
+
+		dram_lane0[16'd6] = 8'h00;
+		dram_lane1[16'd6] = 8'h00;
+		dram_lane2[16'd6] = 8'h00;
+		dram_lane3[16'd6] = 8'h00;
+
 		dram_lane0[16'd7] = 8'hff;
 		dram_lane1[16'd7] = 8'h00;
 		dram_lane2[16'd7] = 8'h00;
 		dram_lane3[16'd7] = 8'hff;
+
+		dram_lane0[16'd8] = 8'h00;
+		dram_lane1[16'd8] = 8'h00;
+		dram_lane2[16'd8] = 8'h00;
+		dram_lane3[16'd8] = 8'h00;
+
+		dram_lane0[16'd9] = 8'h00;
+		dram_lane1[16'd9] = 8'h00;
+		dram_lane2[16'd9] = 8'h00;
+		dram_lane3[16'd9] = 8'h00;
+
+		dram_lane0[16'd10] = 8'h00;
+		dram_lane1[16'd10] = 8'h00;
+		dram_lane2[16'd10] = 8'h00;
+		dram_lane3[16'd10] = 8'h00;
+
+		dram_lane0[16'd11] = 8'h00;
+		dram_lane1[16'd11] = 8'h00;
+		dram_lane2[16'd11] = 8'h00;
+		dram_lane3[16'd11] = 8'h00;
+
 	end
 
 	// 写掩码展开到四个 byte lane。

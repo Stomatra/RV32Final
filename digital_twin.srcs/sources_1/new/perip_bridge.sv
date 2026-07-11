@@ -30,11 +30,21 @@ module perip_bridge(
 	input  logic [1:0]	 perip_mask			,
     output logic [31:0]  perip_rdata		,
 
-    input  logic [63:0]  virtual_sw_input	,
+	input  logic [63:0]  virtual_sw_input	,
     input  logic [7:0]   virtual_key_input	,	
 
 	output logic [39:0]  virtual_seg_output	,
     output logic [31:0]  virtual_led_output
+`ifdef DEBUG_BRIDGE_CYCLE
+    ,
+    output logic [31:0]  dbg_seg_wdata,
+    output logic [31:0]  dbg_led_value,
+    output logic [31:0]  dbg_last_bridge_addr,
+    output logic [31:0]  dbg_last_bridge_wdata,
+    output logic [31:0]  dbg_last_seg_wdata,
+    output logic [31:0]  dbg_last_led_wdata,
+    output logic [31:0]  dbg_seen_flags
+`endif
 );
     // perip_bridge 把 CPU 的统一 perip 总线拆成三类目标：
     // 1. DRAM 地址区：转给 dram_driver
@@ -61,23 +71,33 @@ module perip_bridge(
     logic        sel_sw1;
     logic        sel_key;
     logic        sel_seg;
+    logic        sel_led;
     logic        sel_cnt;
     logic        sel_dram;
 	// 所有读源统一打一拍，和 dram_driver 的同步读延迟保持一致。
     logic        sel_dram_r, sel_cnt_r, sel_mmio_r;
     logic [31:0] mmio_rdata_r, cnt_rdata_r;
 
+`ifdef DEBUG_BRIDGE_CYCLE
+    logic [31:0] debug_last_bridge_addr;
+    logic [31:0] debug_last_bridge_wdata;
+    logic [31:0] debug_last_seg_wdata;
+    logic [31:0] debug_last_led_wdata;
+    logic [31:0] debug_seen_flags;
+`endif
+
     assign sel_sw0  = (perip_addr == SW0_ADDR);
     assign sel_sw1  = (perip_addr == SW1_ADDR);
     assign sel_key  = (perip_addr == KEY_ADDR);
     assign sel_seg  = (perip_addr == SEG_ADDR);
+    assign sel_led  = (perip_addr == LED_ADDR);
     assign sel_cnt  = (perip_addr == CNT_ADDR);
     assign sel_dram = (perip_addr >= DRAM_ADDR_START && perip_addr <= DRAM_ADDR_END);
 
 	// LED / SEG 的写入是最简单的寄存器写；开关与按键是只读输入。
     always_ff @(posedge clk) begin
         if (perip_wen) begin
-            if (perip_addr == LED_ADDR) begin
+            if (sel_led) begin
                 LED <= perip_wdata;
             end
             if (sel_seg) begin
@@ -85,6 +105,39 @@ module perip_bridge(
             end
         end
     end
+
+`ifdef DEBUG_BRIDGE_CYCLE
+    always_ff @(posedge clk or posedge rst) begin
+        if (rst) begin
+            debug_last_bridge_addr <= 32'h0;
+            debug_last_bridge_wdata <= 32'h0;
+            debug_last_seg_wdata <= 32'h0;
+            debug_last_led_wdata <= 32'h0;
+            debug_seen_flags <= 32'h0;
+        end else if (perip_wen) begin
+            debug_last_bridge_addr <= perip_addr;
+            debug_last_bridge_wdata <= perip_wdata;
+            debug_seen_flags[0] <= 1'b1;
+            debug_seen_flags[4] <= debug_seen_flags[4] | (perip_wdata != 32'h0);
+
+            if (sel_seg) begin
+                debug_last_seg_wdata <= perip_wdata;
+                debug_seen_flags[1] <= 1'b1;
+                debug_seen_flags[5] <= debug_seen_flags[5] | (perip_wdata != 32'h0);
+            end
+
+            if (sel_led) begin
+                debug_last_led_wdata <= perip_wdata;
+                debug_seen_flags[2] <= 1'b1;
+                debug_seen_flags[6] <= debug_seen_flags[6] | (perip_wdata != 32'h0);
+            end
+
+            if (sel_cnt) begin
+                debug_seen_flags[3] <= 1'b1;
+            end
+        end
+    end
+`endif
 
 	// MMIO 读是组合选择，但结果最终还会被后面的寄存器级统一打一拍。
     always_comb begin
@@ -167,5 +220,15 @@ module perip_bridge(
     
     assign virtual_led_output = LED;
     assign virtual_seg_output = seg_output;
+
+`ifdef DEBUG_BRIDGE_CYCLE
+    assign dbg_seg_wdata = seg_wdata;
+    assign dbg_led_value = LED;
+    assign dbg_last_bridge_addr = debug_last_bridge_addr;
+    assign dbg_last_bridge_wdata = debug_last_bridge_wdata;
+    assign dbg_last_seg_wdata = debug_last_seg_wdata;
+    assign dbg_last_led_wdata = debug_last_led_wdata;
+    assign dbg_seen_flags = debug_seen_flags;
+`endif
 
 endmodule

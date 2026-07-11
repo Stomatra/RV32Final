@@ -1,6 +1,6 @@
 IMPL_STRATEGY=Performance_Explore
 TIMING_REPORT=E:/Projects/1Aprojects/RV32Final/timing_performance_explore_bit.rpt
 PATHS_REPORT=E:/Projects/1Aprojects/RV32Final/timing_performance_explore_bit_paths.rpt
-WORST_SETUP_SLACK=-0.074
-WORST_SETUP_SOURCE=student_top_inst/Core_cpu/memwb_rf_we_reg/C
-WORST_SETUP_DESTINATION=student_top_inst/Core_cpu/pc_q_reg[25]/D
+WORST_SETUP_SLACK=0.497
+WORST_SETUP_SOURCE=student_top_inst/Core_cpu/memwb_rd_reg[4]/C
+WORST_SETUP_DESTINATION=student_top_inst/Core_cpu/pc_q_reg[8]/D
