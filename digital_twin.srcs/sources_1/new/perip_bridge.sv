@@ -77,7 +77,9 @@ module perip_bridge(
 	// 所有读源统一打一拍，和 dram_driver 的同步读延迟保持一致。
     logic        sel_dram_r, sel_cnt_r, sel_mmio_r;
     logic [31:0] mmio_rdata_r, cnt_rdata_r;
-
+    //添加停一拍的寄存器
+    logic [31:0] perip_rdata_next;
+    logic [31:0] perip_rdata_q;
 `ifdef DEBUG_BRIDGE_CYCLE
     logic [31:0] debug_last_bridge_addr;
     logic [31:0] debug_last_bridge_wdata;
@@ -95,8 +97,11 @@ module perip_bridge(
     assign sel_dram = (perip_addr >= DRAM_ADDR_START && perip_addr <= DRAM_ADDR_END);
 
 	// LED / SEG 的写入是最简单的寄存器写；开关与按键是只读输入。
-    always_ff @(posedge clk) begin
-        if (perip_wen) begin
+    always_ff @(posedge clk or posedge rst) begin
+        if (rst) begin
+            LED       <= 32'h0;
+            seg_wdata <= 32'h0;
+        end else if (perip_wen) begin
             if (sel_led) begin
                 LED <= perip_wdata;
             end
@@ -197,26 +202,44 @@ module perip_bridge(
     );
 
 	// 选择信号和非 BRAM 读数据打一拍，使所有读源都对齐成 1 周期延迟。
-    always_ff @(posedge clk) begin
-        sel_dram_r  <= sel_dram;
-        sel_cnt_r   <= sel_cnt;
-        sel_mmio_r  <= (sel_sw0 || sel_sw1 || sel_key || sel_seg);
-        mmio_rdata_r <= mmio_rdata;
-        cnt_rdata_r  <= cnt_rdata;
+    always_ff @(posedge clk or posedge rst) begin
+        if (rst) begin
+            sel_dram_r   <= 1'b0;
+            sel_cnt_r    <= 1'b0;
+            sel_mmio_r   <= 1'b0;
+            mmio_rdata_r <= 32'h0;
+            cnt_rdata_r  <= 32'h0;
+        end else begin
+            sel_dram_r   <= sel_dram;
+            sel_cnt_r    <= sel_cnt;
+            sel_mmio_r   <= (sel_sw0 || sel_sw1 || sel_key || sel_seg);
+            mmio_rdata_r <= mmio_rdata;
+            cnt_rdata_r  <= cnt_rdata;
+        end
     end
 
 	// CPU 看到的 perip_rdata 在“地址给出后一拍”有效。
     always_comb begin
         if (sel_dram_r) begin
-            perip_rdata = dram_rdata;    // BRAM output already 1-cycle delayed
+            perip_rdata_next = dram_rdata;    // BRAM output already 1-cycle delayed
         end else if (sel_cnt_r) begin
-            perip_rdata = cnt_rdata_r;
+            perip_rdata_next = cnt_rdata_r;
         end else if (sel_mmio_r) begin
-            perip_rdata = mmio_rdata_r;
+            perip_rdata_next = mmio_rdata_r;
         end else begin
-            perip_rdata = 32'h0;
+            perip_rdata_next = 32'h0;
         end
     end
+
+    always_ff @(posedge clk or posedge rst) begin
+        if (rst) begin
+            perip_rdata_q <= 32'h0;
+        end else begin
+            perip_rdata_q <= perip_rdata_next;
+        end
+    end
+
+    assign perip_rdata = perip_rdata_q;
     
     assign virtual_led_output = LED;
     assign virtual_seg_output = seg_output;

@@ -107,6 +107,8 @@ module myCPU #(
 	localparam logic [3:0] M_OP_REM    = 4'd7;// M 指令类型 REM，表示有符号取模操作。
 	localparam logic [3:0] M_OP_REMU   = 4'd8;// M 指令类型 REMU，表示无符号取模操作。
 
+	localparam logic [1:0] LOAD_WAIT_CYCLES = 2'd2;// LOAD 指令等待周期数。
+
 	// =========================
 	// IF 级与 IF/ID 流水寄存器 表示取指令阶段的 PC、指令和有效位。
 	// =========================
@@ -140,6 +142,7 @@ module myCPU #(
 	logic        id_uses_rs2;// 译码阶段是否使用源寄存器2，表示当前指令是否使用源寄存器2。
 	logic        load_use_ex_hazard;// 译码阶段是否存在 load-use 冒险，表示当前指令是否与前一条 load 指令存在数据依赖。
 	logic        load_use_mem_hazard;
+	logic        load_use_hazard;
 	logic        pc_ex_hazard;// 译码阶段是否存在 PC 与 EX 阶段的冒险，表示当前指令是否与 EX 阶段的指令存在数据依赖。
 	logic        pc_mem_hazard;// 译码阶段是否存在 PC 与 MEM 阶段的冒险，表示当前指令是否与 MEM 阶段的指令存在数据依赖。
 	logic        mem_load_stall;// 译码阶段是否需要因 load 指令而暂停，表示当前指令是否需要等待前一条 load 指令完成。
@@ -292,18 +295,21 @@ module myCPU #(
 	logic [31:0] exmem_wb_data    = 32'h0;          // EX/MEM 流水寄存器中的写回数据，表示执行阶段的指令写回数据传递到访存阶段。
 	logic        exmem_rf_we      = 1'b0;           // EX/MEM 流水寄存器中的寄存器写使能标志，表示执行阶段的指令是否写回寄存器。
 	logic [2:0]  exmem_wb_sel     = WB_SRC_ALU;     // EX/MEM 流水寄存器中的写回选择，表示执行阶段的指令写回数据来源。
-	logic        exmem_mem_req    = 1'b0;           // EX/MEM 流水寄存器中的存储请求标志，表示执行阶段的指令是否发起存储请求。
+	logic        exmem_mem_req    = 1'b0;                     // EX/MEM 流水寄存器中的存储请求标志，表示执行阶段的指令是否发起存储请求。
 	logic        exmem_mem_write  = 1'b0;           // EX/MEM 流水寄存器中的存储写标志，表示执行阶段的指令是否进行存储写操作。
 	logic [1:0]  exmem_mem_mask   = MEM_MASK_WORD;  // EX/MEM 流水寄存器中的存储掩码，表示执行阶段的指令存储操作的字节掩码。
 	logic [31:0] exmem_pc         = 32'h0;          // EX/MEM 流水寄存器中的程序计数器，表示执行阶段的指令程序计数器传递到访存阶段。
 	logic [31:0] exmem_addr_base  = 32'h0;          // EX/MEM 流水寄存器中的基地址，表示执行阶段的指令基地址传递到访存阶段。
 	logic [31:0] exmem_addr_off   = 32'h0;          // EX/MEM 流水寄存器中的偏移地址，表示执行阶段的指令偏移地址传递到访存阶段。
+	logic        exmem_is_load;                     // EX/MEM 流水寄存器中的加载标志，表示执行阶段的指令是否为加载指令。
+	logic        load_in_mem;
 
 	// =========================
 	// MEM / MEMWB 级 表示访存阶段的结果和控制信号传递到写回阶段。
 	// =========================
 	logic [31:0] mem_load_data; // MEM 级寄存器中的加载数据，表示访存阶段的指令从内存加载的数据传递到写回阶段。
 	logic [31:0] mem_wb_data;   // MEM 级寄存器中的写回数据，表示访存阶段的指令写回数据传递到写回阶段。
+	logic [1:0]  mem_load_wait_cnt;// MEM 级寄存器中的加载等待计数，表示访存阶段的指令加载数据需要等待的周期数。
 	logic [31:0] memwb_wdata;   // MEM/WB 级寄存器中的写回数据，表示访存阶段的指令写回数据传递到写回阶段。
 	logic [4:0]  memwb_rd;      // MEM/WB 级寄存器中的目标寄存器，表示访存阶段的指令目标寄存器传递到写回阶段。
 	logic        memwb_rf_we;   // MEM/WB 级寄存器中的寄存器写使能标志，表示访存阶段的指令是否写回寄存器。
@@ -326,8 +332,8 @@ module myCPU #(
 	// ========================
 	logic [63:0] mul_uu; // MUL 级寄存器中的无符号乘法结果，表示执行阶段的指令无符号乘法结果。
 
-	logic m_stall; // EX 级寄存器中的乘法/除法暂停标志，表示执行阶段的指令是否需要暂停乘法/除法操作。
-	logic div_stall; // EX 级寄存器中的除法暂停标志，表示执行阶段的指令是否需要暂停除法操作。
+	logic        m_stall; // EX 级寄存器中的乘法/除法暂停标志，表示执行阶段的指令是否需要暂停乘法/除法操作。
+	logic        div_stall; // EX 级寄存器中的除法暂停标志，表示执行阶段的指令是否需要暂停除法操作。
 
 	// 根据 load/store 的 funct3 生成字节掩码。
 	function automatic logic [1:0] decode_mem_mask(input logic [2:0] funct3);
@@ -501,7 +507,7 @@ module myCPU #(
 	assign ex_match_rs1_memwb = memwb_can_forward && (memwb_rd == idex_rs1);
 	assign ex_match_rs2_exmem = exmem_can_forward && (exmem_rd == idex_rs2);
 	assign ex_match_rs2_memwb = memwb_can_forward && (memwb_rd == idex_rs2);
-
+	assign exmem_is_load = exmem_valid && exmem_mem_req && !exmem_mem_write;
 	// 这四条“命中线”是当前保留的 timing 优化：
 	// 先共享 exmem/memwb 与 rs1/rs2 的 compare 结果，
 	// 再分别给普通 ALU forwarding 和 PC forwarding 复用，
@@ -971,6 +977,7 @@ module myCPU #(
 					  (exmem_wb_sel == WB_SRC_MEM) && (exmem_rd != 5'h0) &&
 					  ((((id_pc_sel == PC_SRC_BRANCH) || (id_pc_sel == PC_SRC_JALR)) && (id_rs1 == exmem_rd)) ||
 					   ((id_pc_sel == PC_SRC_BRANCH) && (id_rs2 == exmem_rd)));
+	assign load_use_hazard = load_use_ex_hazard || load_use_mem_hazard;
 
 	assign pc_ex_hazard = ifid_valid && idex_valid && idex_rf_we &&
 					 (idex_wb_sel != WB_SRC_MEM) && (idex_rd != 5'h0) &&
@@ -982,16 +989,28 @@ module myCPU #(
 					  ((((id_pc_sel == PC_SRC_BRANCH) || (id_pc_sel == PC_SRC_JALR)) && (id_rs1 == exmem_rd)) ||
 					   ((id_pc_sel == PC_SRC_BRANCH) && (id_rs2 == exmem_rd)));
 
-	// mem_load_stall: EX/MEM 级是 load 指令，且还没写回，ID/EX 级又要用它的结果。
-	// 这里的 stall 只针对 load-use hazard，store-use hazard 不需要 stall
-	// 因为 store 的数据是从 EX/MEM 级直接前递的
-	assign mem_load_stall = exmem_valid && exmem_mem_req && !exmem_mem_write && !mem_stall_flag;
+	assign load_in_mem = exmem_valid && exmem_mem_req && !exmem_mem_write;
+
+	// perip_bridge 的读数据输出再打一拍后，所有 load 在 EX/MEM 保持 2 拍，
+	// 第 3 拍再把稳定的 perip_rdata 捕获进 MEM/WB。
+	assign mem_load_stall = exmem_is_load && (mem_load_wait_cnt < LOAD_WAIT_CYCLES);
 
 	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
 		if (cpu_rst)
 			mem_stall_flag <= 1'b0;
 		else
 			mem_stall_flag <= mem_load_stall;
+	end
+
+	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
+		if (cpu_rst)
+			mem_load_wait_cnt <= 2'd0;
+		else if (!exmem_is_load)
+			mem_load_wait_cnt <= 2'd0;
+		else if (mem_load_wait_cnt < LOAD_WAIT_CYCLES)
+			mem_load_wait_cnt <= mem_load_wait_cnt + 2'd1;
+		else
+			mem_load_wait_cnt <= 2'd0;
 	end
 
 	// ID/EX 流水寄存器：遇到 load-use hazard 或 EX/MEM load stall 时保持。

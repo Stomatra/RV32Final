@@ -1,0 +1,14 @@
+BUILD_ID=32'h2A00200A
+BITSTREAM_CONFIG_USERID=32'h2A00200A
+VERILOG_DEFINE=
+IMPL_STRATEGY=Performance_Explore
+FINAL_BIT=E:/Projects/1Aprojects/RV32Final/final_bits/WITHMEXT_irom_v2_200m_NORMAL_BUILDID_2A00200A.bit
+BUILD_BIT=E:/Projects/1Aprojects/RV32Final/build_outputs/WITHMEXT_irom_v2_200m_NORMAL_BUILDID_2A00200A.build.bit
+TIMING_REPORT=E:/Projects/1Aprojects/RV32Final/build_outputs/timing_WITHMEXT_irom_v2_200m_NORMAL_BUILDID_2A00200A.rpt
+PATHS_REPORT=E:/Projects/1Aprojects/RV32Final/build_outputs/timing_paths_WITHMEXT_irom_v2_200m_NORMAL_BUILDID_2A00200A.rpt
+CLOCKS_REPORT=E:/Projects/1Aprojects/RV32Final/build_outputs/clocks_WITHMEXT_irom_v2_200m_NORMAL_BUILDID_2A00200A.rpt
+CPU_CLOCK_PERIOD_NS=5.000
+CPU_CLOCK_FREQ_MHZ=200.0
+WORST_SETUP_SLACK=0.136
+WORST_SETUP_SOURCE=student_top_inst/Core_cpu/exmem_alu_y_reg[2]/C
+WORST_SETUP_DESTINATION=student_top_inst/bridge_inst/dram_driver_inst/dram_lane2_reg_0_1/ADDRARDADDR[0]

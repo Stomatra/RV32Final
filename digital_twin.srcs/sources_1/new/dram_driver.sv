@@ -58,7 +58,7 @@ module dram_driver(
 		end
 		`endif
 
-		// Init words synced from E:/jyd2026/withoutMext/demo/dram.coe.
+		// Init words synced from E:/jyd2026/withMext/demo/dram.coe.
 		dram_lane0[16'd0] = 8'h00;
 		dram_lane1[16'd0] = 8'h00;
 		dram_lane2[16'd0] = 8'h00;
@@ -118,6 +118,16 @@ module dram_driver(
 		dram_lane1[16'd11] = 8'h00;
 		dram_lane2[16'd11] = 8'h00;
 		dram_lane3[16'd11] = 8'h00;
+
+		dram_lane0[16'd12] = 8'h00;
+		dram_lane1[16'd12] = 8'h00;
+		dram_lane2[16'd12] = 8'h00;
+		dram_lane3[16'd12] = 8'h00;
+
+		dram_lane0[16'd13] = 8'h00;
+		dram_lane1[16'd13] = 8'h00;
+		dram_lane2[16'd13] = 8'h00;
+		dram_lane3[16'd13] = 8'h00;
 
 	end
 
