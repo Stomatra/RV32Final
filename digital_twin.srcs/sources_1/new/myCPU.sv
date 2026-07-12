@@ -203,6 +203,10 @@ module myCPU #(
 	logic [3:0]  id_m_op;// 译码阶段的 M 扩展操作码，表示当前指令的 M 扩展操作类型。
 	logic [5:0]  id_z_op;// 译码阶段的 Z 轻量级指令操作码，表示当前指令的 Z 轻量级操作类型。
 	logic [4:0]  id_z_shamt;// 译码阶段的 Z 轻量级指令移位量，表示当前指令的 Z 轻量级操作的移位量。
+	logic        id_fwd_rs1_from_exmem;// 译码阶段的源寄存器1是否从 EX/MEM 阶段转发，表示当前指令的源寄存器1是否需要从 EX/MEM 阶段获取数据。
+	logic        id_fwd_rs1_from_memwb;// 译码阶段的源寄存器1是否从 MEM/WB 阶段转发，表示当前指令的源寄存器1是否需要从 MEM/WB 阶段获取数据。
+	logic        id_fwd_rs2_from_exmem;// 译码阶段的源寄存器2是否从 EX/MEM 阶段转发，表示当前指令的源寄存器2是否需要从 EX/MEM 阶段获取数据。
+	logic        id_fwd_rs2_from_memwb;// 译码阶段的源寄存器2是否从 MEM/WB 阶段转发，表示当前指令的源寄存器2是否需要从 MEM/WB 阶段获取数据。
 
 	// =========================
 	// ID/EX 流水寄存器 表示译码阶段的指令字段、立即数、寄存器值和控制信号*传递到*执行阶段。
@@ -243,6 +247,10 @@ module myCPU #(
 	logic        idex_is_z_light;    // ID/EX 流水寄存器中的 Z 轻量级指令标志，表示译码阶段的指令是否为 Z 轻量级指令。
 	logic [5:0]  idex_z_op;          // ID/EX 流水寄存器中的 Z 轻量级指令操作码，表示译码阶段的指令 Z 轻量级操作类型。
 	logic [4:0]  idex_z_shamt;       // ID/EX 流水寄存器中的 Z 轻量级指令移位量，表示译码阶段的指令 Z 轻量级操作的移位量。
+	logic        idex_fwd_rs1_from_exmem;// 译码阶段的源寄存器1是否从 EX/MEM 阶段转发，表示当前指令的源寄存器1是否需要从 EX/MEM 阶段获取数据。
+	logic        idex_fwd_rs1_from_memwb;// 译码阶段的源寄存器1是否从 MEM/WB 阶段转发，表示当前指令的源寄存器1是否需要从 MEM/WB 阶段获取数据。
+	logic        idex_fwd_rs2_from_exmem;// 译码阶段的源寄存器2是否从 EX/MEM 阶段转发，表示当前指令的源寄存器2是否需要从 EX/MEM 阶段获取数据。
+	logic        idex_fwd_rs2_from_memwb;// 译码阶段的源寄存器2是否从 MEM/WB 阶段转发，表示当前指令的源寄存器2是否需要从 MEM/WB 阶段获取数据。
 
 	// =========================
 	// EX 级：forwarding、分支判断、ALU 与跳转目标 表示执行阶段的寄存器值、ALU 输入、分支判断结果和跳转目标。
@@ -255,8 +263,6 @@ module myCPU #(
 	logic [31:0] ex_alu_b;        // EX 级寄存器中的 ALU 操作数 B，表示执行阶段的指令 ALU 操作数 B。
 	logic [31:0] ex_alu_y;        // EX 级寄存器中的 ALU 结果，表示执行阶段的指令 ALU 计算结果。
 	logic        ex_br_take;      // EX 级寄存器中的分支判断结果，表示执行阶段的指令是否采取分支。
-	logic        ex_pc_use_rs1;   // EX 级寄存器中的 PC 使用 rs1 标志，表示执行阶段的指令是否使用 rs1 计算 PC。
-	logic        ex_pc_use_rs2;   // EX 级寄存器中的 PC 使用 rs2 标志，表示执行阶段的指令是否使用 rs2 计算 PC。
 	logic        ex_pc_fwd_rs1_from_exmem; // EX 级寄存器中的 PC 前递 rs1 来自 EX/MEM 标志，表示执行阶段的指令是否从 EX/MEM 前递 rs1。
 	logic        ex_pc_fwd_rs1_from_memwb; // EX 级寄存器中的 PC 前递 rs1 来自 MEM/WB 标志，表示执行阶段的指令是否从 MEM/WB 前递 rs1。
 	logic        ex_pc_fwd_rs2_from_exmem; // EX 级寄存器中的 PC 前递 rs2 来自 EX/MEM 标志，表示执行阶段的指令是否从 EX/MEM 前递 rs2。
@@ -275,24 +281,11 @@ module myCPU #(
 	logic [31:0] ex_pc_target;    // EX 级寄存器中的 PC 目标地址，表示执行阶段的指令 PC 目标地址。
 	logic [31:0] ex_wb_data;      // EX 级寄存器中的写回数据，表示执行阶段的指令写回数据。
 	logic [31:0] ex_store_data;   // EX 级寄存器中的存储数据，表示执行阶段的指令存储数据。
-	logic        ex_use_rs1_value; // EX 级寄存器中的使用 rs1 值标志，表示执行阶段的指令是否使用 rs1 值。
-	logic        ex_use_rs2_value; // EX 级寄存器中的使用 rs2 值标志，表示执行阶段的指令是否使用 rs2 值。
-	// 这四条“命中线”是当前保留的 timing 优化：
-	// 先共享 exmem/memwb 与 rs1/rs2 的 compare 结果，
-	// 再分别给普通 ALU forwarding 和 PC forwarding 复用，
-	// 避免同一组比较器在多条链上重复综合。
-	logic        ex_match_rs1_exmem;// EX 级寄存器中的 rs1 与 EX/MEM 匹配标志，表示执行阶段的指令 rs1 是否与 EX/MEM 匹配。
-	logic        ex_match_rs1_memwb;// EX 级寄存器中的 rs1 与 MEM/WB 匹配标志，表示执行阶段的指令 rs1 是否与 MEM/WB 匹配。
-	logic        ex_match_rs2_exmem;// EX 级寄存器中的 rs2 与 EX/MEM 匹配标志，表示执行阶段的指令 rs2 是否与 EX/MEM 匹配。
-	logic        ex_match_rs2_memwb;// EX 级寄存器中的 rs2 与 MEM/WB 匹配标志，表示执行阶段的指令 rs2 是否与 MEM/WB 匹配。
-	logic        ex_fwd_rs1_from_exmem;// EX 级寄存器中的 rs1 从 EX/MEM 前递标志，表示执行阶段的指令 rs1 是否从 EX/MEM 前递。
-	logic        ex_fwd_rs1_from_memwb;// EX 级寄存器中的 rs1 从 MEM/WB 前递标志，表示执行阶段的指令 rs1 是否从 MEM/WB 前递。
-	logic        ex_fwd_rs2_from_exmem;// EX 级寄存器中的 rs2 从 EX/MEM 前递标志，表示执行阶段的指令 rs2 是否从 EX/MEM 前递。
-	logic        ex_fwd_rs2_from_memwb;// EX 级寄存器中的 rs2 从 MEM/WB 前递标志，表示执行阶段的指令 rs2 是否从 MEM/WB 前递。
 	logic [31:0] ex_csr_rdata; // EX 级寄存器中的 CSR 读取数据，表示执行阶段的指令 CSR 读取数据。
 	logic [31:0] ex_csr_wdata; // EX 级寄存器中的 CSR 写入数据，表示执行阶段的指令 CSR 写入数据。
 	logic        ex_csr_we;    // EX 级寄存器中的 CSR 写使能标志，表示执行阶段的指令是否写入 CSR。
-	logic        exmem_can_forward; // EX/MEM 级寄存器中的前递标志，表示 EX/MEM 级寄存器是否可以前递。
+	logic        idex_can_forward_to_exmem; // ID 阶段预判：当前 ID/EX 下一拍是否可作为 EX/MEM 前递源。
+	logic        exmem_can_forward_to_memwb; // ID 阶段预判：当前 EX/MEM 下一拍是否可作为 MEM/WB 前递源。
 	logic        memwb_can_forward; // MEM/WB 级寄存器中的前递标志，表示 MEM/WB 级寄存器是否可以前递。
 	logic        ex_trap_enter; // EX 级寄存器中的陷入标志，表示执行阶段的指令是否进入陷入。
 	logic        ex_trap_return; // EX 级寄存器中的陷出标志，表示执行阶段的指令是否返回陷入。
@@ -552,28 +545,26 @@ module myCPU #(
 						 (id_opcode == OPC_OP) &&
 						 (id_funct7 == 7'b0000001);
 
-	// EXMEM/MEMWB 是否允许被前递。
-	assign exmem_can_forward = exmem_valid && exmem_rf_we && (exmem_rd != 5'h0) && (exmem_wb_sel != WB_SRC_MEM);
+	// ID 阶段提前为“下一拍进入 EX 的指令”生成 forwarding 选择位。
+	// 当前 ID/EX 下一拍会变成 EX/MEM，当前 EX/MEM 下一拍会变成 MEM/WB。
+	assign idex_can_forward_to_exmem = idex_valid && idex_rf_we &&
+									  (idex_rd != 5'h0) &&
+									  (idex_wb_sel != WB_SRC_MEM);
+	assign exmem_can_forward_to_memwb = exmem_valid && exmem_rf_we && (exmem_rd != 5'h0);
 	assign memwb_can_forward = memwb_valid && memwb_rf_we && (memwb_rd != 5'h0);
-	// - ex_use_rs* 面向 ALU/store 数据链
-	// - ex_pc_use_rs* 面向 branch/jalr 的 PC 选择链
-	assign ex_use_rs1_value = idex_valid && idex_uses_rs1;
-	assign ex_use_rs2_value = idex_valid && idex_uses_rs2;
-	assign ex_pc_use_rs1 = idex_valid && ((idex_pc_sel == PC_SRC_BRANCH) || (idex_pc_sel == PC_SRC_JALR));
-	assign ex_pc_use_rs2 = idex_valid && (idex_pc_sel == PC_SRC_BRANCH);
-	assign ex_match_rs1_exmem = exmem_can_forward && (exmem_rd == idex_rs1);
-	assign ex_match_rs1_memwb = memwb_can_forward && (memwb_rd == idex_rs1);
-	assign ex_match_rs2_exmem = exmem_can_forward && (exmem_rd == idex_rs2);
-	assign ex_match_rs2_memwb = memwb_can_forward && (memwb_rd == idex_rs2);
+	assign id_fwd_rs1_from_exmem = ifid_valid && id_uses_rs1 &&
+								   idex_can_forward_to_exmem &&
+								   (id_rs1 == idex_rd);
+	assign id_fwd_rs1_from_memwb = ifid_valid && id_uses_rs1 &&
+								   exmem_can_forward_to_memwb &&
+								   (id_rs1 == exmem_rd);
+	assign id_fwd_rs2_from_exmem = ifid_valid && id_uses_rs2 &&
+								   idex_can_forward_to_exmem &&
+								   (id_rs2 == idex_rd);
+	assign id_fwd_rs2_from_memwb = ifid_valid && id_uses_rs2 &&
+								   exmem_can_forward_to_memwb &&
+								   (id_rs2 == exmem_rd);
 	assign exmem_is_load = exmem_valid && exmem_mem_req && !exmem_mem_write;
-	// 这四条“命中线”是当前保留的 timing 优化：
-	// 先共享 exmem/memwb 与 rs1/rs2 的 compare 结果，
-	// 再分别给普通 ALU forwarding 和 PC forwarding 复用，
-	// 避免同一组比较器在多条链上重复综合。
-	assign ex_fwd_rs1_from_exmem = ex_use_rs1_value && ex_match_rs1_exmem;
-	assign ex_fwd_rs1_from_memwb = ex_use_rs1_value && ex_match_rs1_memwb;
-	assign ex_fwd_rs2_from_exmem = ex_use_rs2_value && ex_match_rs2_exmem;
-	assign ex_fwd_rs2_from_memwb = ex_use_rs2_value && ex_match_rs2_memwb;
 	//现在关闭forwarding，避免 timing 过长，load-branch冒险的解决方案为再等一拍。
 	assign ex_pc_fwd_rs1_from_exmem = 1'b0;
 	assign ex_pc_fwd_rs1_from_memwb = 1'b0;
@@ -1135,6 +1126,10 @@ module myCPU #(
 			idex_is_z_light    <= 1'b0;
 			idex_z_op          <= ZOP_NONE;
 			idex_z_shamt       <= 5'h0;
+			idex_fwd_rs1_from_exmem <= 1'b0;
+			idex_fwd_rs1_from_memwb <= 1'b0;
+			idex_fwd_rs2_from_exmem <= 1'b0;
+			idex_fwd_rs2_from_memwb <= 1'b0;
 		end else if (mem_load_stall || m_stall) begin
 			// hold IDEX - memory read stall
 		end else if (ex_pc_redirect || load_use_ex_hazard || load_use_mem_hazard || pc_ex_hazard || pc_mem_hazard ) begin
@@ -1174,6 +1169,10 @@ module myCPU #(
 			idex_is_z_light    <= 1'b0;
 			idex_z_op          <= ZOP_NONE;
 			idex_z_shamt       <= 5'h0;
+			idex_fwd_rs1_from_exmem <= 1'b0;
+			idex_fwd_rs1_from_memwb <= 1'b0;
+			idex_fwd_rs2_from_exmem <= 1'b0;
+			idex_fwd_rs2_from_memwb <= 1'b0;
 		end else if (id_mul_helper_hit) begin
 			idex_valid         <= 1'b1;
 			idex_pc            <= ifid_pc;
@@ -1211,6 +1210,10 @@ module myCPU #(
 			idex_is_z_light    <= 1'b0;
 			idex_z_op          <= ZOP_NONE;
 			idex_z_shamt       <= 5'h0;
+			idex_fwd_rs1_from_exmem <= 1'b0;
+			idex_fwd_rs1_from_memwb <= 1'b0;
+			idex_fwd_rs2_from_exmem <= 1'b0;
+			idex_fwd_rs2_from_memwb <= 1'b0;
 		end else begin
 			idex_valid         <= ifid_valid;
 			idex_pc            <= ifid_pc;
@@ -1248,6 +1251,10 @@ module myCPU #(
 			idex_is_z_light    <= id_is_z_light;
 			idex_z_op          <= id_z_op;
 			idex_z_shamt       <= id_z_shamt;
+			idex_fwd_rs1_from_exmem <= id_fwd_rs1_from_exmem;
+			idex_fwd_rs1_from_memwb <= id_fwd_rs1_from_memwb;
+			idex_fwd_rs2_from_exmem <= id_fwd_rs2_from_exmem;
+			idex_fwd_rs2_from_memwb <= id_fwd_rs2_from_memwb;
 		end
 	end
 
@@ -1255,16 +1262,16 @@ module myCPU #(
 	// EX 阶段先通过*前递逻辑*得到 ex_rs1_val 和 ex_rs2_val。
 	always_comb begin
 		ex_rs1_val = idex_rs1_val;
-		if (ex_fwd_rs1_from_exmem) begin
+		if (idex_fwd_rs1_from_exmem) begin
 			ex_rs1_val = exmem_wb_data;
-		end else if (ex_fwd_rs1_from_memwb) begin
+		end else if (idex_fwd_rs1_from_memwb) begin
 			ex_rs1_val = memwb_wdata;
 		end
 
 		ex_rs2_val = idex_rs2_val;
-		if (ex_fwd_rs2_from_exmem) begin
+		if (idex_fwd_rs2_from_exmem) begin
 			ex_rs2_val = exmem_wb_data;
-		end else if (ex_fwd_rs2_from_memwb) begin
+		end else if (idex_fwd_rs2_from_memwb) begin
 			ex_rs2_val = memwb_wdata;
 		end
 	end
