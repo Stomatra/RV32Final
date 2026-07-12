@@ -63,12 +63,37 @@ module myCPU #(
 	localparam logic [1:0]  ALU_SRC_B_IMM_S = 2'd2;// ALU B 端输入来自 S 型立即数。
 	localparam logic [1:0]  ALU_SRC_B_IMM_U = 2'd3;// ALU B 端输入来自 U 型立即数。
 
+	// Z 轻量级指令扩展操作码。
+	localparam logic [5:0]  ZOP_ANDN     = 6'd0;// Z 轻量级指令操作码 ANDN，表示按位与非操作。
+	localparam logic [5:0]  ZOP_ORN      = 6'd1;// Z 轻量级指令操作码 ORN，表示按位或非操作。
+	localparam logic [5:0]  ZOP_XNOR     = 6'd2;// Z 轻量级指令操作码 XNOR，表示按位异或非操作。
+	localparam logic [5:0]  ZOP_SEXTB	 = 6'd3;// Z 轻量级指令操作码 SEXTB，表示符号扩展字节操作
+	localparam logic [5:0]  ZOP_SEXTH	 = 6'd4;// Z 轻量级指令操作码 SEXTB，表示符号扩展半字操作
+	localparam logic [5:0]  ZOP_ZEXTH	 = 6'd5;// Z 轻量级指令操作码 ZEXTH，表示零扩展半字操作
+	localparam logic [5:0]  ZOP_ORCB	 = 6'd6;// Z 轻量级指令操作码 ORCB，表示按位或字节操作
+	localparam logic [5:0]  ZOP_PACK	 = 6'd7;// Z 轻量级指令操作码 PACK，表示打包操作
+	localparam logic [5:0]  ZOP_PACKH	 = 6'd8;// Z 轻量级指令操作码 PACKH，表示打包高半字操作
+	localparam logic [5:0]  ZOP_REV8	 = 6'd9;// Z 轻量级指令操作码 REV8，表示按字节反转操作
+	localparam logic [5:0]  ZOP_BREV8	 = 6'd10;// Z 轻量级指令操作码 BREV8，表示按字节反转操作
+	localparam logic [5:0]  ZOP_ZIP	     = 6'd11;// Z 轻量级指令操作码 ZIP，表示压缩操作
+	localparam logic [5:0]  ZOP_UNZIP	 = 6'd12;// Z 轻量级指令操作码 UNZIP，表示解压操作
+	localparam logic [5:0]  ZOP_BCLR     = 6'd13;// Z 轻量级指令操作码 BCLR，表示按位清零操作
+	localparam logic [5:0]  ZOP_BCLRI    = 6'd14;// Z 轻量级指令操作码 BCLRI，表示按位清零立即数操作
+	localparam logic [5:0]  ZOP_BEXT	 = 6'd15;// Z 轻量级指令操作码 BEXT，表示按位提取操作
+	localparam logic [5:0]  ZOP_BEXTI	 = 6'd16;// Z 轻量级指令操作码 BEXTI，表示按位提取立即数操作
+	localparam logic [5:0]  ZOP_BINV	 = 6'd17;// Z 轻量级指令操作码 BINV，表示按位取反操作
+	localparam logic [5:0]  ZOP_BINVI	 = 6'd18;// Z 轻量级指令操作码 BINVI，表示按位取反立即数操作
+	localparam logic [5:0]  ZOP_BSET	 = 6'd19;// Z 轻量级指令操作码 BSET，表示按位设置操作
+	localparam logic [5:0]  ZOP_BSETI	 = 6'd20;// Z 轻量级指令操作码 BSETI，表示按位设置立即数操作
+	localparam logic [5:0]  ZOP_NONE     = 6'd63;// Z 轻量级指令操作码 NONE，表示没有 Z 轻量级指令操作。
+
 	// WB 选择：ALU 结果、内存返回、PC+4 或 U 型立即数。
 	localparam logic [2:0]  WB_SRC_ALU    = 3'd0;// 写回数据选择 ALU 结果。
 	localparam logic [2:0]  WB_SRC_MEM    = 3'd1;// 写回数据选择内存返回数据。
 	localparam logic [2:0]  WB_SRC_PC4    = 3'd2;// 写回数据选择 PC + 4。
 	localparam logic [2:0]  WB_SRC_IMM_U  = 3'd3;// 写回数据选择 U 型立即数。
 	localparam logic [2:0]  WB_SRC_CSR    = 3'd4;// 写回数据选择 CSR 寄存器值。
+	localparam logic [2:0]  WB_SRC_Z      = 3'd5;// 写回数据选择 Z 轻量级指令结果。
 
 	// PC 下一拍来源。
 	localparam logic [1:0]  PC_SRC_PC4    = 2'd0;// PC 下一拍选择 PC + 4。
@@ -140,8 +165,8 @@ module myCPU #(
 	logic [31:0] rf_x11_raw;// 译码阶段的寄存器 x11 原始值，表示当前指令的寄存器 x11 的原始值。
 	logic        id_uses_rs1;// 译码阶段是否使用源寄存器1，表示当前指令是否使用源寄存器1。
 	logic        id_uses_rs2;// 译码阶段是否使用源寄存器2，表示当前指令是否使用源寄存器2。
-	logic        load_use_ex_hazard;// 译码阶段是否存在 load-use 冒险，表示当前指令是否与前一条 load 指令存在数据依赖。
-	logic        load_use_mem_hazard;
+	logic        load_use_ex_hazard;// 译码阶段是否存在 load-use 冒险，表示当前指令是否依赖于前一条 load 指令的结果。
+	logic        load_use_mem_hazard;// 译码阶段是否存在 load-use 冒险，表示当前指令是否依赖于前一条 load 指令的结果。
 	logic        load_use_hazard;
 	logic        pc_ex_hazard;// 译码阶段是否存在 PC 与 EX 阶段的冒险，表示当前指令是否与 EX 阶段的指令存在数据依赖。
 	logic        pc_mem_hazard;// 译码阶段是否存在 PC 与 MEM 阶段的冒险，表示当前指令是否与 MEM 阶段的指令存在数据依赖。
@@ -158,6 +183,11 @@ module myCPU #(
 	logic        id_alu_src_a_sel;// 译码阶段的 ALU 源操作数 A 选择信号，表示当前指令的 ALU 操作数 A 来源。
 	logic [1:0]  id_alu_src_b_sel;// 译码阶段的 ALU 源操作数 B 选择信号，表示当前指令的 ALU 操作数 B 来源。
 	logic [3:0]  id_alu_op;// 译码阶段的 ALU 操作码，表示当前指令的 ALU 操作类型。
+	logic        id_z_light_hit;// 译码阶段是否命中 Z 轻量级指令，表示当前指令是否为 Z 轻量级指令。
+	logic [5:0]  id_z_light_op;// 译码阶段的 Z 轻量级指令操作码，表示当前指令的 Z 轻量级操作类型。
+	logic [4:0]  id_z_light_shamt;// 译码阶段的 Z 轻量级指令移位量，表示当前指令的 Z 轻量级操作的移位量。
+	logic        id_z_light_uses_rs1;// 译码阶段的 Z 轻量级指令是否使用源寄存器1，表示当前指令的 Z 轻量级操作是否使用源寄存器1。
+	logic        id_z_light_uses_rs2;// 译码阶段的 Z 轻量级指令是否使用源寄存器2，表示当前指令的 Z 轻量级操作是否使用源寄存器2。
 	logic [1:0]  id_pc_sel;// 译码阶段的 PC 选择信号，表示当前指令的下一条指令地址来源。
 	logic        id_mem_req;// 译码阶段的存储器请求信号，表示当前指令是否访问存储器。
 	logic        id_mem_write;// 译码阶段的存储器写使能，表示当前指令是否写入存储器。
@@ -169,7 +199,10 @@ module myCPU #(
 	logic        id_is_ecall;// 译码阶段是否为 ECALL 指令，表示当前指令是否为系统调用。
 	logic        id_is_mret;// 译码阶段是否为 MRET 指令，表示当前指令是否为机器模式返回指令。
 	logic        id_is_m_ext;// 译码阶段是否为 M 扩展指令，表示当前指令是否为 M 扩展指令。
+	logic        id_is_z_light;// 译码阶段是否为 Z 轻量级指令，表示当前指令是否为 Z 轻量级指令。
 	logic [3:0]  id_m_op;// 译码阶段的 M 扩展操作码，表示当前指令的 M 扩展操作类型。
+	logic [5:0]  id_z_op;// 译码阶段的 Z 轻量级指令操作码，表示当前指令的 Z 轻量级操作类型。
+	logic [4:0]  id_z_shamt;// 译码阶段的 Z 轻量级指令移位量，表示当前指令的 Z 轻量级操作的移位量。
 
 	// =========================
 	// ID/EX 流水寄存器 表示译码阶段的指令字段、立即数、寄存器值和控制信号*传递到*执行阶段。
@@ -207,6 +240,9 @@ module myCPU #(
 	logic        idex_is_mret;       // ID/EX 流水寄存器中的 MRET 标志，表示译码阶段的指令是否为 MRET。
 	logic        idex_is_m_ext;      // ID/EX 流水寄存器中的 M 扩展标志，表示译码阶段的指令是否使用 M 扩展。
 	logic [3:0]  idex_m_op;          // ID/EX 流水寄存器中的 M 操作码，表示译码阶段的指令 M 操作类型。
+	logic        idex_is_z_light;    // ID/EX 流水寄存器中的 Z 轻量级指令标志，表示译码阶段的指令是否为 Z 轻量级指令。
+	logic [5:0]  idex_z_op;          // ID/EX 流水寄存器中的 Z 轻量级指令操作码，表示译码阶段的指令 Z 轻量级操作类型。
+	logic [4:0]  idex_z_shamt;       // ID/EX 流水寄存器中的 Z 轻量级指令移位量，表示译码阶段的指令 Z 轻量级操作的移位量。
 
 	// =========================
 	// EX 级：forwarding、分支判断、ALU 与跳转目标 表示执行阶段的寄存器值、ALU 输入、分支判断结果和跳转目标。
@@ -270,6 +306,8 @@ module myCPU #(
 	logic [1:0]  ex_div_op; // EX 级寄存器中的除法操作，表示执行阶段的指令除法操作。
 	logic        ex_m_is_div; // EX 级寄存器中的除法标志，表示执行阶段的指令是否为除法。
 	logic        ex_m_is_mul; // EX 级寄存器中的乘法标志，表示执行阶段的指令是否为乘法。
+	logic [31:0] ex_z_result; // EX 级寄存器中的 Z 轻量级指令结果，表示执行阶段的指令 Z 轻量级操作结果。
+	logic        ex_z_supported; // EX 级寄存器中的 Z 轻量级指令支持标志，表示执行阶段的指令是否支持 Z 轻量级操作。
 	logic        mul_start; // EX 级寄存器中的乘法开始标志，表示执行阶段的指令是否开始乘法。
 	logic        m_start; // EX 级寄存器中的乘法/除法开始标志，表示执行阶段的指令是否开始乘法/除法。
 	logic        m_inflight; // EX 级寄存器中的乘法/除法进行中标志，表示执行阶段的指令乘法/除法是否进行中。
@@ -455,6 +493,26 @@ module myCPU #(
 		.ALUOp      (idex_alu_op),
 		.Result     (ex_alu_y),
 		.isTrue     (ex_alu_is_true)
+	);
+
+	z_light_decode u_z_light_decode (
+		.instr      (ifid_instr),
+
+		.z_hit     (id_z_light_hit),
+		.z_op      (id_z_light_op),
+		.z_shamt   (id_z_light_shamt),
+		.z_uses_rs1(id_z_light_uses_rs1),
+		.z_uses_rs2(id_z_light_uses_rs2)
+	);
+
+	z_light_unit #() u_z_light_unit (
+		.z_valid    (idex_valid),
+		.z_op       (idex_z_op),
+		.rs1_val    (ex_rs1_val),
+		.rs2_val    (ex_rs2_val),
+		.z_shamt	(idex_z_shamt),
+		.z_result   (ex_z_result),
+		.z_supported(ex_z_supported)
 	);
 
 	// store 数据只在 store 指令时有效，其余时间清零有利于减少无关逻辑传播。
@@ -770,9 +828,33 @@ module myCPU #(
 		id_csr_addr  = ifid_instr[31:20];
 		id_csr_wdata = 32'h0;
 		id_m_op      = M_OP_NONE;
+		id_is_z_light = 1'b0;
+		id_z_op       = ZOP_NONE;
+		id_z_shamt    = ifid_instr[24:20];
 
 		if (ifid_valid) begin
-			case (id_opcode)
+			if (id_z_light_hit) begin
+				id_uses_rs1      = id_z_light_uses_rs1;
+				id_uses_rs2      = id_z_light_uses_rs2;
+				id_rf_we         = (id_rd != 5'd0);
+				id_wb_sel        = WB_SRC_Z;
+
+				// 这几个保持普通默认值即可
+				id_alu_src_a_sel = ALU_SRC_A_RS1;
+				id_alu_src_b_sel = ALU_SRC_B_RS2;
+				id_alu_op        = ALU_ADD;
+				id_pc_sel        = PC_SRC_PC4;
+				id_mem_req       = 1'b0;
+				id_mem_write     = 1'b0;
+				id_mem_mask      = MEM_MASK_WORD;
+				id_csr_op        = CSR_OP_NONE;
+				id_m_op          = M_OP_NONE;
+
+				id_is_z_light    = 1'b1;
+				id_z_op          = id_z_light_op;
+				id_z_shamt       = id_z_light_shamt;
+			end else begin
+				case (id_opcode)
 				OPC_LUI: begin
 					id_rf_we  = 1'b1;
 					id_wb_sel = WB_SRC_IMM_U;
@@ -964,7 +1046,8 @@ module myCPU #(
 				end
 
 				default: begin end
-			endcase
+				endcase
+			end
 		end
 	end
 
@@ -1049,6 +1132,9 @@ module myCPU #(
 			idex_is_mret       <= 1'b0;
 			idex_is_m_ext      <= 1'b0;
 			idex_m_op          <= M_OP_NONE;
+			idex_is_z_light    <= 1'b0;
+			idex_z_op          <= ZOP_NONE;
+			idex_z_shamt       <= 5'h0;
 		end else if (mem_load_stall || m_stall) begin
 			// hold IDEX - memory read stall
 		end else if (ex_pc_redirect || load_use_ex_hazard || load_use_mem_hazard || pc_ex_hazard || pc_mem_hazard ) begin
@@ -1085,6 +1171,9 @@ module myCPU #(
 			idex_is_mret       <= 1'b0;
 			idex_is_m_ext      <= 1'b0;
 			idex_m_op          <= M_OP_NONE;
+			idex_is_z_light    <= 1'b0;
+			idex_z_op          <= ZOP_NONE;
+			idex_z_shamt       <= 5'h0;
 		end else if (id_mul_helper_hit) begin
 			idex_valid         <= 1'b1;
 			idex_pc            <= ifid_pc;
@@ -1119,6 +1208,9 @@ module myCPU #(
 			idex_is_mret       <= 1'b0;
 			idex_is_m_ext      <= 1'b0;
 			idex_m_op          <= M_OP_NONE;
+			idex_is_z_light    <= 1'b0;
+			idex_z_op          <= ZOP_NONE;
+			idex_z_shamt       <= 5'h0;
 		end else begin
 			idex_valid         <= ifid_valid;
 			idex_pc            <= ifid_pc;
@@ -1153,6 +1245,9 @@ module myCPU #(
 			idex_is_mret       <= id_is_mret;
 			idex_is_m_ext      <= id_is_m_ext;
 			idex_m_op          <= id_m_op;
+			idex_is_z_light    <= id_is_z_light;
+			idex_z_op          <= id_z_op;
+			idex_z_shamt       <= id_z_shamt;
 		end
 	end
 
@@ -1244,6 +1339,7 @@ module myCPU #(
 				WB_SRC_IMM_U: ex_wb_data = idex_imm;
 				WB_SRC_CSR:   ex_wb_data = ex_csr_rdata;
 				WB_SRC_ALU:   ex_wb_data = ex_alu_y;
+				WB_SRC_Z:     ex_wb_data = ex_z_supported ? ex_z_result:32'h0;
 				default:      ex_wb_data = ex_alu_y;
 			endcase
 		end
