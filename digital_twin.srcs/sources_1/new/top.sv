@@ -20,14 +20,21 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module top(
+module top #(
+    parameter integer CPU_CLK_FREQ_HZ = 260_000_000,
+    parameter integer UART_BAUD_RATE  = 115200
+) (
     input  wire i_sys_clk_p         ,
     input  wire i_sys_clk_n         ,
     input  wire i_uart_rx           ,
     output wire o_uart_tx           ,
 
     output wire [31:0] virtual_led  ,
-    output wire [39:0] virtual_seg
+    output wire [39:0] virtual_seg   ,
+    output logic       hdmi_tx_clk_p ,
+    output logic       hdmi_tx_clk_n ,
+    output logic [2:0] hdmi_tx_data_p,
+    output logic [2:0] hdmi_tx_data_n
 );
 	// top 是整板顶层：
 	// - 处理差分系统时钟输入
@@ -61,6 +68,12 @@ module top(
     wire tx_start;
     wire [7:0] tx_data;
     wire tx_busy;
+    wire twin_uart_tx;
+    wire cpu_uart_tx;
+
+    // Both UART TX sources idle high. This preserves the existing twin UART
+    // when the CPU MMIO UART is idle, while still allowing CPU printf output.
+    assign o_uart_tx = twin_uart_tx & cpu_uart_tx;
 
 	// PLL 产生 50MHz 和 CPU 主频，同时 locked 也被用作系统复位释放条件。
     pll pll_inst(
@@ -70,6 +83,46 @@ module top(
         .clk_out2(cpu_clk),
         .locked(w_clk_rst)
     );
+
+`ifdef ENABLE_HDMI_DEMO
+    wire hdmi_pixel_clk;
+    wire hdmi_pixel_clk_5x;
+    wire hdmi_clk_locked;
+    wire hdmi_rst;
+    wire hdmi_tx_clk_p_w;
+    wire hdmi_tx_clk_n_w;
+    wire [2:0] hdmi_tx_data_p_w;
+    wire [2:0] hdmi_tx_data_n_w;
+
+    assign hdmi_rst = ~hdmi_clk_locked;
+    assign hdmi_tx_clk_p = hdmi_tx_clk_p_w;
+    assign hdmi_tx_clk_n = hdmi_tx_clk_n_w;
+    assign hdmi_tx_data_p = hdmi_tx_data_p_w;
+    assign hdmi_tx_data_n = hdmi_tx_data_n_w;
+
+    hdmi_clock_gen hdmi_clock_gen_inst (
+        .clk_in         (w_clk_50Mhz),
+        .rst            (~w_clk_rst),
+        .pixel_clk      (hdmi_pixel_clk),
+        .pixel_clk_5x   (hdmi_pixel_clk_5x),
+        .locked         (hdmi_clk_locked)
+    );
+
+    hdmi_demo hdmi_demo_inst (
+        .pixel_clk          (hdmi_pixel_clk),
+        .pixel_clk_5x       (hdmi_pixel_clk_5x),
+        .rst                (hdmi_rst),
+        .hdmi_tx_clk_p      (hdmi_tx_clk_p_w),
+        .hdmi_tx_clk_n      (hdmi_tx_clk_n_w),
+        .hdmi_tx_data_p     (hdmi_tx_data_p_w),
+        .hdmi_tx_data_n     (hdmi_tx_data_n_w)
+    );
+`else
+    assign hdmi_tx_clk_p = 1'b0;
+    assign hdmi_tx_clk_n = 1'b1;
+    assign hdmi_tx_data_p = 3'b000;
+    assign hdmi_tx_data_n = 3'b111;
+`endif
 
 `ifdef LED_WALK_TEST
     localparam integer LED_WALK_TICKS = 50_000_000;
@@ -88,6 +141,7 @@ module top(
     wire [7:0]  led_walk_ans;
 
     assign student_virtual_led_src = led_walk_value;
+    assign cpu_uart_tx = 1'b1;
     assign led_walk_seg_word = {24'd0, led_walk_tens, led_walk_ones};
     assign student_virtual_seg_src = {
         led_walk_ans[7:6], 1'b0, led_walk_seg4,
@@ -186,7 +240,7 @@ module top(
         .rx(i_uart_rx),
         .rx_data(rx_data),
         .rx_ready(rx_ready),
-        .tx(o_uart_tx),
+        .tx(twin_uart_tx),
         .tx_data(tx_data),
         .tx_start(tx_start),
         .tx_busy(tx_busy)
@@ -209,14 +263,19 @@ module top(
 
 	// student_top 是板上学生设计主体。
 `ifndef LED_WALK_TEST
-    student_top student_top_inst(
+    student_top #(
+        .CPU_CLK_FREQ_HZ    (CPU_CLK_FREQ_HZ),
+        .UART_BAUD_RATE     (UART_BAUD_RATE)
+    ) student_top_inst(
         .w_cpu_clk(cpu_clk),
         .w_clk_50Mhz(w_clk_50Mhz),
         .w_clk_rst(~w_clk_rst),
         .virtual_key(virtual_key_cpu),
         .virtual_sw(virtual_sw_cpu),
+        .uart_rx_i(i_uart_rx),
         .virtual_led(student_virtual_led_src),
-        .virtual_seg(student_virtual_seg_src)
+        .virtual_seg(student_virtual_seg_src),
+        .uart_tx_o(cpu_uart_tx)
     );
 `endif
 endmodule

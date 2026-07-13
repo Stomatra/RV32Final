@@ -43,6 +43,7 @@ module tb_perip_bridge;
 
         .virtual_sw_input   (virtual_sw_input),
         .virtual_key_input  (virtual_key_input),
+        .uart_rx_i          (1'b1),
         .virtual_seg_output (virtual_seg_output),
         .virtual_led_output (virtual_led_output)
     );

@@ -92,6 +92,7 @@ module tb_myCPU;
         .w_clk_rst   (rst),
         .virtual_key (virtual_key),
         .virtual_sw  (virtual_sw),
+        .uart_rx_i   (1'b1),
         .virtual_led (virtual_led),
         .virtual_seg (virtual_seg)
     );

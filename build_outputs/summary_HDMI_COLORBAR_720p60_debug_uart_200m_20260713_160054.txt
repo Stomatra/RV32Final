@@ -1,0 +1,17 @@
+BUILD_TAG=HDMI_COLORBAR_720p60_debug_uart_200m_20260713_160054
+TOP=hdmi_colorbar_720p_debug_uart_top
+VIDEO_MODE=1280x720@60
+INPUT_CLOCK_MODE=200m
+MMCM=CLKIN=200MHz DIVCLK=10 MULT=37.125 CLKOUT0_DIV=10 CLKOUT1_DIV=2
+PIXEL_CLK_MHZ=74.25
+TMDS_5X_CLK_MHZ=371.25
+UART=115200 8N1 on o_uart_tx/D17
+HPD_INPUT=hdmi_hpd/D29 LVCMOS33
+WORST_SETUP_SLACK=2.126
+WORST_HOLD_SLACK=0.108
+BIT=E:/Projects/1Aprojects/RV32Final/hdmi_colorbar_720p_debug_uart.bit
+FINAL_BIT=E:/Projects/1Aprojects/RV32Final/final_bits/HDMI_COLORBAR_720p60_debug_uart_200m_20260713_160054.bit
+TIMING_REPORT=E:/Projects/1Aprojects/RV32Final/build_outputs/timing_HDMI_COLORBAR_720p60_debug_uart_200m_20260713_160054.rpt
+UTIL_REPORT=E:/Projects/1Aprojects/RV32Final/build_outputs/util_HDMI_COLORBAR_720p60_debug_uart_200m_20260713_160054_routed.rpt
+DRC_REPORT=E:/Projects/1Aprojects/RV32Final/build_outputs/drc_HDMI_COLORBAR_720p60_debug_uart_200m_20260713_160054_routed.rpt
+CLOCKS_REPORT=E:/Projects/1Aprojects/RV32Final/build_outputs/clocks_HDMI_COLORBAR_720p60_debug_uart_200m_20260713_160054_routed.rpt

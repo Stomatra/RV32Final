@@ -31,16 +31,21 @@ module student_top#(
     parameter                           P_SW_CNT            = 64,
     parameter                           P_LED_CNT           = 32,
     parameter                           P_SEG_CNT           = 40,
-    parameter                           P_KEY_CNT           = 8
+    parameter                           P_KEY_CNT           = 8,
+    parameter integer                   CPU_CLK_FREQ_HZ     = 260_000_000,
+    parameter integer                   UART_BAUD_RATE      = 115200
 ) (
     input                                       w_cpu_clk     ,
     input                                       w_clk_50Mhz   ,
     input                                       w_clk_rst     ,
     input  [P_KEY_CNT - 1:0]                    virtual_key   ,
     input  [P_SW_CNT  - 1:0]                    virtual_sw    ,
+    input                                       uart_rx_i     ,
 
     output [P_LED_CNT - 1:0]                    virtual_led   ,
-    output [P_SEG_CNT - 1:0]                    virtual_seg   
+    output [P_SEG_CNT - 1:0]                    virtual_seg   ,
+    output logic [31:0]                         virtual_seg_value ,
+    output logic                                uart_tx_o
 );
 	// student_top 是“CPU 子系统”顶层：
 	// - 连接 CPU / IROM / 外设桥
@@ -57,6 +62,7 @@ module student_top#(
     logic [1:0] perip_mask;
     logic [31:0] bridge_virtual_led;
     logic [39:0] bridge_virtual_seg;
+    logic [31:0] bridge_virtual_seg_value;
 
 `ifdef DEBUG_BRIDGE_CYCLE
     localparam logic [28:0] BRIDGE_DEBUG_PAGE_LAST = 29'd499_999_999;
@@ -163,7 +169,10 @@ module student_top#(
     );
     
 	// 数据访存与 MMIO 统一桥接。
-    perip_bridge bridge_inst (
+    perip_bridge #(
+        .CLK_FREQ_HZ        (CPU_CLK_FREQ_HZ),
+        .UART_BAUD_RATE     (UART_BAUD_RATE)
+    ) bridge_inst (
         .clk				(w_cpu_clk),
         .cnt_clk            (w_clk_50Mhz),
         .rst                (w_clk_rst),
@@ -174,8 +183,15 @@ module student_top#(
         .perip_rdata		(perip_rdata),
         .virtual_sw_input	(virtual_sw),
         .virtual_key_input	(virtual_key),	
+        .uart_rx_i          (uart_rx_i),
         .virtual_seg_output	(bridge_virtual_seg),
-        .virtual_led_output (bridge_virtual_led)
+        .virtual_seg_value_output (bridge_virtual_seg_value),
+        .virtual_led_output (bridge_virtual_led),
+        .uart_tx_o          (uart_tx_o),
+        .uart_tx_ready_o    (),
+        .uart_rx_valid_o    (),
+        .uart_rx_overrun_o  (),
+        .uart_rx_data_o     ()
 `ifdef DEBUG_BRIDGE_CYCLE
         ,
         .dbg_seg_wdata          (bridge_dbg_seg_wdata),
@@ -394,6 +410,8 @@ module student_top#(
     assign virtual_led = bridge_virtual_led;
     assign virtual_seg = bridge_virtual_seg;
 `endif
+
+    assign virtual_seg_value = bridge_virtual_seg_value;
 
 endmodule
 

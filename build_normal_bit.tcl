@@ -44,6 +44,13 @@ set fileset [get_filesets sources_1]
 # children in get_files, but they should not be manually added as top-level HDL
 # entries in digital_twin.xpr.
 
+set uart_rx_file [file join $origin_dir "digital_twin.srcs" "sources_1" "new" "uart_rx.sv"]
+if {[file exists $uart_rx_file] && [llength [get_files -quiet -of_objects $fileset $uart_rx_file]] == 0} {
+    add_files -norecurse -fileset sources_1 $uart_rx_file
+    set_property file_type SystemVerilog [get_files $uart_rx_file]
+    puts "ADDED_UART_RX_SOURCE=$uart_rx_file"
+}
+
 set pll_xci [get_files -quiet -of_objects $fileset "*/sources_1/ip/pll_1/pll.xci"]
 if {[llength $pll_xci] == 0} {
     set pll_xci [get_files -quiet -of_objects $fileset "*/sources_1/ip/pll/pll.xci"]

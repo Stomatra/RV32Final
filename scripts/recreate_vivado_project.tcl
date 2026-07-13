@@ -56,12 +56,20 @@ set design_sources [repo_files [list \
     digital_twin.srcs/sources_1/new/counter.sv \
     digital_twin.srcs/sources_1/new/display_seg.sv \
     digital_twin.srcs/sources_1/new/dram_driver.sv \
+    digital_twin.srcs/sources_1/new/hdmi_clock_gen.sv \
+    digital_twin.srcs/sources_1/new/hdmi_demo.sv \
+    digital_twin.srcs/sources_1/new/hdmi_out_7series.sv \
+    digital_twin.srcs/sources_1/new/hdmi_test_pattern.sv \
     digital_twin.srcs/sources_1/new/myCPU.sv \
     digital_twin.srcs/sources_1/new/perip_bridge.sv \
     digital_twin.srcs/sources_1/new/seg7.sv \
     digital_twin.srcs/sources_1/new/student_top.sv \
     digital_twin.srcs/sources_1/new/twin_controller.sv \
+    digital_twin.srcs/sources_1/new/tmds_encoder.sv \
     digital_twin.srcs/sources_1/new/uart.sv \
+    digital_twin.srcs/sources_1/new/uart_tx.sv \
+    digital_twin.srcs/sources_1/new/uart_rx.sv \
+    digital_twin.srcs/sources_1/new/video_timing_640x480.sv \
     digital_twin.srcs/sources_1/new/top.sv \
 ]]
 

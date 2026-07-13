@@ -1,7 +1,25 @@
+# Board USB-UART pins. o_uart_tx is driven by the existing twin UART TX and
+# the CPU MMIO UART TX through an idle-high AND in top.sv.
 set_property PACKAGE_PIN D18 [get_ports i_uart_rx]
 set_property IOSTANDARD LVCMOS33 [get_ports i_uart_rx]
 set_property PACKAGE_PIN D17 [get_ports o_uart_tx]
 set_property IOSTANDARD LVCMOS33 [get_ports o_uart_tx]
+
+# HDMI1 DVI-over-HDMI TMDS output pins.
+# HDMI1_FCLK_P/N and HDMI1_FD[2:0]_P/N are driven only when ENABLE_HDMI_DEMO
+# is defined; DDC/CEC/HPD are intentionally left unused in this first demo.
+set_property PACKAGE_PIN D27 [get_ports hdmi_tx_clk_p]
+set_property PACKAGE_PIN C27 [get_ports hdmi_tx_clk_n]
+set_property PACKAGE_PIN B30 [get_ports {hdmi_tx_data_p[2]}]
+set_property PACKAGE_PIN A30 [get_ports {hdmi_tx_data_n[2]}]
+set_property PACKAGE_PIN G29 [get_ports {hdmi_tx_data_p[1]}]
+set_property PACKAGE_PIN F30 [get_ports {hdmi_tx_data_n[1]}]
+set_property PACKAGE_PIN H30 [get_ports {hdmi_tx_data_p[0]}]
+set_property PACKAGE_PIN G30 [get_ports {hdmi_tx_data_n[0]}]
+set_property IOSTANDARD TMDS_33 [get_ports hdmi_tx_clk_p]
+set_property IOSTANDARD TMDS_33 [get_ports hdmi_tx_clk_n]
+set_property IOSTANDARD TMDS_33 [get_ports {hdmi_tx_data_p[*]}]
+set_property IOSTANDARD TMDS_33 [get_ports {hdmi_tx_data_n[*]}]
 
 set_property IOSTANDARD DIFF_HSTL_II_18 [get_ports i_sys_clk_p]
 set_property PACKAGE_PIN AD12 [get_ports i_sys_clk_p]

@@ -1,0 +1,73 @@
+set_property PACKAGE_PIN AD12 [get_ports i_sys_clk_p]
+set_property PACKAGE_PIN AD11 [get_ports i_sys_clk_n]
+set_property IOSTANDARD DIFF_HSTL_II_18 [get_ports i_sys_clk_p]
+set_property IOSTANDARD DIFF_HSTL_II_18 [get_ports i_sys_clk_n]
+create_clock -period 5.000 -name sys_clk_200m [get_ports i_sys_clk_p]
+
+set_property PACKAGE_PIN D18 [get_ports i_uart_rx]
+set_property PACKAGE_PIN D17 [get_ports o_uart_tx]
+set_property IOSTANDARD LVCMOS33 [get_ports i_uart_rx]
+set_property IOSTANDARD LVCMOS33 [get_ports o_uart_tx]
+
+set_property PACKAGE_PIN D29 [get_ports hdmi_hpd]
+set_property IOSTANDARD LVCMOS33 [get_ports hdmi_hpd]
+
+# Keep the CPU status clock generator close to the sysclk CCIO region.
+set_property LOC MMCME2_ADV_X1Y1 [get_cells cpu_clock_gen_inst/mmcm_inst]
+
+# HDMI TMDS lanes are in Bank16 / clock region X0Y4. This uses the same
+# reference serializer clocking placement that was verified on hardware.
+set_property LOC MMCME2_ADV_X0Y4 [get_cells hdmi_clock_gen_inst/mmcm_inst]
+set_property CLOCK_DEDICATED_ROUTE ANY_CMT_COLUMN [get_nets sys_clk]
+
+# CPU LED/SEG values are sampled by two-flop synchronizers for the HDMI status
+# overlay. Treat that status-display crossing as asynchronous.
+set_false_path -from [get_clocks cpu_clk_unbuf] -to [get_clocks pixel_clk]
+
+set_property PACKAGE_PIN D27 [get_ports hdmi_tx_clk_p]
+set_property PACKAGE_PIN C27 [get_ports hdmi_tx_clk_n]
+set_property PACKAGE_PIN B30 [get_ports {hdmi_tx_data_p[2]}]
+set_property PACKAGE_PIN A30 [get_ports {hdmi_tx_data_n[2]}]
+set_property PACKAGE_PIN G29 [get_ports {hdmi_tx_data_p[1]}]
+set_property PACKAGE_PIN F30 [get_ports {hdmi_tx_data_n[1]}]
+set_property PACKAGE_PIN H30 [get_ports {hdmi_tx_data_p[0]}]
+set_property PACKAGE_PIN G30 [get_ports {hdmi_tx_data_n[0]}]
+
+set_property IOSTANDARD TMDS_33 [get_ports hdmi_tx_clk_p]
+set_property IOSTANDARD TMDS_33 [get_ports hdmi_tx_clk_n]
+set_property IOSTANDARD TMDS_33 [get_ports {hdmi_tx_data_p[*]}]
+set_property IOSTANDARD TMDS_33 [get_ports {hdmi_tx_data_n[*]}]
+
+set_property PACKAGE_PIN B27 [get_ports {virtual_led[31]}]
+set_property PACKAGE_PIN A27 [get_ports {virtual_led[30]}]
+set_property PACKAGE_PIN A26 [get_ports {virtual_led[29]}]
+set_property PACKAGE_PIN B25 [get_ports {virtual_led[28]}]
+set_property PACKAGE_PIN A25 [get_ports {virtual_led[27]}]
+set_property PACKAGE_PIN B24 [get_ports {virtual_led[26]}]
+set_property PACKAGE_PIN B23 [get_ports {virtual_led[25]}]
+set_property PACKAGE_PIN A23 [get_ports {virtual_led[24]}]
+set_property PACKAGE_PIN E30 [get_ports {virtual_led[23]}]
+set_property PACKAGE_PIN C30 [get_ports {virtual_led[22]}]
+set_property PACKAGE_PIN D28 [get_ports {virtual_led[21]}]
+set_property PACKAGE_PIN E26 [get_ports {virtual_led[20]}]
+set_property PACKAGE_PIN F25 [get_ports {virtual_led[19]}]
+set_property PACKAGE_PIN D23 [get_ports {virtual_led[18]}]
+set_property PACKAGE_PIN F23 [get_ports {virtual_led[17]}]
+set_property PACKAGE_PIN F12 [get_ports {virtual_led[16]}]
+set_property PACKAGE_PIN G28 [get_ports {virtual_led[15]}]
+set_property PACKAGE_PIN E28 [get_ports {virtual_led[14]}]
+set_property PACKAGE_PIN C29 [get_ports {virtual_led[13]}]
+set_property PACKAGE_PIN D26 [get_ports {virtual_led[12]}]
+set_property PACKAGE_PIN C25 [get_ports {virtual_led[11]}]
+set_property PACKAGE_PIN D24 [get_ports {virtual_led[10]}]
+set_property PACKAGE_PIN E23 [get_ports {virtual_led[9]}]
+set_property PACKAGE_PIN G23 [get_ports {virtual_led[8]}]
+set_property PACKAGE_PIN E29 [get_ports {virtual_led[7]}]
+set_property PACKAGE_PIN G25 [get_ports {virtual_led[6]}]
+set_property PACKAGE_PIN F26 [get_ports {virtual_led[5]}]
+set_property PACKAGE_PIN C26 [get_ports {virtual_led[4]}]
+set_property PACKAGE_PIN E25 [get_ports {virtual_led[3]}]
+set_property PACKAGE_PIN C24 [get_ports {virtual_led[2]}]
+set_property PACKAGE_PIN E24 [get_ports {virtual_led[1]}]
+set_property PACKAGE_PIN G24 [get_ports {virtual_led[0]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {virtual_led[*]}]

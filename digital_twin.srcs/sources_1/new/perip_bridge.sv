@@ -19,7 +19,10 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
-module perip_bridge(
+module perip_bridge #(
+    parameter integer CLK_FREQ_HZ   = 260_000_000,
+    parameter integer UART_BAUD_RATE = 115200
+) (
     input  logic         clk				,
     input  logic         cnt_clk			,
     input  logic         rst                ,
@@ -32,9 +35,16 @@ module perip_bridge(
 
 	input  logic [63:0]  virtual_sw_input	,
     input  logic [7:0]   virtual_key_input	,	
+    input  logic         uart_rx_i          ,
 
 	output logic [39:0]  virtual_seg_output	,
-    output logic [31:0]  virtual_led_output
+    output logic [31:0]  virtual_seg_value_output ,
+    output logic [31:0]  virtual_led_output ,
+    output logic         uart_tx_o,
+    output logic         uart_tx_ready_o,
+    output logic         uart_rx_valid_o,
+    output logic         uart_rx_overrun_o,
+    output logic [7:0]   uart_rx_data_o
 `ifdef DEBUG_BRIDGE_CYCLE
     ,
     output logic [31:0]  dbg_seg_wdata,
@@ -63,6 +73,10 @@ module perip_bridge(
     localparam SEG_ADDR  = 32'h8020_0020;  // seg
     localparam LED_ADDR  = 32'h8020_0040;  // led[31:0]
     localparam CNT_ADDR  = 32'h8020_0050;  // counter
+    localparam UART_TXDATA_ADDR = 32'h8020_0060;  // UART TX data[7:0]
+    localparam UART_STATUS_ADDR = 32'h8020_0064;  // {28'b0, rx_overrun, rx_valid, tx_ready, tx_busy}
+    localparam UART_RXDATA_ADDR = 32'h8020_0068;  // UART RX data[7:0], read clears rx_valid
+    localparam UART_CTRL_ADDR   = 32'h8020_006C;  // bit0 clear rx_valid, bit1 clear rx_overrun
 
     logic [31:0] LED;
     logic [31:0] seg_wdata, cnt_rdata, mmio_rdata, dram_rdata;
@@ -73,7 +87,23 @@ module perip_bridge(
     logic        sel_seg;
     logic        sel_led;
     logic        sel_cnt;
+    logic        sel_uart_txdata;
+    logic        sel_uart_status;
+    logic        sel_uart_rxdata;
+    logic        sel_uart_ctrl;
     logic        sel_dram;
+    logic        uart_tx_busy;
+    logic        uart_tx_ready;
+    logic        uart_tx_write;
+    logic        uart_tx_write_q;
+    logic        uart_tx_start;
+    logic [7:0]  uart_tx_data;
+    logic [7:0]  uart_rx_data;
+    logic        uart_rx_valid;
+    logic        uart_rx_overrun;
+    logic        uart_rx_read;
+    logic        uart_rx_clear_valid;
+    logic        uart_rx_clear_overrun;
 	// 所有读源统一打一拍，和 dram_driver 的同步读延迟保持一致。
     logic        sel_dram_r, sel_cnt_r, sel_mmio_r;
     logic [31:0] mmio_rdata_r, cnt_rdata_r;
@@ -94,7 +124,31 @@ module perip_bridge(
     assign sel_seg  = (perip_addr == SEG_ADDR);
     assign sel_led  = (perip_addr == LED_ADDR);
     assign sel_cnt  = (perip_addr == CNT_ADDR);
+    assign sel_uart_txdata = (perip_addr == UART_TXDATA_ADDR);
+    assign sel_uart_status = (perip_addr == UART_STATUS_ADDR);
+    assign sel_uart_rxdata = (perip_addr == UART_RXDATA_ADDR);
+    assign sel_uart_ctrl   = (perip_addr == UART_CTRL_ADDR);
     assign sel_dram = (perip_addr >= DRAM_ADDR_START && perip_addr <= DRAM_ADDR_END);
+    assign uart_tx_ready = ~uart_tx_busy;
+    assign uart_tx_write = perip_wen & sel_uart_txdata;
+    assign uart_rx_read = (~perip_wen) & sel_uart_rxdata;
+    assign uart_rx_clear_valid = uart_rx_read | (perip_wen & sel_uart_ctrl & perip_wdata[0]);
+    assign uart_rx_clear_overrun = perip_wen & sel_uart_ctrl & perip_wdata[1];
+
+    always_ff @(posedge clk or posedge rst) begin
+        if (rst) begin
+            uart_tx_write_q <= 1'b0;
+            uart_tx_start   <= 1'b0;
+            uart_tx_data    <= 8'h00;
+        end else begin
+            uart_tx_write_q <= uart_tx_write;
+            uart_tx_start   <= 1'b0;
+            if (uart_tx_write && !uart_tx_write_q && uart_tx_ready) begin
+                uart_tx_start <= 1'b1;
+                uart_tx_data  <= perip_wdata[7:0];
+            end
+        end
+    end
 
 	// LED / SEG 的写入是最简单的寄存器写；开关与按键是只读输入。
     always_ff @(posedge clk or posedge rst) begin
@@ -155,6 +209,10 @@ module perip_bridge(
                 mmio_rdata = {24'd0, virtual_key_input};
             end else if (sel_seg) begin
                 mmio_rdata = seg_wdata;
+            end else if (sel_uart_status) begin
+                mmio_rdata = {28'h0, uart_rx_overrun, uart_rx_valid, uart_tx_ready, uart_tx_busy};
+            end else if (sel_uart_rxdata) begin
+                mmio_rdata = {24'h0, uart_rx_data};
             end else begin
                 mmio_rdata = 32'hDEAD_BEEF;
             end
@@ -201,6 +259,32 @@ module perip_bridge(
         .perip_rdata		(cnt_rdata)
     );
 
+    uart_tx #(
+        .CLK_FREQ_HZ        (CLK_FREQ_HZ),
+        .BAUD_RATE          (UART_BAUD_RATE)
+    ) uart_tx_inst (
+        .clk                (clk),
+        .rst                (rst),
+        .tx_start           (uart_tx_start),
+        .tx_data            (uart_tx_data),
+        .tx_busy            (uart_tx_busy),
+        .tx                 (uart_tx_o)
+    );
+
+    uart_rx #(
+        .CLK_FREQ_HZ        (CLK_FREQ_HZ),
+        .BAUD_RATE          (UART_BAUD_RATE)
+    ) uart_rx_inst (
+        .clk                (clk),
+        .rst                (rst),
+        .rx                 (uart_rx_i),
+        .clear_valid        (uart_rx_clear_valid),
+        .clear_overrun      (uart_rx_clear_overrun),
+        .rx_data            (uart_rx_data),
+        .rx_valid           (uart_rx_valid),
+        .rx_overrun         (uart_rx_overrun)
+    );
+
 	// 选择信号和非 BRAM 读数据打一拍，使所有读源都对齐成 1 周期延迟。
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
@@ -212,7 +296,7 @@ module perip_bridge(
         end else begin
             sel_dram_r   <= sel_dram;
             sel_cnt_r    <= sel_cnt;
-            sel_mmio_r   <= (sel_sw0 || sel_sw1 || sel_key || sel_seg);
+            sel_mmio_r   <= (sel_sw0 || sel_sw1 || sel_key || sel_seg || sel_uart_status || sel_uart_rxdata);
             mmio_rdata_r <= mmio_rdata;
             cnt_rdata_r  <= cnt_rdata;
         end
@@ -243,6 +327,11 @@ module perip_bridge(
     
     assign virtual_led_output = LED;
     assign virtual_seg_output = seg_output;
+    assign virtual_seg_value_output = seg_wdata;
+    assign uart_tx_ready_o = uart_tx_ready;
+    assign uart_rx_valid_o = uart_rx_valid;
+    assign uart_rx_overrun_o = uart_rx_overrun;
+    assign uart_rx_data_o = uart_rx_data;
 
 `ifdef DEBUG_BRIDGE_CYCLE
     assign dbg_seg_wdata = seg_wdata;
