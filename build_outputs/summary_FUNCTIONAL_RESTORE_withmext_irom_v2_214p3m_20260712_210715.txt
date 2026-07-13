@@ -1,0 +1,10 @@
+BUILD_TAG=FUNCTIONAL_RESTORE_withmext_irom_v2_214p3m_20260712_210715
+CPU_CLOCK_FREQ_MHZ=214.3
+WORST_SETUP_SLACK=0.054
+WORST_HOLD_SLACK=0.072
+FINAL_BIT=E:/Projects/1Aprojects/RV32Final/final_bits/FUNCTIONAL_RESTORE_withmext_irom_v2_214p3m_20260712_210715.bit
+BUILD_BIT=E:/Projects/1Aprojects/RV32Final/build_outputs/FUNCTIONAL_RESTORE_withmext_irom_v2_214p3m_20260712_210715.build.bit
+STABLE_BIT=E:/Projects/1Aprojects/RV32Final/top_functional_restore_214p3m.bit
+ROOT_TOP_BIT=E:/Projects/1Aprojects/RV32Final/top.bit
+TIMING_REPORT=E:/Projects/1Aprojects/RV32Final/build_outputs/timing_FUNCTIONAL_RESTORE_withmext_irom_v2_214p3m_20260712_210715.rpt
+PATHS_REPORT=E:/Projects/1Aprojects/RV32Final/build_outputs/timing_paths_FUNCTIONAL_RESTORE_withmext_irom_v2_214p3m_20260712_210715.rpt
