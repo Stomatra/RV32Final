@@ -1,5 +1,11 @@
 `timescale 1ns / 1ps
 
+`ifdef ENABLE_Z_B_SMALL
+`define Z_LIGHT_UNIT_ENABLE_Z_B_SMALL_DEFAULT 1'b1
+`else
+`define Z_LIGHT_UNIT_ENABLE_Z_B_SMALL_DEFAULT 1'b0
+`endif
+
 module z_light_unit #(
     parameter bit ENABLE_Z_ANDN   = 1'b1,
     parameter bit ENABLE_Z_ORN    = 1'b1,
@@ -26,7 +32,9 @@ module z_light_unit #(
     parameter bit ENABLE_Z_BINV   = 1'b1,
     parameter bit ENABLE_Z_BINVI  = 1'b1,
     parameter bit ENABLE_Z_BSET   = 1'b1,
-    parameter bit ENABLE_Z_BSETI  = 1'b1
+    parameter bit ENABLE_Z_BSETI  = 1'b1,
+
+    parameter bit ENABLE_Z_B_SMALL = `Z_LIGHT_UNIT_ENABLE_Z_B_SMALL_DEFAULT
 )(
     input  logic        z_valid,
 
@@ -78,6 +86,16 @@ module z_light_unit #(
     localparam logic [5:0] ZOP_BINVI  = 6'd18;
     localparam logic [5:0] ZOP_BSET   = 6'd19;
     localparam logic [5:0] ZOP_BSETI  = 6'd20;
+    localparam logic [5:0] ZOP_SH1ADD = 6'd21;
+    localparam logic [5:0] ZOP_SH2ADD = 6'd22;
+    localparam logic [5:0] ZOP_SH3ADD = 6'd23;
+    localparam logic [5:0] ZOP_MIN    = 6'd24;
+    localparam logic [5:0] ZOP_MINU   = 6'd25;
+    localparam logic [5:0] ZOP_MAX    = 6'd26;
+    localparam logic [5:0] ZOP_MAXU   = 6'd27;
+    localparam logic [5:0] ZOP_ROL    = 6'd28;
+    localparam logic [5:0] ZOP_ROR    = 6'd29;
+    localparam logic [5:0] ZOP_RORI   = 6'd30;
 
     function automatic logic [31:0] orc_b_32(input logic [31:0] x);
         begin
@@ -91,6 +109,22 @@ module z_light_unit #(
     function automatic logic [7:0] reverse_byte(input logic [7:0] x);
         begin
             reverse_byte = {x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7]};
+        end
+    endfunction
+
+    function automatic logic [31:0] rol32(input logic [31:0] x, input logic [4:0] shamt);
+        logic [4:0] inv_shamt;
+        begin
+            inv_shamt = (5'd0 - shamt) & 5'h1f;
+            rol32 = (x << shamt) | (x >> inv_shamt);
+        end
+    endfunction
+
+    function automatic logic [31:0] ror32(input logic [31:0] x, input logic [4:0] shamt);
+        logic [4:0] inv_shamt;
+        begin
+            inv_shamt = (5'd0 - shamt) & 5'h1f;
+            ror32 = (x >> shamt) | (x << inv_shamt);
         end
     endfunction
 
@@ -248,6 +282,67 @@ module z_light_unit #(
                     end
                 end
 
+                ZOP_SH1ADD: begin
+                    if (ENABLE_Z_B_SMALL) begin
+                        z_result = (rs1_val << 1) + rs2_val;
+                        z_supported = 1'b1;
+                    end
+                end
+                ZOP_SH2ADD: begin
+                    if (ENABLE_Z_B_SMALL) begin
+                        z_result = (rs1_val << 2) + rs2_val;
+                        z_supported = 1'b1;
+                    end
+                end
+                ZOP_SH3ADD: begin
+                    if (ENABLE_Z_B_SMALL) begin
+                        z_result = (rs1_val << 3) + rs2_val;
+                        z_supported = 1'b1;
+                    end
+                end
+                ZOP_MIN: begin
+                    if (ENABLE_Z_B_SMALL) begin
+                        z_result = ($signed(rs1_val) < $signed(rs2_val)) ? rs1_val : rs2_val;
+                        z_supported = 1'b1;
+                    end
+                end
+                ZOP_MINU: begin
+                    if (ENABLE_Z_B_SMALL) begin
+                        z_result = (rs1_val < rs2_val) ? rs1_val : rs2_val;
+                        z_supported = 1'b1;
+                    end
+                end
+                ZOP_MAX: begin
+                    if (ENABLE_Z_B_SMALL) begin
+                        z_result = ($signed(rs1_val) > $signed(rs2_val)) ? rs1_val : rs2_val;
+                        z_supported = 1'b1;
+                    end
+                end
+                ZOP_MAXU: begin
+                    if (ENABLE_Z_B_SMALL) begin
+                        z_result = (rs1_val > rs2_val) ? rs1_val : rs2_val;
+                        z_supported = 1'b1;
+                    end
+                end
+                ZOP_ROL: begin
+                    if (ENABLE_Z_B_SMALL) begin
+                        z_result = rol32(rs1_val, rs2_val[4:0]);
+                        z_supported = 1'b1;
+                    end
+                end
+                ZOP_ROR: begin
+                    if (ENABLE_Z_B_SMALL) begin
+                        z_result = ror32(rs1_val, rs2_val[4:0]);
+                        z_supported = 1'b1;
+                    end
+                end
+                ZOP_RORI: begin
+                    if (ENABLE_Z_B_SMALL) begin
+                        z_result = ror32(rs1_val, z_shamt);
+                        z_supported = 1'b1;
+                    end
+                end
+
                 default: begin
                     z_result = 32'h0;
                     z_supported = 1'b0;
@@ -256,3 +351,5 @@ module z_light_unit #(
         end
     end
 endmodule
+
+`undef Z_LIGHT_UNIT_ENABLE_Z_B_SMALL_DEFAULT

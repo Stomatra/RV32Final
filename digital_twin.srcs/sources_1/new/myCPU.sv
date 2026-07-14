@@ -1,7 +1,14 @@
 `timescale 1ns / 1ps
 
+`ifdef ENABLE_Z_B_SMALL
+`define MYCPU_ENABLE_Z_B_SMALL_DEFAULT 1'b1
+`else
+`define MYCPU_ENABLE_Z_B_SMALL_DEFAULT 1'b0
+`endif
+
 module myCPU #(
-	parameter ENABLE_MUL_HELPER_ACCEL = 1'b0
+	parameter ENABLE_MUL_HELPER_ACCEL = 1'b0,
+	parameter ENABLE_Z_B_SMALL = `MYCPU_ENABLE_Z_B_SMALL_DEFAULT
 ) (
 	input  logic         cpu_rst,
 	input  logic         cpu_clk,
@@ -85,6 +92,16 @@ module myCPU #(
 	localparam logic [5:0]  ZOP_BINVI	 = 6'd18;// Z 轻量级指令操作码 BINVI，表示按位取反立即数操作
 	localparam logic [5:0]  ZOP_BSET	 = 6'd19;// Z 轻量级指令操作码 BSET，表示按位设置操作
 	localparam logic [5:0]  ZOP_BSETI	 = 6'd20;// Z 轻量级指令操作码 BSETI，表示按位设置立即数操作
+	localparam logic [5:0]  ZOP_SH1ADD	 = 6'd21;// Zba sh1add。
+	localparam logic [5:0]  ZOP_SH2ADD	 = 6'd22;// Zba sh2add。
+	localparam logic [5:0]  ZOP_SH3ADD	 = 6'd23;// Zba sh3add。
+	localparam logic [5:0]  ZOP_MIN	     = 6'd24;// Zbb min。
+	localparam logic [5:0]  ZOP_MINU	 = 6'd25;// Zbb minu。
+	localparam logic [5:0]  ZOP_MAX	     = 6'd26;// Zbb max。
+	localparam logic [5:0]  ZOP_MAXU	 = 6'd27;// Zbb maxu。
+	localparam logic [5:0]  ZOP_ROL	     = 6'd28;// Zbb rol。
+	localparam logic [5:0]  ZOP_ROR	     = 6'd29;// Zbb ror。
+	localparam logic [5:0]  ZOP_RORI	 = 6'd30;// Zbb rori。
 	localparam logic [5:0]  ZOP_NONE     = 6'd63;// Z 轻量级指令操作码 NONE，表示没有 Z 轻量级指令操作。
 
 	// WB 选择：ALU 结果、内存返回、PC+4 或 U 型立即数。
@@ -617,7 +634,9 @@ module myCPU #(
 		.isTrue     (ex2_alu_is_true)
 	);
 
-	z_light_decode u_z_light_decode (
+	z_light_decode #(
+		.ENABLE_Z_B_SMALL(ENABLE_Z_B_SMALL)
+	) u_z_light_decode (
 		.instr      (ifid_instr),
 
 		.z_hit     (id_z_light_hit),
@@ -627,7 +646,9 @@ module myCPU #(
 		.z_uses_rs2(id_z_light_uses_rs2)
 	);
 
-	z_light_unit #() u_z_light_unit (
+	z_light_unit #(
+		.ENABLE_Z_B_SMALL(ENABLE_Z_B_SMALL)
+	) u_z_light_unit (
 		.z_valid    (ex1ex2_valid),
 		.z_op       (ex1ex2_z_op),
 		.rs1_val    (ex1ex2_rs1_val),
@@ -1842,6 +1863,8 @@ module myCPU #(
 	end
 
 endmodule
+
+`undef MYCPU_ENABLE_Z_B_SMALL_DEFAULT
 
 module mycpu_rv32_decode (
 	input  logic [31:0] instr,
