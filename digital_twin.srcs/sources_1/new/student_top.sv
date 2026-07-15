@@ -38,12 +38,14 @@ module student_top#(
 
     // IROM
     logic [11:0] inst_addr;
+    logic        inst_en;
     logic [31:0] instruction;
 
     // perip
     logic [31:0] perip_addr, perip_wdata, perip_rdata;
     logic perip_wen;
     logic [1:0] perip_mask;
+    logic [3:0] perip_wstrb;
 
     myCPU Core_cpu (
         .cpu_rst            (w_clk_rst),
@@ -51,19 +53,21 @@ module student_top#(
 
         // Interface to IROM
         .irom_addr          (inst_addr),
+        .irom_en            (inst_en),
         .irom_data          (instruction),
 
         // Interface to DRAM & periphera
         .perip_addr         (perip_addr),     
         .perip_wen          (perip_wen),     
         .perip_mask         (perip_mask),   
+        .perip_wstrb        (perip_wstrb),
         .perip_wdata        (perip_wdata),    
         .perip_rdata        (perip_rdata)
     );
 
     IROM_BRAM Mem_IROM (
         .clka       (w_cpu_clk),
-        .ena        (1'b1),
+        .ena        (inst_en),
         .addra      (inst_addr),
         .douta      (instruction)
     );
@@ -76,6 +80,7 @@ module student_top#(
         .perip_wdata		(perip_wdata),
         .perip_wen			(perip_wen),
         .perip_mask			(perip_mask),
+        .perip_wstrb		(perip_wstrb),
         .perip_rdata		(perip_rdata),
         .virtual_sw_input	(virtual_sw),
         .virtual_key_input	(virtual_key),	

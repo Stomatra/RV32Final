@@ -13,6 +13,7 @@ module myCPU #(
 	output logic [31:0]  perip_addr,
 	output logic         perip_wen,
 	output logic [1:0]   perip_mask,
+	output logic [3:0]   perip_wstrb,
 	output logic [31:0]  perip_wdata,
 	input  logic [31:0]  perip_rdata
 );
@@ -122,6 +123,8 @@ module myCPU #(
 	localparam logic [1:0]  MEM_MASK_BYTE = 2'b00;// 数据口写掩码选择字节。
 	localparam logic [1:0]  MEM_MASK_HALF = 2'b01;// 数据口写掩码选择半字。
 	localparam logic [1:0]  MEM_MASK_WORD = 2'b10;// 数据口写掩码选择整字。
+	// 0x8010_0000--0x8013_FFFF 是 256 KiB 对齐的 DRAM 区域。
+	localparam logic [13:0] DRAM_REGION_TAG = 14'h2004;
 
 	//CSR地址常量
 	localparam logic [11:0] CSR_MSTATUS = 12'h300;// CSR 寄存器 MSTATUS 地址，用于保存处理器状态。
@@ -315,6 +318,7 @@ module myCPU #(
 	logic [4:0]  ex1ex2_rd;
 	logic [31:0] ex1ex2_imm;
 	logic [2:0]  ex1ex2_funct3;
+	logic        ex1ex2_br_take;
 	logic        ex1ex2_mul_helper;
 	logic [31:0] ex1ex2_mul_helper_ra;
 	logic [31:0] ex1ex2_mul_helper_lhs;
@@ -412,9 +416,6 @@ module myCPU #(
 	logic [31:0] ex2_alu_y;        // EX 级寄存器中的 ALU 结果，表示执行阶段的指令 ALU 计算结果。
 	logic        ex2_br_take;      // EX 级寄存器中的分支判断结果，表示执行阶段的指令是否采取分支。
 	logic        ex2_alu_is_true;  // EX 级寄存器中的 ALU 是否为真标志，表示执行阶段的指令 ALU 结果是否为真。
-	logic        ex2_cmp_eq;       // EX 级寄存器中的比较结果标志，表示执行阶段的指令是否相等。
-	logic        ex2_cmp_lt_signed; // EX 级寄存器中的有符号比较结果标志，表示执行阶段的指令是否小于。
-	logic        ex2_cmp_lt_unsigned; // EX 级寄存器中的无符号比较结果标志，表示执行阶段的指令是否小于。
 	logic [31:0] ex2_pc4;          // EX 级寄存器中的 PC+4 值，表示执行阶段的指令 PC+4。
 	logic [31:0] ex2_pc_plus_imm;  // EX 级寄存器中的 PC+立即数值，表示执行阶段的指令 PC+立即数。
 	logic [31:0] ex2_jalr_sum;     // EX 级寄存器中的 JALR 和，表示执行阶段的指令 JALR 计算结果。
@@ -500,6 +501,11 @@ module myCPU #(
 	logic [31:0] ex2mem_addr_off   = 32'h0;          // EX/MEM 流水寄存器中的偏移地址，表示执行阶段的指令偏移地址传递到访存阶段。
 	logic        ex2mem_is_load;                     // EX/MEM 流水寄存器中的加载标志，表示执行阶段的指令是否为加载指令。
 	logic        load_in_mem;
+	logic [3:0]  ex2mem_store_wstrb = 4'h0;
+	logic [31:0] ex2_store_data_aligned;
+	logic [3:0]  ex2_store_wstrb;
+	logic        ex2_is_dram;
+	logic        ex2mem_is_dram = 1'b0;
 
 	// =========================
 	// MEM / MEMWB 级 表示访存阶段的结果和控制信号传递到写回阶段。
@@ -529,6 +535,17 @@ module myCPU #(
 	// ========================
 	logic        m_mul_pp_valid;
 	logic [31:0] m_mul_pp_ll, m_mul_pp_lh, m_mul_pp_hl, m_mul_pp_hh;
+	(* keep = "true", max_fanout = 1 *) logic [15:0] m_mul_ll_a, m_mul_ll_b;
+	(* keep = "true", max_fanout = 1 *) logic [15:0] m_mul_lh_a, m_mul_lh_b;
+	(* keep = "true", max_fanout = 1 *) logic [15:0] m_mul_hl_a, m_mul_hl_b;
+	(* keep = "true", max_fanout = 1 *) logic [15:0] m_mul_hh_a, m_mul_hh_b;
+	// Second operand stage is intentionally not KEEP'ed so Vivado can pack it
+	// into the DSP48 AREG/BREG input registers.
+	logic [15:0] m_dsp_ll_a, m_dsp_ll_b;
+	logic [15:0] m_dsp_lh_a, m_dsp_lh_b;
+	logic [15:0] m_dsp_hl_a, m_dsp_hl_b;
+	logic [15:0] m_dsp_hh_a, m_dsp_hh_b;
+	logic        m_mul_inputs_valid;
 
 	logic [63:0] m_mul_uu_reg;
 	logic        mul_start;
@@ -631,6 +648,7 @@ module myCPU #(
 	assign perip_addr  = ex2mem_alu_y;
 	assign perip_wen   = ex2mem_valid && ex2mem_mem_req && ex2mem_mem_write;
 	assign perip_mask  = ex2mem_mem_mask;
+	assign perip_wstrb = (perip_wen && ex2mem_is_dram) ? ex2mem_store_wstrb : 4'b0000;
 	assign perip_wdata = ex2mem_store_data;
 
 	// 指令字段译码。
@@ -714,6 +732,29 @@ module myCPU #(
 
 	// store 数据只在 store 指令时有效，其余时间清零有利于减少无关逻辑传播。
 	assign ex2_store_data    = ex1ex2_mem_write ? ex1ex2_store_data : 32'h0;
+	assign ex2_is_dram       = (ex2_alu_y[31:18] == DRAM_REGION_TAG);
+	always_comb begin
+		ex2_store_data_aligned = ex2_store_data;
+		ex2_store_wstrb = 4'b0000;
+		if (ex1ex2_valid && ex1ex2_mem_req && ex1ex2_mem_write) begin
+			unique case (ex1ex2_mem_mask)
+				MEM_MASK_BYTE: begin
+					ex2_store_data_aligned = {4{ex2_store_data[7:0]}};
+					ex2_store_wstrb = 4'b0001 << ex2_alu_y[1:0];
+				end
+				MEM_MASK_HALF: begin
+					ex2_store_data_aligned = {2{ex2_store_data[15:0]}};
+					ex2_store_wstrb = ex2_alu_y[1] ? 4'b1100 : 4'b0011;
+				end
+				MEM_MASK_WORD: begin
+					ex2_store_wstrb = 4'b1111;
+				end
+				default: begin
+					ex2_store_wstrb = 4'b0000;
+				end
+			endcase
+		end
+	end
 	assign ex2_pc4           = ex1ex2_pc + 32'd4;
 	assign ex2_pc_plus_imm   = ex1ex2_pc + ex1ex2_imm;
 
@@ -806,12 +847,9 @@ module myCPU #(
 
 	// ID 阶段提前记录消费者下一拍进入 EX1 时应使用的来源：EX2、MEM 或 WB。
 	// 三条 EX1 前递的优先级在 EX1 组合逻辑中固定为 EX2 > MEM > WB。
-	// Only ordinary ALU results use the same-cycle EX2 -> EX1 fast bypass.
-	assign idex1_can_forward_to_ex1ex2 = idex1_valid && idex1_rf_we &&
-									  (idex1_rd != 5'h0) &&
-									  (idex1_wb_sel == WB_SRC_ALU) &&
-									  !idex1_is_m_ext &&
-									  !idex1_mul_helper;
+	// Disable the same-cycle EX2 -> EX1 bypass. A dependent instruction waits
+	// one cycle and then uses the registered EX2/MEM forwarding path instead.
+	assign idex1_can_forward_to_ex1ex2 = 1'b0;
 	assign ex1ex2_can_forward_to_ex2mem = ex1ex2_valid && ex1ex2_rf_we &&
 										 (ex1ex2_rd != 5'h0) &&
 										 (ex1ex2_wb_sel != WB_SRC_MEM) &&
@@ -877,18 +915,6 @@ module myCPU #(
 		endcase
 	end
 
-	// 比较器只在 branch 时真正工作，避免平时把比较链白白挂在关键路径上。
-	always_comb begin
-		ex2_cmp_eq = 1'b0;
-		ex2_cmp_lt_signed = 1'b0;
-		ex2_cmp_lt_unsigned = 1'b0;
-		if (ex1ex2_pc_sel == PC_SRC_BRANCH) begin
-			ex2_cmp_eq = (ex1ex2_rs1_val == ex1ex2_rs2_val);
-			ex2_cmp_lt_signed = ($signed(ex1ex2_rs1_val) < $signed(ex1ex2_rs2_val));
-			ex2_cmp_lt_unsigned = (ex1ex2_rs1_val < ex1ex2_rs2_val);
-		end
-	end
-
 	// ID 级允许从 MEMWB 做“同拍旁路读取”，减少读后写停顿。
 	always_comb begin
 		if (id_rs1 == 5'd0) begin
@@ -930,10 +956,19 @@ module myCPU #(
 			m_div_started <= 1'b0;
 			m_is_div_reg <= 1'b0;
 			m_mul_pp_valid <= 1'b0;
+			m_mul_inputs_valid <= 1'b0;
 			m_mul_raw_valid <= 1'b0;
 			m_op_reg     <= M_OP_NONE;
 			m_rs1_reg    <= 32'h0;
 			m_rs2_reg    <= 32'h0;
+			m_mul_ll_a   <= 16'h0;
+			m_mul_ll_b   <= 16'h0;
+			m_mul_lh_a   <= 16'h0;
+			m_mul_lh_b   <= 16'h0;
+			m_mul_hl_a   <= 16'h0;
+			m_mul_hl_b   <= 16'h0;
+			m_mul_hh_a   <= 16'h0;
+			m_mul_hh_b   <= 16'h0;
 			m_mul_pp_ll  <= 32'h0;
 			m_mul_pp_lh  <= 32'h0;
 			m_mul_pp_hl  <= 32'h0;
@@ -946,10 +981,20 @@ module myCPU #(
 			m_div_started  <= 1'b0;
 			m_is_div_reg   <= ex2_m_is_div;
 			m_mul_pp_valid <= 1'b0;
+			m_mul_inputs_valid <= 1'b0;
 			m_mul_raw_valid <= 1'b0;
 			m_op_reg       <= ex1ex2_m_op;
 			m_rs1_reg      <= ex1ex2_rs1_val;
 			m_rs2_reg      <= ex1ex2_rs2_val;
+			// Give each partial-product DSP its own local operand registers.
+			m_mul_ll_a     <= ex1ex2_rs1_val[15:0];
+			m_mul_ll_b     <= ex1ex2_rs2_val[15:0];
+			m_mul_lh_a     <= ex1ex2_rs1_val[15:0];
+			m_mul_lh_b     <= ex1ex2_rs2_val[31:16];
+			m_mul_hl_a     <= ex1ex2_rs1_val[31:16];
+			m_mul_hl_b     <= ex1ex2_rs2_val[15:0];
+			m_mul_hh_a     <= ex1ex2_rs1_val[31:16];
+			m_mul_hh_b     <= ex1ex2_rs2_val[31:16];
 		end else if (m_inflight && m_is_div_reg) begin
 			if (!m_div_started) begin
 				m_div_started <= 1'b1;
@@ -960,12 +1005,15 @@ module myCPU #(
 				m_inflight <= 1'b0;
 				m_div_started <= 1'b0;
 			end
+		end else if (m_inflight && !m_mul_inputs_valid) begin
+			// This extra cycle lets the following registers map to DSP48 AREG/BREG.
+			m_mul_inputs_valid <= 1'b1;
 		end else if (m_inflight && !m_mul_pp_valid) begin
 			// Four independent 16x16 products avoid a cascaded 32x32 DSP path.
-			m_mul_pp_ll <= $unsigned(m_rs1_reg[15:0])  * $unsigned(m_rs2_reg[15:0]);
-			m_mul_pp_lh <= $unsigned(m_rs1_reg[15:0])  * $unsigned(m_rs2_reg[31:16]);
-			m_mul_pp_hl <= $unsigned(m_rs1_reg[31:16]) * $unsigned(m_rs2_reg[15:0]);
-			m_mul_pp_hh <= $unsigned(m_rs1_reg[31:16]) * $unsigned(m_rs2_reg[31:16]);
+			m_mul_pp_ll <= $unsigned(m_dsp_ll_a) * $unsigned(m_dsp_ll_b);
+			m_mul_pp_lh <= $unsigned(m_dsp_lh_a) * $unsigned(m_dsp_lh_b);
+			m_mul_pp_hl <= $unsigned(m_dsp_hl_a) * $unsigned(m_dsp_hl_b);
+			m_mul_pp_hh <= $unsigned(m_dsp_hh_a) * $unsigned(m_dsp_hh_b);
 			m_mul_pp_valid <= 1'b1;
 		end else if (m_inflight && !m_mul_raw_valid) begin
 			m_mul_uu_reg <= {32'h0, m_mul_pp_ll}
@@ -978,10 +1026,26 @@ module myCPU #(
 			m_result_ready <= 1'b1;
 			m_inflight <= 1'b0;
 			m_mul_pp_valid <= 1'b0;
+			m_mul_inputs_valid <= 1'b0;
 			m_mul_raw_valid <= 1'b0;
 		end else if (m_result_ready && !m_stall) begin
 			m_result_ready <= 1'b0;
 			m_op_reg <= M_OP_NONE;
+		end
+	end
+
+	// No asynchronous reset here: DSP48 AREG/BREG only need these operands
+	// after m_mul_inputs_valid is asserted, and can therefore absorb this stage.
+	always_ff @(posedge cpu_clk) begin
+		if (m_inflight && !m_is_div_reg && !m_mul_inputs_valid) begin
+			m_dsp_ll_a <= m_mul_ll_a;
+			m_dsp_ll_b <= m_mul_ll_b;
+			m_dsp_lh_a <= m_mul_lh_a;
+			m_dsp_lh_b <= m_mul_lh_b;
+			m_dsp_hl_a <= m_mul_hl_a;
+			m_dsp_hl_b <= m_mul_hl_b;
+			m_dsp_hh_a <= m_mul_hh_a;
+			m_dsp_hh_b <= m_mul_hh_b;
 		end
 	end
 
@@ -1427,10 +1491,9 @@ module myCPU #(
 								 (hazard_uses_rs2 && (id_rs2 == ex1ex2_rd)));
 
 	assign load_use_hazard = load_use_ex1_hazard || load_use_ex2_hazard;
-	// Non-ALU results advance to EX2/MEM before a dependent instruction proceeds.
+	// Every adjacent RAW dependency waits until the producer reaches EX2/MEM.
 	assign slow_result_ex1_hazard = ifid_valid && idex1_valid && idex1_rf_we &&
 								 (idex1_rd != 5'h0) &&
-								 !idex1_can_forward_to_ex1ex2 &&
 								 ((hazard_uses_rs1 && (id_rs1 == idex1_rd)) ||
 								  (hazard_uses_rs2 && (id_rs2 == idex1_rd)));
 	assign m_issue_hazard = idex1_valid && idex1_is_m_ext;
@@ -1660,21 +1723,41 @@ module myCPU #(
 	// WB -> ID 的同拍旁路位于 id_rs1_val/id_rs2_val 组合逻辑中。
 	always_comb begin
 		ex1_rs1_val = idex1_rs1_val;
-		if (idex1_fwd_rs1_from_ex2) begin
-			ex1_rs1_val = ex2_alu_y;
-		end else if (idex1_fwd_rs1_from_mem) begin
+		if (idex1_fwd_rs1_from_mem) begin
 			ex1_rs1_val = ex2mem_wb_data;
 		end else if (idex1_fwd_rs1_from_wb) begin
 			ex1_rs1_val = memwb_wdata;
 		end
 
 		ex1_rs2_val = idex1_rs2_val;
-		if (idex1_fwd_rs2_from_ex2) begin
-			ex1_rs2_val = ex2_alu_y;
-		end else if (idex1_fwd_rs2_from_mem) begin
+		if (idex1_fwd_rs2_from_mem) begin
 			ex1_rs2_val = ex2mem_wb_data;
 		end else if (idex1_fwd_rs2_from_wb) begin
 			ex1_rs2_val = memwb_wdata;
+		end
+	end
+
+	// Resolve the branch in EX1 and register the one-bit decision so the
+	// 32-bit comparator is not in the EX2 -> PC target path.
+	always_comb begin
+		ex1_cmp_eq          = 1'b0;
+		ex1_cmp_lt_signed   = 1'b0;
+		ex1_cmp_lt_unsigned = 1'b0;
+		ex1_br_take         = 1'b0;
+		if (idex1_valid && (idex1_pc_sel == PC_SRC_BRANCH)) begin
+			ex1_cmp_eq          = (idex1_rs1_val == idex1_rs2_val);
+			ex1_cmp_lt_signed   = ($signed(idex1_rs1_val) < $signed(idex1_rs2_val));
+			ex1_cmp_lt_unsigned = (idex1_rs1_val < idex1_rs2_val);
+
+			unique case (idex1_funct3)
+				3'b000: ex1_br_take = ex1_cmp_eq;
+				3'b001: ex1_br_take = !ex1_cmp_eq;
+				3'b100: ex1_br_take = ex1_cmp_lt_signed;
+				3'b101: ex1_br_take = !ex1_cmp_lt_signed;
+				3'b110: ex1_br_take = ex1_cmp_lt_unsigned;
+				3'b111: ex1_br_take = !ex1_cmp_lt_unsigned;
+				default: ex1_br_take = 1'b0;
+			endcase
 		end
 	end
 	
@@ -1706,6 +1789,7 @@ module myCPU #(
 			ex1ex2_rd <= 5'h0;
 			ex1ex2_imm <= 32'h0;
 			ex1ex2_funct3 <= 3'h0;
+			ex1ex2_br_take <= 1'b0;
 			ex1ex2_mul_helper <= 1'b0;
 			ex1ex2_mul_helper_ra <= 32'h0;
 			ex1ex2_mul_helper_lhs <= 32'h0;
@@ -1746,6 +1830,7 @@ module myCPU #(
 			ex1ex2_rd <= idex1_rd;
 			ex1ex2_imm <= idex1_imm;
 			ex1ex2_funct3 <= idex1_funct3;
+			ex1ex2_br_take <= ex1_br_take;
 			ex1ex2_mul_helper <= idex1_mul_helper;
 			ex1ex2_mul_helper_ra <= idex1_mul_helper_ra;
 			ex1ex2_mul_helper_lhs <= idex1_mul_helper_lhs;
@@ -1774,20 +1859,7 @@ module myCPU #(
 	assign ex2_rs1_val = ex1ex2_rs1_val;
 	assign ex2_rs2_val = ex1ex2_rs2_val;
 
-	always_comb begin
-		ex2_br_take = 1'b0;
-		if (ex1ex2_pc_sel == PC_SRC_BRANCH) begin
-			case (ex1ex2_funct3)
-				3'b000: ex2_br_take = ex2_cmp_eq;
-				3'b001: ex2_br_take = !ex2_cmp_eq;
-				3'b100: ex2_br_take = ex2_cmp_lt_signed;
-				3'b101: ex2_br_take = !ex2_cmp_lt_signed;
-				3'b110: ex2_br_take = ex2_cmp_lt_unsigned;
-				3'b111: ex2_br_take = !ex2_cmp_lt_unsigned;
-				default: ex2_br_take = 1'b0;
-			endcase
-		end
-	end
+	assign ex2_br_take = ex1ex2_br_take;
 
 	// 所有改变 PC 的东西，最后都归到 ex2_pc_redirect + ex2_pc_target
 	always_comb begin
@@ -1899,6 +1971,8 @@ module myCPU #(
 			ex2mem_valid      <= 1'b0;
 			ex2mem_alu_y      <= 32'h0;
 			ex2mem_store_data <= 32'h0;
+			ex2mem_store_wstrb <= 4'h0;
+			ex2mem_is_dram    <= 1'b0;
 			ex2mem_rd         <= 5'h0;
 			ex2mem_funct3     <= 3'h0;
 			ex2mem_wb_data    <= 32'h0;
@@ -1916,6 +1990,8 @@ module myCPU #(
 			ex2mem_valid      <= 1'b0;
 			ex2mem_alu_y      <= 32'h0;
 			ex2mem_store_data <= 32'h0;
+			ex2mem_store_wstrb <= 4'h0;
+			ex2mem_is_dram    <= 1'b0;
 			ex2mem_rd         <= 5'h0;
 			ex2mem_funct3     <= 3'h0;
 			ex2mem_wb_data    <= 32'h0;
@@ -1931,6 +2007,8 @@ module myCPU #(
 			ex2mem_valid      <= 1'b1;
 			ex2mem_alu_y      <= 32'h0;
 			ex2mem_store_data <= 32'h0;
+			ex2mem_store_wstrb <= 4'h0;
+			ex2mem_is_dram    <= 1'b0;
 			ex2mem_rd         <= z_b_small_rd_q;
 			ex2mem_funct3     <= 3'h0;
 			ex2mem_wb_data    <= z_b_small_final_result;
@@ -1946,6 +2024,8 @@ module myCPU #(
 			ex2mem_valid      <= 1'b0;
 			ex2mem_alu_y      <= 32'h0;
 			ex2mem_store_data <= 32'h0;
+			ex2mem_store_wstrb <= 4'h0;
+			ex2mem_is_dram    <= 1'b0;
 			ex2mem_rd         <= 5'h0;
 			ex2mem_funct3     <= 3'h0;
 			ex2mem_wb_data    <= 32'h0;
@@ -1960,7 +2040,9 @@ module myCPU #(
 		end else begin
 			ex2mem_valid      <= ex1ex2_valid;
 			ex2mem_alu_y      <= ex2_alu_y;
-			ex2mem_store_data <= ex2_store_data;
+			ex2mem_store_data <= ex2_store_data_aligned;
+			ex2mem_store_wstrb <= ex2_store_wstrb;
+			ex2mem_is_dram    <= ex2_is_dram;
 			ex2mem_rd         <= ex1ex2_rd;
 			ex2mem_funct3     <= ex1ex2_funct3;
 			ex2mem_wb_data    <= ex2_wb_data;
