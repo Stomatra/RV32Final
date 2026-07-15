@@ -138,6 +138,12 @@ TESTS = [
     ("rori",   9, z_rori(1),        0x80000001, None,       0xC0000000),
 ]
 
+DEPENDENT_ADDI = {
+    "sh1add": 7,
+    "ror": 5,
+    "rori": 5,
+}
+
 
 def build():
     p = Program()
@@ -148,12 +154,34 @@ def build():
         emit_li(p, T0, rs1)
         if rs2 is not None:
             emit_li(p, T1, rs2)
-        p.emit(instr)
-        emit_li(p, T3, expect)
-        p.branch("bne", T2, T3, f"fail_{index}")
+        if name in DEPENDENT_ADDI:
+            dep_imm = DEPENDENT_ADDI[name]
+            emit_li(p, T3, (expect + dep_imm) & 0xFFFFFFFF)
+            p.emit(instr)
+            p.emit(enc_i(dep_imm, T2, 0b000, T4))  # immediate dependent use of rd
+            p.branch("bne", T4, T3, f"fail_{index}")
+        else:
+            p.emit(instr)
+            emit_li(p, T3, expect)
+            p.branch("bne", T2, T3, f"fail_{index}")
         emit_li(p, T4, 1 << bit)
         p.emit(enc_r(0x00, T4, S4, 0b110, S4))  # or s4, s4, t4
         p.emit(enc_i(1, S5, 0b000, S5))         # addi s5, s5, 1
+
+    # Branch consumes a Z_B_SMALL result immediately. The CPU may stall internally,
+    # but the branch must see the produced value.
+    emit_li(p, T0, 3)
+    emit_li(p, T1, 5)
+    emit_li(p, T3, 11)
+    p.emit(z_r(0x10, 0b010))
+    p.branch("bne", T2, T3, "fail_branch_dep")
+
+    # Writes to x0 must remain architecturally ignored.
+    emit_li(p, T0, 3)
+    emit_li(p, T1, 5)
+    p.emit(enc_r(0x10, T1, T0, 0b010, X0))
+    emit_li(p, T4, 0)
+    p.branch("bne", X0, T4, "fail_x0")
 
     emit_sw_abs(p, S4, LED_ADDR)
     emit_sw_abs(p, S5, SEG_ADDR)
@@ -167,6 +195,20 @@ def build():
         emit_sw_abs(p, T1, SEG_ADDR)
         p.label(f"fail_loop_{index}")
         p.jump(f"fail_loop_{index}")
+
+    p.label("fail_branch_dep")
+    emit_sw_abs(p, S4, LED_ADDR)
+    emit_li(p, T1, 0xBAD00101)
+    emit_sw_abs(p, T1, SEG_ADDR)
+    p.label("fail_loop_branch_dep")
+    p.jump("fail_loop_branch_dep")
+
+    p.label("fail_x0")
+    emit_sw_abs(p, S4, LED_ADDR)
+    emit_li(p, T1, 0xBAD00102)
+    emit_sw_abs(p, T1, SEG_ADDR)
+    p.label("fail_loop_x0")
+    p.jump("fail_loop_x0")
 
     words = p.resolve()
     if len(words) > 4096:

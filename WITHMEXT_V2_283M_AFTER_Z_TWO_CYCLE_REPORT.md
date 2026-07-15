@@ -1,0 +1,32 @@
+# WITHMEXT_V2_283M_AFTER_Z_TWO_CYCLE_REPORT
+
+- Bit: `E:/Projects/1Aprojects/RV32Final/final_bits/WITHMEXT_V2_283MHz_AFTER_Z_TWO_CYCLE_20260715_091114.bit`
+- Root bit: `E:/Projects/1Aprojects/RV32Final/WITHMEXT_V2_283MHz_AFTER_Z_TWO_CYCLE.bit`
+- Bit SHA256: `51A34ED9CF9AF074C24C634888C43A85A75A686BDA7FE8EB955DC59DCB3F14C5`
+- IROM SHA256: `0CEA80F2CA36E2672AC8D1E3D0087F88DC24B5A33A177C74B47330B0637C6A1B`
+- DRAM SHA256: `D1C6D8F4ADBE80D618CCFCCC0336A9A61B56007B0F44A4E79BDDF71CCAB89C03`
+- IROM_BRAM.mif SHA256: `3476CDF70062328F8C3BCFA4A4FD5A2FD3F7632D3F2BBF8234B4160923C4C753`
+- CPU clock target: `283.000 MHz`
+- CPU clock report: `283.333 MHz`, period `3.529 ns`
+- WNS/TNS/WHS: `0.002 / 0.000 / 0.085`
+- DRC errors: `0`
+- BIVC/NSTD/UCIO: `0 / 0 / 0`
+- Worst source: `student_top_inst/Core_cpu/ex1ex2_rs1_val_reg[2]/C`
+- Worst destination: `student_top_inst/Core_cpu/fetch_hold_instr_reg[8]/CE`
+- Worst path logic/route delay: `0.900 ns / 2.307 ns`
+- ENABLE_Z_B_SMALL: off, `verilog_define` = ``
+- Mainline virtual-platform CDC cut: enabled via `mainline_virtual_platform_cdc.xdc`.
+- Synchronous IROM_BRAM preserved: `student_top.sv` instantiates `IROM_BRAM(.clka, .ena, .addra, .douta)`.
+- CPU changed files relative to HEAD: ``
+- top: `top`
+- XDC list: `E:/Projects/1Aprojects/RV32Final/digital_twin.srcs/constrs_1/new/digital_twin.xdc E:/Projects/1Aprojects/RV32Final/digital_twin.srcs/constrs_1/new/mainline_virtual_platform_cdc.xdc`
+- compile order: `E:/Projects/1Aprojects/RV32Final/withmext_283m_after_z_two_cycle_build_outputs/compile_order_WITHMEXT_V2_283MHz_AFTER_Z_TWO_CYCLE_20260715_091114.txt`
+- Resume/open_checkpoint: `0 / 0`
+- IROM/IP refresh: `IROM=1`, `IROM_BRAM=1`, `DRAM=1`, `PLL=1`
+- Board expectation: left check, 8 official lights on, `SEG=378xxxxx`.
+- Board result: pending.
+- Summary txt: `E:/Projects/1Aprojects/RV32Final/withmext_283m_after_z_two_cycle_build_outputs/summary_WITHMEXT_V2_283MHz_AFTER_Z_TWO_CYCLE_20260715_091114.txt`
+- Timing report: `E:/Projects/1Aprojects/RV32Final/withmext_283m_after_z_two_cycle_build_outputs/timing_WITHMEXT_V2_283MHz_AFTER_Z_TWO_CYCLE_20260715_091114.rpt`
+- Top 3 timing report: `E:/Projects/1Aprojects/RV32Final/withmext_283m_after_z_two_cycle_build_outputs/timing_paths_top3_WITHMEXT_V2_283MHz_AFTER_Z_TWO_CYCLE_20260715_091114.rpt`
+- DRC report: `E:/Projects/1Aprojects/RV32Final/withmext_283m_after_z_two_cycle_build_outputs/drc_WITHMEXT_V2_283MHz_AFTER_Z_TWO_CYCLE_20260715_091114.rpt`
+- Exceptions report: `E:/Projects/1Aprojects/RV32Final/withmext_283m_after_z_two_cycle_build_outputs/exceptions_WITHMEXT_V2_283MHz_AFTER_Z_TWO_CYCLE_20260715_091114.rpt`

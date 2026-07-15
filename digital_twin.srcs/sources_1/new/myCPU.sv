@@ -1,19 +1,13 @@
 `timescale 1ns / 1ps
 
-`ifdef ENABLE_Z_B_SMALL
-`define MYCPU_ENABLE_Z_B_SMALL_DEFAULT 1'b1
-`else
-`define MYCPU_ENABLE_Z_B_SMALL_DEFAULT 1'b0
-`endif
-
 module myCPU #(
-	parameter ENABLE_MUL_HELPER_ACCEL = 1'b0,
-	parameter ENABLE_Z_B_SMALL = `MYCPU_ENABLE_Z_B_SMALL_DEFAULT
+	parameter ENABLE_MUL_HELPER_ACCEL = 1'b0
 ) (
 	input  logic         cpu_rst,
 	input  logic         cpu_clk,
 
 	output logic [11:0]  irom_addr,
+	output logic         irom_en,
 	input  logic [31:0]  irom_data,
 
 	output logic [31:0]  perip_addr,
@@ -92,17 +86,23 @@ module myCPU #(
 	localparam logic [5:0]  ZOP_BINVI	 = 6'd18;// Z 轻量级指令操作码 BINVI，表示按位取反立即数操作
 	localparam logic [5:0]  ZOP_BSET	 = 6'd19;// Z 轻量级指令操作码 BSET，表示按位设置操作
 	localparam logic [5:0]  ZOP_BSETI	 = 6'd20;// Z 轻量级指令操作码 BSETI，表示按位设置立即数操作
-	localparam logic [5:0]  ZOP_SH1ADD	 = 6'd21;// Zba sh1add。
-	localparam logic [5:0]  ZOP_SH2ADD	 = 6'd22;// Zba sh2add。
-	localparam logic [5:0]  ZOP_SH3ADD	 = 6'd23;// Zba sh3add。
-	localparam logic [5:0]  ZOP_MIN	     = 6'd24;// Zbb min。
-	localparam logic [5:0]  ZOP_MINU	 = 6'd25;// Zbb minu。
-	localparam logic [5:0]  ZOP_MAX	     = 6'd26;// Zbb max。
-	localparam logic [5:0]  ZOP_MAXU	 = 6'd27;// Zbb maxu。
-	localparam logic [5:0]  ZOP_ROL	     = 6'd28;// Zbb rol。
-	localparam logic [5:0]  ZOP_ROR	     = 6'd29;// Zbb ror。
-	localparam logic [5:0]  ZOP_RORI	 = 6'd30;// Zbb rori。
+	localparam logic [5:0]  ZOP_SH1ADD   = 6'd21;// Z_B_SMALL sh1add。
+	localparam logic [5:0]  ZOP_SH2ADD   = 6'd22;// Z_B_SMALL sh2add。
+	localparam logic [5:0]  ZOP_SH3ADD   = 6'd23;// Z_B_SMALL sh3add。
+	localparam logic [5:0]  ZOP_MIN      = 6'd24;// Z_B_SMALL min。
+	localparam logic [5:0]  ZOP_MINU     = 6'd25;// Z_B_SMALL minu。
+	localparam logic [5:0]  ZOP_MAX      = 6'd26;// Z_B_SMALL max。
+	localparam logic [5:0]  ZOP_MAXU     = 6'd27;// Z_B_SMALL maxu。
+	localparam logic [5:0]  ZOP_ROL      = 6'd28;// Z_B_SMALL rol。
+	localparam logic [5:0]  ZOP_ROR      = 6'd29;// Z_B_SMALL ror。
+	localparam logic [5:0]  ZOP_RORI     = 6'd30;// Z_B_SMALL rori。
 	localparam logic [5:0]  ZOP_NONE     = 6'd63;// Z 轻量级指令操作码 NONE，表示没有 Z 轻量级指令操作。
+
+`ifdef ENABLE_Z_B_SMALL
+	localparam logic        CPU_ENABLE_Z_B_SMALL = 1'b1;
+`else
+	localparam logic        CPU_ENABLE_Z_B_SMALL = 1'b0;
+`endif
 
 	// WB 选择：ALU 结果、内存返回、PC+4 或 U 型立即数。
 	localparam logic [2:0]  WB_SRC_ALU    = 3'd0;// 写回数据选择 ALU 结果。
@@ -196,6 +196,7 @@ module myCPU #(
 	logic        load_use_ex1_hazard;// 译码阶段是否存在 load-use 冒险，表示当前指令是否依赖于前一条 load 指令的结果。
 	logic        load_use_hazard;
 	logic        load_use_ex2_hazard;
+	logic        slow_result_ex1_hazard;
 	logic        m_issue_hazard;
 	logic        id_fwd_rs1_from_wb;
 	logic        id_fwd_rs2_from_wb;
@@ -295,11 +296,22 @@ module myCPU #(
 	logic [31:0] ex1ex2_instr;
 	logic [4:0]  ex1ex2_rs1;
 	logic [4:0]  ex1ex2_rs2;
+`ifdef ENABLE_Z_B_SMALL
+	// Z_B_SMALL uses the EX1/EX2 hold path for its one-cycle pending state.
+	// In that mode, prefer inferred CE over wide Q->D feedback muxes.
 	logic [31:0] ex1ex2_rs1_val;
 	logic [31:0] ex1ex2_rs2_val;
 	logic [31:0] ex1ex2_alu_a;
 	logic [31:0] ex1ex2_alu_b;
 	logic [31:0] ex1ex2_store_data;
+`else
+	// Preserve the proven mainline timing shape when optional Z_B_SMALL is off.
+	(* extract_enable = "no" *) logic [31:0] ex1ex2_rs1_val;
+	(* extract_enable = "no" *) logic [31:0] ex1ex2_rs2_val;
+	(* extract_enable = "no" *) logic [31:0] ex1ex2_alu_a;
+	(* extract_enable = "no" *) logic [31:0] ex1ex2_alu_b;
+	(* extract_enable = "no" *) logic [31:0] ex1ex2_store_data;
+`endif
 	logic [4:0]  ex1ex2_rd;
 	logic [31:0] ex1ex2_imm;
 	logic [2:0]  ex1ex2_funct3;
@@ -444,6 +456,31 @@ module myCPU #(
 	logic        ex2_div_busy; // EX 级寄存器中的除法忙标志，表示执行阶段的指令除法是否忙。
 	logic        ex2_div_done; // EX 级寄存器中的除法完成标志，表示执行阶段的指令除法是否完成。
 
+	logic        ex2_is_z_b_small;
+	logic        z_b_small_start;
+	logic        stall_z_b_small;
+	logic        hold_ex1ex2;
+	logic        z_b_small_pending_q;
+	logic [5:0]  z_b_small_op_q;
+	logic [4:0]  z_b_small_rd_q;
+	logic        z_b_small_rf_we_q;
+	logic [2:0]  z_b_small_wb_sel_q;
+	logic [31:0] z_b_small_pc_q;
+	logic [31:0] z_b_small_partial_q;
+	logic [31:0] z_b_small_rs1_q;
+	logic [31:0] z_b_small_rs2_q;
+	logic [1:0]  z_b_small_shamt_hi_q;
+	logic        z_b_small_signed_lt_q;
+	logic        z_b_small_unsigned_lt_q;
+	logic [4:0]  z_b_small_eff_shamt;
+	logic [31:0] z_b_small_rot_s0;
+	logic [31:0] z_b_small_rot_s1;
+	logic [31:0] z_b_small_rot_s2;
+	logic [31:0] z_b_small_stage1_partial;
+	logic [31:0] z_b_small_stage2_rot_s3;
+	logic [31:0] z_b_small_stage2_rot_s4;
+	logic [31:0] z_b_small_final_result;
+
 	// =========================
 	// EX2/MEM 流水寄存器 表示执行阶段的结果和控制信号传递到访存阶段。 
 	// =========================
@@ -522,6 +559,24 @@ module myCPU #(
 			endcase
 		end
 	endfunction
+
+	function automatic logic z_b_small_op_is_small(input logic [5:0] z_op);
+		begin
+			unique case (z_op)
+				ZOP_SH1ADD,
+				ZOP_SH2ADD,
+				ZOP_SH3ADD,
+				ZOP_MIN,
+				ZOP_MINU,
+				ZOP_MAX,
+				ZOP_MAXU,
+				ZOP_ROL,
+				ZOP_ROR,
+				ZOP_RORI: z_b_small_op_is_small = 1'b1;
+				default:  z_b_small_op_is_small = 1'b0;
+			endcase
+		end
+	endfunction
 	
 	// 它允许在 helper 入口处直接观察更靠后的写回值，
 	// 但为了控制时序，不会无脑复制所有主流水 forwarding 链。
@@ -572,6 +627,7 @@ module myCPU #(
 	assign irom_addr   = pc_q[13:2];
 	// PC 在 fetch_stall 时保持不变，因此 BRAM 可以始终使能并重复读取同一地址。
 	// 避免“译码/冒险判断 -> fetch_stall -> BRAM ENARDEN”的长组合路径。
+	assign irom_en     = 1'b1;
 	assign perip_addr  = ex2mem_alu_y;
 	assign perip_wen   = ex2mem_valid && ex2mem_mem_req && ex2mem_mem_write;
 	assign perip_mask  = ex2mem_mem_mask;
@@ -634,9 +690,7 @@ module myCPU #(
 		.isTrue     (ex2_alu_is_true)
 	);
 
-	z_light_decode #(
-		.ENABLE_Z_B_SMALL(ENABLE_Z_B_SMALL)
-	) u_z_light_decode (
+	z_light_decode u_z_light_decode (
 		.instr      (ifid_instr),
 
 		.z_hit     (id_z_light_hit),
@@ -647,7 +701,7 @@ module myCPU #(
 	);
 
 	z_light_unit #(
-		.ENABLE_Z_B_SMALL(ENABLE_Z_B_SMALL)
+		.ENABLE_Z_B_SMALL(1'b0)
 	) u_z_light_unit (
 		.z_valid    (ex1ex2_valid),
 		.z_op       (ex1ex2_z_op),
@@ -662,6 +716,61 @@ module myCPU #(
 	assign ex2_store_data    = ex1ex2_mem_write ? ex1ex2_store_data : 32'h0;
 	assign ex2_pc4           = ex1ex2_pc + 32'd4;
 	assign ex2_pc_plus_imm   = ex1ex2_pc + ex1ex2_imm;
+
+	assign ex2_is_z_b_small = CPU_ENABLE_Z_B_SMALL &&
+							  ex1ex2_valid &&
+							  ex1ex2_is_z_light &&
+							  z_b_small_op_is_small(ex1ex2_z_op);
+	assign z_b_small_start  = ex2_is_z_b_small &&
+							  !z_b_small_pending_q &&
+							  !mem_load_stall &&
+							  !m_stall;
+	assign stall_z_b_small  = z_b_small_start;
+	assign hold_ex1ex2      = mem_load_stall || m_stall || stall_z_b_small;
+
+	always_comb begin
+		z_b_small_eff_shamt = ex1ex2_rs2_val[4:0];
+		if (ex1ex2_z_op == ZOP_RORI) begin
+			z_b_small_eff_shamt = ex1ex2_z_shamt;
+		end else if (ex1ex2_z_op == ZOP_ROL) begin
+			z_b_small_eff_shamt = (~ex1ex2_rs2_val[4:0] + 5'd1) & 5'h1f;
+		end
+	end
+
+	assign z_b_small_rot_s0 = z_b_small_eff_shamt[0] ? {ex1ex2_rs1_val[0],    ex1ex2_rs1_val[31:1]} : ex1ex2_rs1_val;
+	assign z_b_small_rot_s1 = z_b_small_eff_shamt[1] ? {z_b_small_rot_s0[1:0], z_b_small_rot_s0[31:2]} : z_b_small_rot_s0;
+	assign z_b_small_rot_s2 = z_b_small_eff_shamt[2] ? {z_b_small_rot_s1[3:0], z_b_small_rot_s1[31:4]} : z_b_small_rot_s1;
+
+	always_comb begin
+		unique case (ex1ex2_z_op)
+			ZOP_SH1ADD: z_b_small_stage1_partial = {ex1ex2_rs1_val[30:0], 1'b0};
+			ZOP_SH2ADD: z_b_small_stage1_partial = {ex1ex2_rs1_val[29:0], 2'b00};
+			ZOP_SH3ADD: z_b_small_stage1_partial = {ex1ex2_rs1_val[28:0], 3'b000};
+			ZOP_ROL,
+			ZOP_ROR,
+			ZOP_RORI:  z_b_small_stage1_partial = z_b_small_rot_s2;
+			default:   z_b_small_stage1_partial = ex1ex2_rs1_val;
+		endcase
+	end
+
+	assign z_b_small_stage2_rot_s3 = z_b_small_shamt_hi_q[0] ? {z_b_small_partial_q[7:0],  z_b_small_partial_q[31:8]}  : z_b_small_partial_q;
+	assign z_b_small_stage2_rot_s4 = z_b_small_shamt_hi_q[1] ? {z_b_small_stage2_rot_s3[15:0], z_b_small_stage2_rot_s3[31:16]} : z_b_small_stage2_rot_s3;
+
+	always_comb begin
+		unique case (z_b_small_op_q)
+			ZOP_SH1ADD,
+			ZOP_SH2ADD,
+			ZOP_SH3ADD: z_b_small_final_result = z_b_small_partial_q + z_b_small_rs2_q;
+			ZOP_MIN:    z_b_small_final_result = z_b_small_signed_lt_q   ? z_b_small_rs1_q : z_b_small_rs2_q;
+			ZOP_MINU:   z_b_small_final_result = z_b_small_unsigned_lt_q ? z_b_small_rs1_q : z_b_small_rs2_q;
+			ZOP_MAX:    z_b_small_final_result = z_b_small_signed_lt_q   ? z_b_small_rs2_q : z_b_small_rs1_q;
+			ZOP_MAXU:   z_b_small_final_result = z_b_small_unsigned_lt_q ? z_b_small_rs2_q : z_b_small_rs1_q;
+			ZOP_ROL,
+			ZOP_ROR,
+			ZOP_RORI:   z_b_small_final_result = z_b_small_stage2_rot_s4;
+			default:    z_b_small_final_result = z_b_small_partial_q;
+		endcase
+	end
 
 	// JALR 的目标地址单独计算，避免普通 ALU 输出再回绕到 PC 选择链上。
 	always_comb begin
@@ -697,10 +806,12 @@ module myCPU #(
 
 	// ID 阶段提前记录消费者下一拍进入 EX1 时应使用的来源：EX2、MEM 或 WB。
 	// 三条 EX1 前递的优先级在 EX1 组合逻辑中固定为 EX2 > MEM > WB。
+	// Only ordinary ALU results use the same-cycle EX2 -> EX1 fast bypass.
 	assign idex1_can_forward_to_ex1ex2 = idex1_valid && idex1_rf_we &&
 									  (idex1_rd != 5'h0) &&
-									  (idex1_wb_sel != WB_SRC_MEM) &&
-									  !idex1_is_m_ext;
+									  (idex1_wb_sel == WB_SRC_ALU) &&
+									  !idex1_is_m_ext &&
+									  !idex1_mul_helper;
 	assign ex1ex2_can_forward_to_ex2mem = ex1ex2_valid && ex1ex2_rf_we &&
 										 (ex1ex2_rd != 5'h0) &&
 										 (ex1ex2_wb_sel != WB_SRC_MEM) &&
@@ -922,8 +1033,9 @@ module myCPU #(
 
 	// IF1/IF2 共用的暂停条件。同步 BRAM 停止读地址时，配套的 PC/valid 也必须保持。
 	assign fetch_stall = load_use_ex1_hazard || load_use_ex2_hazard ||
+						 slow_result_ex1_hazard ||
 						 pc_ex1_hazard || pc_ex2_hazard || pc_mem_hazard ||
-						 m_issue_hazard || mem_load_stall || m_stall;
+						 m_issue_hazard || mem_load_stall || m_stall || stall_z_b_small;
 
 	// IF 级 PC 更新优先级：redirect > stall/hold > 顺序 +4。
 	always_comb begin
@@ -987,26 +1099,36 @@ module myCPU #(
 		end
 	end
 
-	// IF2：接收 BRAM 返回的上一拍指令，并与上一拍保存的 PC/valid 一起写入 IF/ID。
+	// IF2 valid/control: redirect only invalidates the entry.  The wide
+	// PC/instruction payload does not need to be cleared when valid is zero.
+	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
+		if (cpu_rst) begin
+			ifid_valid <= 1'b0;
+		end else if (ex2_pc_redirect) begin
+			ifid_valid <= 1'b0;
+		end else if (fetch_stall) begin
+			// Hold the current valid state while the consumer waits.
+		end else if (fetch_hold_full) begin
+			ifid_valid <= fetch_hold_valid;
+		end else begin
+			ifid_valid <= fetch_valid;
+		end
+	end
+
+	// IF2 payload: its value is don't-care whenever ifid_valid is zero, so the
+	// branch redirect signal is kept out of these 64 wide-register data paths.
 	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
 		if (cpu_rst) begin
 			ifid_pc    <= RESET_PC;
 			ifid_instr <= NOP_INSTR;
-			ifid_valid <= 1'b0;
-		end else if (ex2_pc_redirect) begin
-			ifid_pc    <= RESET_PC;
-			ifid_instr <= NOP_INSTR;
-			ifid_valid <= 1'b0;
 		end else if (fetch_stall) begin
-			// 保持当前 IF/ID 指令，等待冒险或长延迟操作结束。
+			// Hold the current payload while the consumer waits.
 		end else if (fetch_hold_full) begin
 			ifid_pc    <= fetch_hold_pc;
 			ifid_instr <= fetch_hold_instr;
-			ifid_valid <= fetch_hold_valid;
 		end else begin
 			ifid_pc    <= fetch_pc_q;
 			ifid_instr <= irom_data;
-			ifid_valid <= fetch_valid;
 		end
 	end
 
@@ -1305,6 +1427,12 @@ module myCPU #(
 								 (hazard_uses_rs2 && (id_rs2 == ex1ex2_rd)));
 
 	assign load_use_hazard = load_use_ex1_hazard || load_use_ex2_hazard;
+	// Non-ALU results advance to EX2/MEM before a dependent instruction proceeds.
+	assign slow_result_ex1_hazard = ifid_valid && idex1_valid && idex1_rf_we &&
+								 (idex1_rd != 5'h0) &&
+								 !idex1_can_forward_to_ex1ex2 &&
+								 ((hazard_uses_rs1 && (id_rs1 == idex1_rd)) ||
+								  (hazard_uses_rs2 && (id_rs2 == idex1_rd)));
 	assign m_issue_hazard = idex1_valid && idex1_is_m_ext;
 
 	assign pc_ex1_hazard = ifid_valid && idex1_valid && idex1_rf_we &&
@@ -1391,9 +1519,10 @@ module myCPU #(
 			idex1_fwd_rs2_from_mem <= 1'b0;
 			idex1_fwd_rs1_from_wb <= 1'b0;
 			idex1_fwd_rs2_from_wb <= 1'b0;
-		end else if (mem_load_stall || m_stall) begin
+		end else if (mem_load_stall || m_stall || stall_z_b_small) begin
 			// hold IDEX - memory read stall
 		end else if (ex2_pc_redirect || load_use_ex1_hazard || load_use_ex2_hazard ||
+					 slow_result_ex1_hazard ||
 					 pc_ex1_hazard || pc_ex2_hazard || pc_mem_hazard || m_issue_hazard) begin
 			// valid=0 表示气泡；payload 仍然写入，避免复杂冒险条件成为宽寄存器的 CE。
 			idex1_valid         <= 1'b0;
@@ -1532,7 +1661,7 @@ module myCPU #(
 	always_comb begin
 		ex1_rs1_val = idex1_rs1_val;
 		if (idex1_fwd_rs1_from_ex2) begin
-			ex1_rs1_val = ex2_wb_data;
+			ex1_rs1_val = ex2_alu_y;
 		end else if (idex1_fwd_rs1_from_mem) begin
 			ex1_rs1_val = ex2mem_wb_data;
 		end else if (idex1_fwd_rs1_from_wb) begin
@@ -1541,7 +1670,7 @@ module myCPU #(
 
 		ex1_rs2_val = idex1_rs2_val;
 		if (idex1_fwd_rs2_from_ex2) begin
-			ex1_rs2_val = ex2_wb_data;
+			ex1_rs2_val = ex2_alu_y;
 		end else if (idex1_fwd_rs2_from_mem) begin
 			ex1_rs2_val = ex2mem_wb_data;
 		end else if (idex1_fwd_rs2_from_wb) begin
@@ -1599,7 +1728,7 @@ module myCPU #(
 			ex1ex2_is_z_light <= 1'b0;
 			ex1ex2_z_op <= ZOP_NONE;
 			ex1ex2_z_shamt <= 5'h0;
-		end else if (mem_load_stall || m_stall) begin
+		end else if (hold_ex1ex2) begin
 			// Hold EX2 while the back end is busy.
 		end else if (ex2_pc_redirect) begin
 			ex1ex2_valid <= 1'b0;
@@ -1687,7 +1816,7 @@ module myCPU #(
 				WB_SRC_IMM_U: ex2_wb_data = ex1ex2_imm;
 				WB_SRC_CSR:   ex2_wb_data = ex2_csr_rdata;
 				WB_SRC_ALU:   ex2_wb_data = ex2_alu_y;
-				WB_SRC_Z:     ex2_wb_data = ex2_z_supported ? ex2_z_result:32'h0;
+				WB_SRC_Z:     ex2_wb_data = ex2_is_z_b_small ? 32'h0 : (ex2_z_supported ? ex2_z_result : 32'h0);
 				default:      ex2_wb_data = ex2_alu_y;
 			endcase
 		end
@@ -1733,6 +1862,38 @@ module myCPU #(
 		endcase
 	end
 
+	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
+		if (cpu_rst) begin
+			z_b_small_pending_q     <= 1'b0;
+			z_b_small_op_q          <= ZOP_NONE;
+			z_b_small_rd_q          <= 5'h0;
+			z_b_small_rf_we_q       <= 1'b0;
+			z_b_small_wb_sel_q      <= WB_SRC_Z;
+			z_b_small_pc_q          <= 32'h0;
+			z_b_small_partial_q     <= 32'h0;
+			z_b_small_rs1_q         <= 32'h0;
+			z_b_small_rs2_q         <= 32'h0;
+			z_b_small_shamt_hi_q    <= 2'b00;
+			z_b_small_signed_lt_q   <= 1'b0;
+			z_b_small_unsigned_lt_q <= 1'b0;
+		end else if (z_b_small_start) begin
+			z_b_small_pending_q     <= 1'b1;
+			z_b_small_op_q          <= ex1ex2_z_op;
+			z_b_small_rd_q          <= ex1ex2_rd;
+			z_b_small_rf_we_q       <= ex1ex2_rf_we;
+			z_b_small_wb_sel_q      <= ex1ex2_wb_sel;
+			z_b_small_pc_q          <= ex1ex2_pc;
+			z_b_small_partial_q     <= z_b_small_stage1_partial;
+			z_b_small_rs1_q         <= ex1ex2_rs1_val;
+			z_b_small_rs2_q         <= ex1ex2_rs2_val;
+			z_b_small_shamt_hi_q    <= z_b_small_eff_shamt[4:3];
+			z_b_small_signed_lt_q   <= ($signed(ex1ex2_rs1_val) < $signed(ex1ex2_rs2_val));
+			z_b_small_unsigned_lt_q <= (ex1ex2_rs1_val < ex1ex2_rs2_val);
+		end else if (z_b_small_pending_q && !mem_load_stall && !m_stall) begin
+			z_b_small_pending_q <= 1'b0;
+		end
+	end
+
 	always_ff @(posedge cpu_clk) begin
 		if (cpu_rst) begin
 			ex2mem_valid      <= 1'b0;
@@ -1752,6 +1913,36 @@ module myCPU #(
 		end else if (mem_load_stall) begin
 			// hold EXMEM - memory read stall
 		end else if (m_stall) begin
+			ex2mem_valid      <= 1'b0;
+			ex2mem_alu_y      <= 32'h0;
+			ex2mem_store_data <= 32'h0;
+			ex2mem_rd         <= 5'h0;
+			ex2mem_funct3     <= 3'h0;
+			ex2mem_wb_data    <= 32'h0;
+			ex2mem_rf_we      <= 1'b0;
+			ex2mem_wb_sel     <= WB_SRC_ALU;
+			ex2mem_mem_req    <= 1'b0;
+			ex2mem_mem_write  <= 1'b0;
+			ex2mem_mem_mask   <= MEM_MASK_WORD;
+			ex2mem_pc         <= 32'h0;
+			ex2mem_addr_base  <= 32'h0;
+			ex2mem_addr_off   <= 32'h0;
+		end else if (z_b_small_pending_q) begin
+			ex2mem_valid      <= 1'b1;
+			ex2mem_alu_y      <= 32'h0;
+			ex2mem_store_data <= 32'h0;
+			ex2mem_rd         <= z_b_small_rd_q;
+			ex2mem_funct3     <= 3'h0;
+			ex2mem_wb_data    <= z_b_small_final_result;
+			ex2mem_rf_we      <= z_b_small_rf_we_q;
+			ex2mem_wb_sel     <= z_b_small_wb_sel_q;
+			ex2mem_mem_req    <= 1'b0;
+			ex2mem_mem_write  <= 1'b0;
+			ex2mem_mem_mask   <= MEM_MASK_WORD;
+			ex2mem_pc         <= z_b_small_pc_q;
+			ex2mem_addr_base  <= 32'h0;
+			ex2mem_addr_off   <= 32'h0;
+		end else if (z_b_small_start) begin
 			ex2mem_valid      <= 1'b0;
 			ex2mem_alu_y      <= 32'h0;
 			ex2mem_store_data <= 32'h0;
@@ -1863,8 +2054,6 @@ module myCPU #(
 	end
 
 endmodule
-
-`undef MYCPU_ENABLE_Z_B_SMALL_DEFAULT
 
 module mycpu_rv32_decode (
 	input  logic [31:0] instr,

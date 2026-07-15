@@ -1,0 +1,32 @@
+# Z_B_SMALL_TWO_CYCLE_283M_REPORT
+
+- Bit: `E:/Projects/1Aprojects/RV32Final/final_bits/Z_B_SMALL_TWO_CYCLE_TEST_283MHz_20260714_213113.bit`
+- Root bit: `E:/Projects/1Aprojects/RV32Final/Z_B_SMALL_TWO_CYCLE_TEST_283MHz.bit`
+- Bit SHA256: `54F1C27ED19EBB65E07DBBC94090FC93F8EAE35438A6ADE02AFD6AD9D243321C`
+- IROM SHA256: `D5A762CA186A770E300E3E3B0940B0A6333FB6074F43653EC3361019461B9FFE`
+- DRAM SHA256: `D1C6D8F4ADBE80D618CCFCCC0336A9A61B56007B0F44A4E79BDDF71CCAB89C03`
+- IROM_BRAM.mif SHA256: `3476CDF70062328F8C3BCFA4A4FD5A2FD3F7632D3F2BBF8234B4160923C4C753`
+- CPU clock target: `283.000 MHz`
+- CPU clock report: `283.333 MHz`, period `3.529 ns`
+- WNS/TNS/WHS: `-0.015 / -0.025 / 0.085`
+- DRC errors: `0`
+- BIVC/NSTD/UCIO: `0 / 0 / 0`
+- Worst source: `student_top_inst/Core_cpu/ex1ex2_alu_b_reg[0]/C`
+- Worst destination: `student_top_inst/Core_cpu/ex1ex2_rs1_val_reg[0]/D`
+- Worst path logic/route delay: `1.443 ns / 1.975 ns`
+- ENABLE_Z_B_SMALL: on, `verilog_define` = `ENABLE_Z_B_SMALL`
+- Mainline virtual-platform CDC cut: enabled via `mainline_virtual_platform_cdc.xdc`.
+- Synchronous IROM_BRAM preserved: `student_top.sv` instantiates `IROM_BRAM(.clka, .ena, .addra, .douta)`.
+- CPU changed files relative to HEAD: ``
+- top: `top`
+- XDC list: `E:/Projects/1Aprojects/RV32Final/digital_twin.srcs/constrs_1/new/digital_twin.xdc E:/Projects/1Aprojects/RV32Final/digital_twin.srcs/constrs_1/new/mainline_virtual_platform_cdc.xdc`
+- compile order: `E:/Projects/1Aprojects/RV32Final/z_b_small_two_cycle_283m_cdc_cut_build_outputs/compile_order_Z_B_SMALL_TWO_CYCLE_TEST_283MHz_20260714_213113.txt`
+- Resume/open_checkpoint: `0 / 0`
+- IROM/IP refresh: `IROM=1`, `IROM_BRAM=1`, `DRAM=1`, `PLL=1`
+- Board expectation: `LED=0x000003FF`, `SEG=0000000A`.
+- Board result: pending.
+- Summary txt: `E:/Projects/1Aprojects/RV32Final/z_b_small_two_cycle_283m_cdc_cut_build_outputs/summary_Z_B_SMALL_TWO_CYCLE_TEST_283MHz_20260714_213113.txt`
+- Timing report: `E:/Projects/1Aprojects/RV32Final/z_b_small_two_cycle_283m_cdc_cut_build_outputs/timing_Z_B_SMALL_TWO_CYCLE_TEST_283MHz_20260714_213113.rpt`
+- Top 3 timing report: `E:/Projects/1Aprojects/RV32Final/z_b_small_two_cycle_283m_cdc_cut_build_outputs/timing_paths_top3_Z_B_SMALL_TWO_CYCLE_TEST_283MHz_20260714_213113.rpt`
+- DRC report: `E:/Projects/1Aprojects/RV32Final/z_b_small_two_cycle_283m_cdc_cut_build_outputs/drc_Z_B_SMALL_TWO_CYCLE_TEST_283MHz_20260714_213113.rpt`
+- Exceptions report: `E:/Projects/1Aprojects/RV32Final/z_b_small_two_cycle_283m_cdc_cut_build_outputs/exceptions_Z_B_SMALL_TWO_CYCLE_TEST_283MHz_20260714_213113.rpt`
