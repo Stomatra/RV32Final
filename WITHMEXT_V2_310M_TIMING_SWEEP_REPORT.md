@@ -1,8 +1,8 @@
 # WITHMEXT_V2_310M_TIMING_SWEEP_REPORT
 
-- Bit: `E:/Projects/1Aprojects/RV32Final/final_bits/WITHMEXT_V2_310MHz_TIMING_SWEEP_20260716_093334.bit`
+- Bit: `E:/Projects/1Aprojects/RV32Final/final_bits/WITHMEXT_V2_310MHz_TIMING_SWEEP_20260716_111150.bit`
 - Root bit: `E:/Projects/1Aprojects/RV32Final/WITHMEXT_V2_310MHz_TIMING_SWEEP.bit`
-- Bit SHA256: `E9584A7E1466515170DC31BB0BF7240E8302B949353B04C874A3F83DE9E8A039`
+- Bit SHA256: `FFA67278E3A0B6D2C757537EFB851F2D955E6314FA7EFAF8302AEFB5F552BE54`
 - IROM SHA256: `0CEA80F2CA36E2672AC8D1E3D0087F88DC24B5A33A177C74B47330B0637C6A1B`
 - DRAM SHA256: `D1C6D8F4ADBE80D618CCFCCC0336A9A61B56007B0F44A4E79BDDF71CCAB89C03`
 - IROM_BRAM.mif SHA256: `3476CDF70062328F8C3BCFA4A4FD5A2FD3F7632D3F2BBF8234B4160923C4C753`
@@ -23,13 +23,13 @@
 - CPU changed files relative to HEAD: ``
 - top: `top`
 - XDC list: `E:/Projects/1Aprojects/RV32Final/digital_twin.srcs/constrs_1/new/digital_twin.xdc E:/Projects/1Aprojects/RV32Final/digital_twin.srcs/constrs_1/new/mainline_virtual_platform_cdc.xdc`
-- compile order: `E:/Projects/1Aprojects/RV32Final/withmext_310m_timing_sweep_build_outputs/compile_order_WITHMEXT_V2_310MHz_TIMING_SWEEP_20260716_093334.txt`
+- compile order: `E:/Projects/1Aprojects/RV32Final/withmext_310m_timing_sweep_build_outputs/compile_order_WITHMEXT_V2_310MHz_TIMING_SWEEP_20260716_111150.txt`
 - Resume/open_checkpoint: `0 / 0`
 - IROM/IP refresh: `IROM=1`, `IROM_BRAM=1`, `DRAM=1`, `PLL=1`
 - Board expectation: left check, 8 official lights on, `SEG=378xxxxx`.
-- Board result: pending.
-- Summary txt: `E:/Projects/1Aprojects/RV32Final/withmext_310m_timing_sweep_build_outputs/summary_WITHMEXT_V2_310MHz_TIMING_SWEEP_20260716_093334.txt`
-- Timing report: `E:/Projects/1Aprojects/RV32Final/withmext_310m_timing_sweep_build_outputs/timing_WITHMEXT_V2_310MHz_TIMING_SWEEP_20260716_093334.rpt`
-- Top 3 timing report: `E:/Projects/1Aprojects/RV32Final/withmext_310m_timing_sweep_build_outputs/timing_paths_top3_WITHMEXT_V2_310MHz_TIMING_SWEEP_20260716_093334.rpt`
-- DRC report: `E:/Projects/1Aprojects/RV32Final/withmext_310m_timing_sweep_build_outputs/drc_WITHMEXT_V2_310MHz_TIMING_SWEEP_20260716_093334.rpt`
-- Exceptions report: `E:/Projects/1Aprojects/RV32Final/withmext_310m_timing_sweep_build_outputs/exceptions_WITHMEXT_V2_310MHz_TIMING_SWEEP_20260716_093334.rpt`
+- Board result: pass, left check, 8 official lights on, `SEG=378xxxxx`.
+- Summary txt: `E:/Projects/1Aprojects/RV32Final/withmext_310m_timing_sweep_build_outputs/summary_WITHMEXT_V2_310MHz_TIMING_SWEEP_20260716_111150.txt`
+- Timing report: `E:/Projects/1Aprojects/RV32Final/withmext_310m_timing_sweep_build_outputs/timing_WITHMEXT_V2_310MHz_TIMING_SWEEP_20260716_111150.rpt`
+- Top 3 timing report: `E:/Projects/1Aprojects/RV32Final/withmext_310m_timing_sweep_build_outputs/timing_paths_top3_WITHMEXT_V2_310MHz_TIMING_SWEEP_20260716_111150.rpt`
+- DRC report: `E:/Projects/1Aprojects/RV32Final/withmext_310m_timing_sweep_build_outputs/drc_WITHMEXT_V2_310MHz_TIMING_SWEEP_20260716_111150.rpt`
+- Exceptions report: `E:/Projects/1Aprojects/RV32Final/withmext_310m_timing_sweep_build_outputs/exceptions_WITHMEXT_V2_310MHz_TIMING_SWEEP_20260716_111150.rpt`

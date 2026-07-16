@@ -848,6 +848,11 @@ module myCPU #(
 
 	// ID 阶段提前记录消费者下一拍进入 EX1 时应使用的来源：EX2、MEM 或 WB。
 	// 三条 EX1 前递的优先级在 EX1 组合逻辑中固定为 EX2 > MEM > WB。
+`ifdef ENABLE_Z_B_SMALL
+	// Z_B_SMALL 构建下优先保功能验证和频率，关闭 EX2 -> EX1 同拍 ALU 快速旁路，
+	// 依赖指令多等一拍走 EX2/MEM 前递，避免 EX1/EX2 operand Q -> ALU -> D 环路。
+	assign idex1_can_forward_to_ex1ex2 = 1'b0;
+`else
 	// 只让普通 ALU 结果走 EX2 -> EX1 快速旁路；PC+4、IMM_U、CSR、M 扩展、
 	// helper 和 Z_B_SMALL 等路径仍等待到 EX2/MEM，避免把长结果链拉回 EX1。
 	assign idex1_can_forward_to_ex1ex2 = idex1_valid && idex1_rf_we &&
@@ -855,6 +860,7 @@ module myCPU #(
 									     (idex1_wb_sel == WB_SRC_ALU) &&
 									     !idex1_is_m_ext &&
 									     !idex1_mul_helper;
+`endif
 	assign ex1ex2_can_forward_to_ex2mem = ex1ex2_valid && ex1ex2_rf_we &&
 										 (ex1ex2_rd != 5'h0) &&
 										 (ex1ex2_wb_sel != WB_SRC_MEM) &&
