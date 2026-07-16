@@ -325,7 +325,7 @@ module myCPU #(
 	logic [31:0] ex1ex2_mul_helper_rhs;
 	logic        ex1ex2_rf_we;
 	logic [2:0]  ex1ex2_wb_sel;
-	logic [3:0]  ex1ex2_alu_op;
+	(* max_fanout = 16 *) logic [3:0] ex1ex2_alu_op;
 	logic [1:0]  ex1ex2_pc_sel;
 	logic        ex1ex2_mem_req;
 	logic        ex1ex2_mem_write;
@@ -339,7 +339,7 @@ module myCPU #(
 	logic        ex1ex2_is_m_ext;
 	logic [3:0]  ex1ex2_m_op;
 	logic        ex1ex2_is_z_light;
-	logic [5:0]  ex1ex2_z_op;
+	(* max_fanout = 32 *) logic [5:0] ex1ex2_z_op;
 	logic [4:0]  ex1ex2_z_shamt;
 	logic [31:0] ex1_rs1_val;      // EX 级寄存器中的 rs1 值，表示执行阶段的指令 rs1 操作数。
 	logic [31:0] ex1_rs2_val;      // EX 级寄存器中的 rs2 值，表示执行阶段的指令 rs2 操作数。
@@ -425,6 +425,7 @@ module myCPU #(
 	logic        ex2_pc_redirect;  // EX 级寄存器中的 PC 重定向标志，表示执行阶段的指令是否需要重定向 PC。
 	logic [31:0] ex2_pc_target;    // EX 级寄存器中的 PC 目标地址，表示执行阶段的指令 PC 目标地址。
 	logic [31:0] ex2_wb_data;      // EX 级寄存器中的写回数据，表示执行阶段的指令写回数据。
+	logic [31:0] ex2_z_wb_data;    // Z 扩展的已验证写回结果。
 	logic [31:0] ex2_store_data;   // EX 级寄存器中的存储数据，表示执行阶段的指令存储数据。
 	logic [31:0] ex2_csr_rdata; // EX 级寄存器中的 CSR 读取数据，表示执行阶段的指令 CSR 读取数据。
 	logic [31:0] ex2_csr_wdata; // EX 级寄存器中的 CSR 写入数据，表示执行阶段的指令 CSR 写入数据。
@@ -847,9 +848,13 @@ module myCPU #(
 
 	// ID 阶段提前记录消费者下一拍进入 EX1 时应使用的来源：EX2、MEM 或 WB。
 	// 三条 EX1 前递的优先级在 EX1 组合逻辑中固定为 EX2 > MEM > WB。
-	// Disable the same-cycle EX2 -> EX1 bypass. A dependent instruction waits
-	// one cycle and then uses the registered EX2/MEM forwarding path instead.
-	assign idex1_can_forward_to_ex1ex2 = 1'b0;
+	// 只让普通 ALU 结果走 EX2 -> EX1 快速旁路；PC+4、IMM_U、CSR、M 扩展、
+	// helper 和 Z_B_SMALL 等路径仍等待到 EX2/MEM，避免把长结果链拉回 EX1。
+	assign idex1_can_forward_to_ex1ex2 = idex1_valid && idex1_rf_we &&
+									     (idex1_rd != 5'h0) &&
+									     (idex1_wb_sel == WB_SRC_ALU) &&
+									     !idex1_is_m_ext &&
+									     !idex1_mul_helper;
 	assign ex1ex2_can_forward_to_ex2mem = ex1ex2_valid && ex1ex2_rf_we &&
 										 (ex1ex2_rd != 5'h0) &&
 										 (ex1ex2_wb_sel != WB_SRC_MEM) &&
@@ -1491,9 +1496,10 @@ module myCPU #(
 								 (hazard_uses_rs2 && (id_rs2 == ex1ex2_rd)));
 
 	assign load_use_hazard = load_use_ex1_hazard || load_use_ex2_hazard;
-	// Every adjacent RAW dependency waits until the producer reaches EX2/MEM.
+	// 普通 ALU 结果可以走 EX2 -> EX1 快速旁路，其余结果等到 EX2/MEM。
 	assign slow_result_ex1_hazard = ifid_valid && idex1_valid && idex1_rf_we &&
 								 (idex1_rd != 5'h0) &&
+								 !idex1_can_forward_to_ex1ex2 &&
 								 ((hazard_uses_rs1 && (id_rs1 == idex1_rd)) ||
 								  (hazard_uses_rs2 && (id_rs2 == idex1_rd)));
 	assign m_issue_hazard = idex1_valid && idex1_is_m_ext;
@@ -1723,22 +1729,26 @@ module myCPU #(
 	// WB -> ID 的同拍旁路位于 id_rs1_val/id_rs2_val 组合逻辑中。
 	always_comb begin
 		ex1_rs1_val = idex1_rs1_val;
-		if (idex1_fwd_rs1_from_mem) begin
+		if (idex1_fwd_rs1_from_ex2) begin
+			ex1_rs1_val = ex2_alu_y;
+		end else if (idex1_fwd_rs1_from_mem) begin
 			ex1_rs1_val = ex2mem_wb_data;
 		end else if (idex1_fwd_rs1_from_wb) begin
 			ex1_rs1_val = memwb_wdata;
 		end
 
 		ex1_rs2_val = idex1_rs2_val;
-		if (idex1_fwd_rs2_from_mem) begin
+		if (idex1_fwd_rs2_from_ex2) begin
+			ex1_rs2_val = ex2_alu_y;
+		end else if (idex1_fwd_rs2_from_mem) begin
 			ex1_rs2_val = ex2mem_wb_data;
 		end else if (idex1_fwd_rs2_from_wb) begin
 			ex1_rs2_val = memwb_wdata;
 		end
 	end
 
-	// Resolve the branch in EX1 and register the one-bit decision so the
-	// 32-bit comparator is not in the EX2 -> PC target path.
+	// Resolve the branch in EX1, after operand forwarding, and register the
+	// one-bit decision so the 32-bit comparator is not in the EX2 -> PC path.
 	always_comb begin
 		ex1_cmp_eq          = 1'b0;
 		ex1_cmp_lt_signed   = 1'b0;
@@ -1877,18 +1887,20 @@ module myCPU #(
 		end
 	end
 
+	assign ex2_z_wb_data = ex2_z_supported ? ex2_z_result : 32'h0;
+
 	always_comb begin
 		if (ex1ex2_mul_helper) begin
 			ex2_wb_data = ex2_mul_helper_result;
 		end else if (ex1ex2_is_m_ext) begin
 			ex2_wb_data = ex2_m_result;
 		end else begin
-			case (ex1ex2_wb_sel)
+			unique case (ex1ex2_wb_sel)
+				WB_SRC_Z:     ex2_wb_data = ex2_is_z_b_small ? 32'h0 : ex2_z_wb_data;
+				WB_SRC_CSR:   ex2_wb_data = ex2_csr_rdata;
 				WB_SRC_PC4:   ex2_wb_data = ex2_pc4;
 				WB_SRC_IMM_U: ex2_wb_data = ex1ex2_imm;
-				WB_SRC_CSR:   ex2_wb_data = ex2_csr_rdata;
 				WB_SRC_ALU:   ex2_wb_data = ex2_alu_y;
-				WB_SRC_Z:     ex2_wb_data = ex2_is_z_b_small ? 32'h0 : (ex2_z_supported ? ex2_z_result : 32'h0);
 				default:      ex2_wb_data = ex2_alu_y;
 			endcase
 		end

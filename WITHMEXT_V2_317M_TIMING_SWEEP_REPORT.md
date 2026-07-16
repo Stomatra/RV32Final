@@ -1,12 +1,12 @@
-# WITHMEXT_V2_315M_TIMING_SWEEP_REPORT
+# WITHMEXT_V2_317M_TIMING_SWEEP_REPORT
 
-- Bit: `E:/Projects/1Aprojects/RV32Final/final_bits/WITHMEXT_V2_315MHz_TIMING_SWEEP_20260715_203727.bit`
-- Root bit: `E:/Projects/1Aprojects/RV32Final/WITHMEXT_V2_315MHz_TIMING_SWEEP.bit`
-- Bit SHA256: `E794BA3D3CC0D9AA8C7186D992F28F8DE75B9AC15131133E56E1CA10095B84DF`
+- Bit: `E:/Projects/1Aprojects/RV32Final/final_bits/WITHMEXT_V2_317MHz_TIMING_SWEEP_20260715_201959.bit`
+- Root bit: `E:/Projects/1Aprojects/RV32Final/WITHMEXT_V2_317MHz_TIMING_SWEEP.bit`
+- Bit SHA256: `EA9AB6420EC434C5A33B3186A4AB53DC97B11A0619BF8D2EBE69A6AE2C681C99`
 - IROM SHA256: `0CEA80F2CA36E2672AC8D1E3D0087F88DC24B5A33A177C74B47330B0637C6A1B`
 - DRAM SHA256: `D1C6D8F4ADBE80D618CCFCCC0336A9A61B56007B0F44A4E79BDDF71CCAB89C03`
 - IROM_BRAM.mif SHA256: `3476CDF70062328F8C3BCFA4A4FD5A2FD3F7632D3F2BBF8234B4160923C4C753`
-- CPU clock target: `315 MHz`
+- CPU clock target: `317 MHz`
 - CPU clock report: `316.667 MHz`, period `3.158 ns`
 - WNS/TNS/WHS: `-0.168 / -3.473 / 0.101`
 - DRC errors: `0`
@@ -23,13 +23,13 @@
 - CPU changed files relative to HEAD: ``
 - top: `top`
 - XDC list: `E:/Projects/1Aprojects/RV32Final/digital_twin.srcs/constrs_1/new/digital_twin.xdc E:/Projects/1Aprojects/RV32Final/digital_twin.srcs/constrs_1/new/mainline_virtual_platform_cdc.xdc`
-- compile order: `E:/Projects/1Aprojects/RV32Final/withmext_315m_timing_sweep_build_outputs/compile_order_WITHMEXT_V2_315MHz_TIMING_SWEEP_20260715_203727.txt`
+- compile order: `E:/Projects/1Aprojects/RV32Final/withmext_317m_timing_sweep_build_outputs/compile_order_WITHMEXT_V2_317MHz_TIMING_SWEEP_20260715_201959.txt`
 - Resume/open_checkpoint: `0 / 0`
 - IROM/IP refresh: `IROM=1`, `IROM_BRAM=1`, `DRAM=1`, `PLL=1`
 - Board expectation: left check, 8 official lights on, `SEG=378xxxxx`.
 - Board result: pending.
-- Summary txt: `E:/Projects/1Aprojects/RV32Final/withmext_315m_timing_sweep_build_outputs/summary_WITHMEXT_V2_315MHz_TIMING_SWEEP_20260715_203727.txt`
-- Timing report: `E:/Projects/1Aprojects/RV32Final/withmext_315m_timing_sweep_build_outputs/timing_WITHMEXT_V2_315MHz_TIMING_SWEEP_20260715_203727.rpt`
-- Top 3 timing report: `E:/Projects/1Aprojects/RV32Final/withmext_315m_timing_sweep_build_outputs/timing_paths_top3_WITHMEXT_V2_315MHz_TIMING_SWEEP_20260715_203727.rpt`
-- DRC report: `E:/Projects/1Aprojects/RV32Final/withmext_315m_timing_sweep_build_outputs/drc_WITHMEXT_V2_315MHz_TIMING_SWEEP_20260715_203727.rpt`
-- Exceptions report: `E:/Projects/1Aprojects/RV32Final/withmext_315m_timing_sweep_build_outputs/exceptions_WITHMEXT_V2_315MHz_TIMING_SWEEP_20260715_203727.rpt`
+- Summary txt: `E:/Projects/1Aprojects/RV32Final/withmext_317m_timing_sweep_build_outputs/summary_WITHMEXT_V2_317MHz_TIMING_SWEEP_20260715_201959.txt`
+- Timing report: `E:/Projects/1Aprojects/RV32Final/withmext_317m_timing_sweep_build_outputs/timing_WITHMEXT_V2_317MHz_TIMING_SWEEP_20260715_201959.rpt`
+- Top 3 timing report: `E:/Projects/1Aprojects/RV32Final/withmext_317m_timing_sweep_build_outputs/timing_paths_top3_WITHMEXT_V2_317MHz_TIMING_SWEEP_20260715_201959.rpt`
+- DRC report: `E:/Projects/1Aprojects/RV32Final/withmext_317m_timing_sweep_build_outputs/drc_WITHMEXT_V2_317MHz_TIMING_SWEEP_20260715_201959.rpt`
+- Exceptions report: `E:/Projects/1Aprojects/RV32Final/withmext_317m_timing_sweep_build_outputs/exceptions_WITHMEXT_V2_317MHz_TIMING_SWEEP_20260715_201959.rpt`

@@ -1,19 +1,19 @@
 # WITHMEXT_V2_320M_TIMING_SWEEP_REPORT
 
-- Bit: `E:/Projects/1Aprojects/RV32Final/final_bits/WITHMEXT_V2_320MHz_TIMING_SWEEP_20260715_150028.bit`
+- Bit: `E:/Projects/1Aprojects/RV32Final/final_bits/WITHMEXT_V2_320MHz_TIMING_SWEEP_20260715_200513.bit`
 - Root bit: `E:/Projects/1Aprojects/RV32Final/WITHMEXT_V2_320MHz_TIMING_SWEEP.bit`
-- Bit SHA256: `B72A685E4C982B3AF5B37A8B14A857E367F174C574329C3C45E1949FC99BD15E`
+- Bit SHA256: `0DD72E54966D98F45F10BCA7338B5968EF62A207542DDDAC35A862B412ED702D`
 - IROM SHA256: `0CEA80F2CA36E2672AC8D1E3D0087F88DC24B5A33A177C74B47330B0637C6A1B`
 - DRAM SHA256: `D1C6D8F4ADBE80D618CCFCCC0336A9A61B56007B0F44A4E79BDDF71CCAB89C03`
 - IROM_BRAM.mif SHA256: `3476CDF70062328F8C3BCFA4A4FD5A2FD3F7632D3F2BBF8234B4160923C4C753`
 - CPU clock target: `320 MHz`
 - CPU clock report: `320.000 MHz`, period `3.125 ns`
-- WNS/TNS/WHS: `-0.107 / -2.335 / 0.082`
+- WNS/TNS/WHS: `-0.117 / -6.393 / 0.102`
 - DRC errors: `0`
 - BIVC/NSTD/UCIO: `0 / 0 / 0`
-- Worst source: `student_top_inst/bridge_inst/dram_driver_inst/dram_lane0_reg_0_4/CLKARDCLK`
-- Worst destination: `student_top_inst/bridge_inst/perip_rdata_q_reg[4]/D`
-- Worst path logic/route delay: `2.485 ns / 0.437 ns`
+- Worst source: `student_top_inst/Core_cpu/ex1ex2_alu_b_reg[1]/C`
+- Worst destination: `student_top_inst/Core_cpu/ex1ex2_alu_a_reg[17]/D`
+- Worst path logic/route delay: `0.706 ns / 2.460 ns`
 - ENABLE_Z_B_SMALL: off, `verilog_define` = ``
 - Mainline virtual-platform CDC cut: enabled via `mainline_virtual_platform_cdc.xdc`.
 - Sweep mode: `BASE`
@@ -23,13 +23,13 @@
 - CPU changed files relative to HEAD: ``
 - top: `top`
 - XDC list: `E:/Projects/1Aprojects/RV32Final/digital_twin.srcs/constrs_1/new/digital_twin.xdc E:/Projects/1Aprojects/RV32Final/digital_twin.srcs/constrs_1/new/mainline_virtual_platform_cdc.xdc`
-- compile order: `E:/Projects/1Aprojects/RV32Final/withmext_320m_timing_sweep_build_outputs/compile_order_WITHMEXT_V2_320MHz_TIMING_SWEEP_20260715_150028.txt`
+- compile order: `E:/Projects/1Aprojects/RV32Final/withmext_320m_timing_sweep_build_outputs/compile_order_WITHMEXT_V2_320MHz_TIMING_SWEEP_20260715_200513.txt`
 - Resume/open_checkpoint: `0 / 0`
 - IROM/IP refresh: `IROM=1`, `IROM_BRAM=1`, `DRAM=1`, `PLL=1`
 - Board expectation: left check, 8 official lights on, `SEG=378xxxxx`.
 - Board result: pending.
-- Summary txt: `E:/Projects/1Aprojects/RV32Final/withmext_320m_timing_sweep_build_outputs/summary_WITHMEXT_V2_320MHz_TIMING_SWEEP_20260715_150028.txt`
-- Timing report: `E:/Projects/1Aprojects/RV32Final/withmext_320m_timing_sweep_build_outputs/timing_WITHMEXT_V2_320MHz_TIMING_SWEEP_20260715_150028.rpt`
-- Top 3 timing report: `E:/Projects/1Aprojects/RV32Final/withmext_320m_timing_sweep_build_outputs/timing_paths_top3_WITHMEXT_V2_320MHz_TIMING_SWEEP_20260715_150028.rpt`
-- DRC report: `E:/Projects/1Aprojects/RV32Final/withmext_320m_timing_sweep_build_outputs/drc_WITHMEXT_V2_320MHz_TIMING_SWEEP_20260715_150028.rpt`
-- Exceptions report: `E:/Projects/1Aprojects/RV32Final/withmext_320m_timing_sweep_build_outputs/exceptions_WITHMEXT_V2_320MHz_TIMING_SWEEP_20260715_150028.rpt`
+- Summary txt: `E:/Projects/1Aprojects/RV32Final/withmext_320m_timing_sweep_build_outputs/summary_WITHMEXT_V2_320MHz_TIMING_SWEEP_20260715_200513.txt`
+- Timing report: `E:/Projects/1Aprojects/RV32Final/withmext_320m_timing_sweep_build_outputs/timing_WITHMEXT_V2_320MHz_TIMING_SWEEP_20260715_200513.rpt`
+- Top 3 timing report: `E:/Projects/1Aprojects/RV32Final/withmext_320m_timing_sweep_build_outputs/timing_paths_top3_WITHMEXT_V2_320MHz_TIMING_SWEEP_20260715_200513.rpt`
+- DRC report: `E:/Projects/1Aprojects/RV32Final/withmext_320m_timing_sweep_build_outputs/drc_WITHMEXT_V2_320MHz_TIMING_SWEEP_20260715_200513.rpt`
+- Exceptions report: `E:/Projects/1Aprojects/RV32Final/withmext_320m_timing_sweep_build_outputs/exceptions_WITHMEXT_V2_320MHz_TIMING_SWEEP_20260715_200513.rpt`

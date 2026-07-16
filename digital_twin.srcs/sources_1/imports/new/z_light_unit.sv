@@ -112,27 +112,55 @@ module z_light_unit #(
         end
     endfunction
 
-    function automatic logic [31:0] rol32(input logic [31:0] x, input logic [4:0] shamt);
-        logic [4:0] inv_shamt;
+    function automatic logic [31:0] ror32(input logic [31:0] x, input logic [4:0] shamt);
+        logic [31:0] s0;
+        logic [31:0] s1;
+        logic [31:0] s2;
+        logic [31:0] s3;
+        logic [31:0] s4;
         begin
-            inv_shamt = (5'd0 - shamt) & 5'h1f;
-            rol32 = (x << shamt) | (x >> inv_shamt);
+            s0 = shamt[0] ? {x[0],     x[31:1]}  : x;
+            s1 = shamt[1] ? {s0[1:0],  s0[31:2]} : s0;
+            s2 = shamt[2] ? {s1[3:0],  s1[31:4]} : s1;
+            s3 = shamt[3] ? {s2[7:0],  s2[31:8]} : s2;
+            s4 = shamt[4] ? {s3[15:0], s3[31:16]} : s3;
+            ror32 = s4;
         end
     endfunction
 
-    function automatic logic [31:0] ror32(input logic [31:0] x, input logic [4:0] shamt);
-        logic [4:0] inv_shamt;
+    function automatic logic [31:0] rol32(input logic [31:0] x, input logic [4:0] shamt);
         begin
-            inv_shamt = (5'd0 - shamt) & 5'h1f;
-            ror32 = (x >> shamt) | (x << inv_shamt);
+            rol32 = ror32(x, (~shamt + 5'd1) & 5'h1f);
         end
     endfunction
+
+    logic [31:0] sh1add_result;
+    logic [31:0] sh2add_result;
+    logic [31:0] sh3add_result;
+    logic [31:0] min_result;
+    logic [31:0] minu_result;
+    logic [31:0] max_result;
+    logic [31:0] maxu_result;
+    logic [31:0] rol_result;
+    logic [31:0] ror_result;
+    logic [31:0] rori_result;
+
+    assign sh1add_result = {rs1_val[30:0], 1'b0} + rs2_val;
+    assign sh2add_result = {rs1_val[29:0], 2'b00} + rs2_val;
+    assign sh3add_result = {rs1_val[28:0], 3'b000} + rs2_val;
+    assign min_result    = ($signed(rs1_val) < $signed(rs2_val)) ? rs1_val : rs2_val;
+    assign minu_result   = (rs1_val < rs2_val) ? rs1_val : rs2_val;
+    assign max_result    = ($signed(rs1_val) > $signed(rs2_val)) ? rs1_val : rs2_val;
+    assign maxu_result   = (rs1_val > rs2_val) ? rs1_val : rs2_val;
+    assign rol_result    = rol32(rs1_val, rs2_val[4:0]);
+    assign ror_result    = ror32(rs1_val, rs2_val[4:0]);
+    assign rori_result   = ror32(rs1_val, z_shamt);
 
     always_comb begin
         z_result = 32'h0;
         z_supported = 1'b0;
         if(z_valid) begin
-            case (z_op)
+            unique case (z_op)
                 ZOP_ANDN: begin
                     if(ENABLE_Z_ANDN) begin
                         z_result = rs1_val & ~rs2_val;
@@ -284,61 +312,61 @@ module z_light_unit #(
 
                 ZOP_SH1ADD: begin
                     if (ENABLE_Z_B_SMALL) begin
-                        z_result = (rs1_val << 1) + rs2_val;
+                        z_result = sh1add_result;
                         z_supported = 1'b1;
                     end
                 end
                 ZOP_SH2ADD: begin
                     if (ENABLE_Z_B_SMALL) begin
-                        z_result = (rs1_val << 2) + rs2_val;
+                        z_result = sh2add_result;
                         z_supported = 1'b1;
                     end
                 end
                 ZOP_SH3ADD: begin
                     if (ENABLE_Z_B_SMALL) begin
-                        z_result = (rs1_val << 3) + rs2_val;
+                        z_result = sh3add_result;
                         z_supported = 1'b1;
                     end
                 end
                 ZOP_MIN: begin
                     if (ENABLE_Z_B_SMALL) begin
-                        z_result = ($signed(rs1_val) < $signed(rs2_val)) ? rs1_val : rs2_val;
+                        z_result = min_result;
                         z_supported = 1'b1;
                     end
                 end
                 ZOP_MINU: begin
                     if (ENABLE_Z_B_SMALL) begin
-                        z_result = (rs1_val < rs2_val) ? rs1_val : rs2_val;
+                        z_result = minu_result;
                         z_supported = 1'b1;
                     end
                 end
                 ZOP_MAX: begin
                     if (ENABLE_Z_B_SMALL) begin
-                        z_result = ($signed(rs1_val) > $signed(rs2_val)) ? rs1_val : rs2_val;
+                        z_result = max_result;
                         z_supported = 1'b1;
                     end
                 end
                 ZOP_MAXU: begin
                     if (ENABLE_Z_B_SMALL) begin
-                        z_result = (rs1_val > rs2_val) ? rs1_val : rs2_val;
+                        z_result = maxu_result;
                         z_supported = 1'b1;
                     end
                 end
                 ZOP_ROL: begin
                     if (ENABLE_Z_B_SMALL) begin
-                        z_result = rol32(rs1_val, rs2_val[4:0]);
+                        z_result = rol_result;
                         z_supported = 1'b1;
                     end
                 end
                 ZOP_ROR: begin
                     if (ENABLE_Z_B_SMALL) begin
-                        z_result = ror32(rs1_val, rs2_val[4:0]);
+                        z_result = ror_result;
                         z_supported = 1'b1;
                     end
                 end
                 ZOP_RORI: begin
                     if (ENABLE_Z_B_SMALL) begin
-                        z_result = ror32(rs1_val, z_shamt);
+                        z_result = rori_result;
                         z_supported = 1'b1;
                     end
                 end
