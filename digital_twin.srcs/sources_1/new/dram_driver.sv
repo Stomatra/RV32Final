@@ -30,11 +30,13 @@ module dram_driver(
 );
 	// dram_driver 鐢ㄥ洓涓?byte lane 鐨勫悓姝?BRAM 瀹炵幇 32bit 鏁版嵁瀛樺偍銆?
 	// Four byte lanes form a 32-bit DRAM. Split 64K words into two 32K banks.
+	// Keep the banks explicit so Vivado does not rebuild each lane as one 64K cascade.
 	localparam int DRAM_BANK_DEPTH = 32768;
 
 	logic [15:0] dram_addr;
 	logic [14:0] bank_addr;
-	logic        bank_sel_q;
+	logic        bank_sel_q, bank_sel_qq;
+	logic [31:0] bank0_rdata_raw, bank1_rdata_raw;
 	logic [31:0] bank0_rdata, bank1_rdata;
 	logic [3:0]  bank0_wstrb, bank1_wstrb;
 	// bank0 covers the lower 32K words; bank1 covers the upper 32K words.
@@ -51,7 +53,7 @@ module dram_driver(
 	assign bank_addr = dram_addr[14:0];
 	assign bank0_wstrb = perip_wstrb & {4{~dram_addr[15]}};
 	assign bank1_wstrb = perip_wstrb & {4{ dram_addr[15]}};
-	assign perip_rdata = bank_sel_q ? bank1_rdata : bank0_rdata;
+	assign perip_rdata = bank_sel_qq ? bank1_rdata : bank0_rdata;
 
     integer i;
 	initial begin
@@ -69,6 +71,9 @@ module dram_driver(
 		end
 		`endif
 
+		// Kept only as historical reference.  Active initialization is generated
+		// from dram.coe in dram_init.svh below.
+		`ifdef LEGACY_INLINE_DRAM_INIT
 		// Init words synced from E:/jyd2026/withMext/demo/dram.coe.
 		dram_lane0_bank0[16'd0] = 8'h00;
 		dram_lane1_bank0[16'd0] = 8'h00;
@@ -139,17 +144,25 @@ module dram_driver(
 		dram_lane1_bank0[16'd13] = 8'h00;
 		dram_lane2_bank0[16'd13] = 8'h00;
 		dram_lane3_bank0[16'd13] = 8'h00;
+		`endif
+
+		`include "dram_init.svh"
 
 	end
 
-	// Read both banks synchronously and keep the registered bank select aligned.
+	// Two-stage synchronous read.  The second stage is written directly from
+	// each inferred RAM output so Vivado can pack it into the RAMB36 output
+	// register instead of routing the wide bus to a separate bridge register.
 	always_ff @(posedge clk) begin
-		bank_sel_q <= dram_addr[15];
+		bank_sel_q  <= dram_addr[15];
+		bank_sel_qq <= bank_sel_q;
 
-		bank0_rdata <= {dram_lane3_bank0[bank_addr], dram_lane2_bank0[bank_addr],
-		                dram_lane1_bank0[bank_addr], dram_lane0_bank0[bank_addr]};
-		bank1_rdata <= {dram_lane3_bank1[bank_addr], dram_lane2_bank1[bank_addr],
-		                dram_lane1_bank1[bank_addr], dram_lane0_bank1[bank_addr]};
+		bank0_rdata_raw <= {dram_lane3_bank0[bank_addr], dram_lane2_bank0[bank_addr],
+		                    dram_lane1_bank0[bank_addr], dram_lane0_bank0[bank_addr]};
+		bank1_rdata_raw <= {dram_lane3_bank1[bank_addr], dram_lane2_bank1[bank_addr],
+		                    dram_lane1_bank1[bank_addr], dram_lane0_bank1[bank_addr]};
+		bank0_rdata <= bank0_rdata_raw;
+		bank1_rdata <= bank1_rdata_raw;
 
 		if (bank0_wstrb[0]) dram_lane0_bank0[bank_addr] <= perip_wdata[7:0];
 		if (bank0_wstrb[1]) dram_lane1_bank0[bank_addr] <= perip_wdata[15:8];

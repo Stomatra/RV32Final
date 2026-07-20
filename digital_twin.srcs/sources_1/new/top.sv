@@ -29,10 +29,6 @@ module top(
     output wire [31:0] virtual_led  ,
     output wire [39:0] virtual_seg
 );
-	// top 是整板顶层：
-	// - 处理差分系统时钟输入
-	// - 生成 50MHz 外设时钟和 CPU 时钟
-	// - 处理 UART twin 通道与 student_top 之间的跨时钟同步
 
     wire w_clk_50Mhz, cpu_clk;
     wire w_clk_rst;
@@ -41,16 +37,11 @@ module top(
     wire [63:0] virtual_sw;
     wire [7:0] virtual_key_cpu;
     wire [63:0] virtual_sw_cpu;
-    wire [31:0] student_virtual_led;
-    wire [39:0] student_virtual_seg;
     wire [31:0] student_virtual_led_src;
     wire [39:0] student_virtual_seg_src;
     wire [31:0] student_virtual_led_50;
     wire [39:0] student_virtual_seg_50;
 
-	// 这些双触发同步器负责两个方向的跨时钟域采样：
-	// 1. twin_controller(50MHz) -> CPU 域的按键/拨码输入
-	// 2. CPU 域 -> twin_controller(50MHz) 的显示输出
     (* ASYNC_REG = "TRUE" *) reg [7:0] virtual_key_cpu_ff1, virtual_key_cpu_ff2;
     (* ASYNC_REG = "TRUE" *) reg [63:0] virtual_sw_cpu_ff1, virtual_sw_cpu_ff2;
     (* ASYNC_REG = "TRUE" *) reg [31:0] student_virtual_led_ff1, student_virtual_led_ff2;
@@ -62,7 +53,6 @@ module top(
     wire [7:0] tx_data;
     wire tx_busy;
 
-	// PLL 产生 50MHz 和 CPU 主频，同时 locked 也被用作系统复位释放条件。
     pll pll_inst(
         .clk_in1_p(i_sys_clk_p),
         .clk_in1_n(i_sys_clk_n),
@@ -71,82 +61,14 @@ module top(
         .locked(w_clk_rst)
     );
 
-`ifdef LED_WALK_TEST
-    localparam integer LED_WALK_TICKS = 50_000_000;
-    localparam [25:0] LED_WALK_LAST = LED_WALK_TICKS - 1;
-
-    reg [25:0] led_walk_counter;
-    reg [4:0]  led_walk_index;
-    reg [31:0] led_walk_value;
-    reg [3:0]  led_walk_tens;
-    reg [3:0]  led_walk_ones;
-    wire [31:0] led_walk_seg_word;
-    wire [6:0]  led_walk_seg1;
-    wire [6:0]  led_walk_seg2;
-    wire [6:0]  led_walk_seg3;
-    wire [6:0]  led_walk_seg4;
-    wire [7:0]  led_walk_ans;
-
-    assign student_virtual_led_src = led_walk_value;
-    assign led_walk_seg_word = {24'd0, led_walk_tens, led_walk_ones};
-    assign student_virtual_seg_src = {
-        led_walk_ans[7:6], 1'b0, led_walk_seg4,
-        led_walk_ans[5:4], 1'b0, led_walk_seg3,
-        led_walk_ans[3:2], 1'b0, led_walk_seg2,
-        led_walk_ans[1:0], 1'b0, led_walk_seg1
-    };
-
-    display_seg led_walk_seg_driver (
-        .clk    (w_clk_50Mhz),
-        .rst    (~w_clk_rst),
-        .s      (led_walk_seg_word),
-        .seg1   (led_walk_seg1),
-        .seg2   (led_walk_seg2),
-        .seg3   (led_walk_seg3),
-        .seg4   (led_walk_seg4),
-        .ans    (led_walk_ans)
-    );
-
-    always @(*) begin
-        led_walk_value = 32'h0000_0001 << led_walk_index;
-        led_walk_tens = 4'd0;
-        led_walk_ones = led_walk_index[3:0];
-        if (led_walk_index >= 5'd30) begin
-            led_walk_tens = 4'd3;
-            led_walk_ones = led_walk_index - 5'd30;
-        end else if (led_walk_index >= 5'd20) begin
-            led_walk_tens = 4'd2;
-            led_walk_ones = led_walk_index - 5'd20;
-        end else if (led_walk_index >= 5'd10) begin
-            led_walk_tens = 4'd1;
-            led_walk_ones = led_walk_index - 5'd10;
-        end
-    end
-
-    always @(posedge w_clk_50Mhz or negedge w_clk_rst) begin
-        if (!w_clk_rst) begin
-            led_walk_counter <= 26'd0;
-            led_walk_index <= 5'd0;
-        end else if (led_walk_counter == LED_WALK_LAST) begin
-            led_walk_counter <= 26'd0;
-            led_walk_index <= led_walk_index + 5'd1;
-        end else begin
-            led_walk_counter <= led_walk_counter + 26'd1;
-        end
-    end
-`endif
-
     assign virtual_key_cpu = virtual_key_cpu_ff2;
     assign virtual_sw_cpu = virtual_sw_cpu_ff2;
-    assign student_virtual_led = student_virtual_led_src;
-    assign student_virtual_seg = student_virtual_seg_src;
     assign student_virtual_led_50 = student_virtual_led_ff2;
     assign student_virtual_seg_50 = student_virtual_seg_ff2;
 
-    assign virtual_led = student_virtual_led;
-    assign virtual_seg = student_virtual_seg;
+    assign virtual_led = student_virtual_led_src;
+    assign virtual_seg = student_virtual_seg_src;
 
-	// 将 UART/twin 侧的输入同步到 CPU 时钟域。
     always @(posedge cpu_clk or negedge w_clk_rst) begin
         if (!w_clk_rst) begin
             virtual_key_cpu_ff1 <= 8'd0;
@@ -161,7 +83,6 @@ module top(
         end
     end
 
-	// 将 CPU 侧 LED/数码管状态同步回 50MHz twin/UART 域。
     always @(posedge w_clk_50Mhz or negedge w_clk_rst) begin
         if (!w_clk_rst) begin
             student_virtual_led_ff1 <= 32'd0;
@@ -169,14 +90,13 @@ module top(
             student_virtual_seg_ff1 <= 40'd0;
             student_virtual_seg_ff2 <= 40'd0;
         end else begin
-            student_virtual_led_ff1 <= student_virtual_led;
+            student_virtual_led_ff1 <= student_virtual_led_src;
             student_virtual_led_ff2 <= student_virtual_led_ff1;
-            student_virtual_seg_ff1 <= student_virtual_seg;
+            student_virtual_seg_ff1 <= student_virtual_seg_src;
             student_virtual_seg_ff2 <= student_virtual_seg_ff1;
         end
     end
 
-	// UART 只运行在 50MHz 域，供 twin_controller 做上位机交互。
     uart #(
         .CLK_FREQ(50000000),
         .BAUD_RATE(9600)
@@ -192,7 +112,6 @@ module top(
         .tx_busy(tx_busy)
     );
 
-	// twin_controller 负责把 UART 协议翻译成开关/按键输入与状态回读。
     twin_controller twin_controller_inst(
         .clk(w_clk_50Mhz),
         .rst_n(w_clk_rst),
@@ -207,8 +126,6 @@ module top(
         .led(student_virtual_led_50)
     );
 
-	// student_top 是板上学生设计主体。
-`ifndef LED_WALK_TEST
     student_top student_top_inst(
         .w_cpu_clk(cpu_clk),
         .w_clk_50Mhz(w_clk_50Mhz),
@@ -218,5 +135,5 @@ module top(
         .virtual_led(student_virtual_led_src),
         .virtual_seg(student_virtual_seg_src)
     );
-`endif
+
 endmodule

@@ -1,6 +1,14 @@
 `timescale 1ns / 1ps
 
-module z_light_decode (
+`ifdef ENABLE_Z_B_SMALL
+`define Z_LIGHT_DECODE_ENABLE_Z_B_SMALL_DEFAULT 1'b1
+`else
+`define Z_LIGHT_DECODE_ENABLE_Z_B_SMALL_DEFAULT 1'b0
+`endif
+
+module z_light_decode #(
+    parameter bit ENABLE_Z_B_SMALL = `Z_LIGHT_DECODE_ENABLE_Z_B_SMALL_DEFAULT
+) (
     input  logic [31:0] instr,
 
     output logic        z_hit,
@@ -35,6 +43,16 @@ module z_light_decode (
 	localparam logic [5:0]  ZOP_BINVI	 = 6'd18;// Z 轻量级指令操作码 BINVI，表示按位取反立即数操作
 	localparam logic [5:0]  ZOP_BSET	 = 6'd19;// Z 轻量级指令操作码 BSET，表示按位设置操作
 	localparam logic [5:0]  ZOP_BSETI	 = 6'd20;// Z 轻量级指令操作码 BSETI，表示按位设置立即数操作
+	localparam logic [5:0]  ZOP_SH1ADD	 = 6'd21;// Zba sh1add。
+	localparam logic [5:0]  ZOP_SH2ADD	 = 6'd22;// Zba sh2add。
+	localparam logic [5:0]  ZOP_SH3ADD	 = 6'd23;// Zba sh3add。
+	localparam logic [5:0]  ZOP_MIN	     = 6'd24;// Zbb min。
+	localparam logic [5:0]  ZOP_MINU	 = 6'd25;// Zbb minu。
+	localparam logic [5:0]  ZOP_MAX	     = 6'd26;// Zbb max。
+	localparam logic [5:0]  ZOP_MAXU	 = 6'd27;// Zbb maxu。
+	localparam logic [5:0]  ZOP_ROL	     = 6'd28;// Zbb rol。
+	localparam logic [5:0]  ZOP_ROR	     = 6'd29;// Zbb ror。
+	localparam logic [5:0]  ZOP_RORI	 = 6'd30;// Zbb rori。
 	localparam logic [5:0]  ZOP_NONE     = 6'd63;// Z 轻量级指令操作码 NONE，表示没有 Z 轻量级指令操作。
 
     logic [6:0] opcode;
@@ -109,6 +127,70 @@ module z_light_decode (
                     z_uses_rs1 = 1'b1; z_uses_rs2 = 1'b1;
                 end
 
+                // Optional Zba/Zbb small set, gated off in the default build.
+                {7'h10, 3'b010}: begin
+                    if (ENABLE_Z_B_SMALL) begin
+                        z_hit = 1'b1; z_op = ZOP_SH1ADD;
+                        z_uses_rs1 = 1'b1; z_uses_rs2 = 1'b1;
+                    end
+                end
+
+                {7'h10, 3'b100}: begin
+                    if (ENABLE_Z_B_SMALL) begin
+                        z_hit = 1'b1; z_op = ZOP_SH2ADD;
+                        z_uses_rs1 = 1'b1; z_uses_rs2 = 1'b1;
+                    end
+                end
+
+                {7'h10, 3'b110}: begin
+                    if (ENABLE_Z_B_SMALL) begin
+                        z_hit = 1'b1; z_op = ZOP_SH3ADD;
+                        z_uses_rs1 = 1'b1; z_uses_rs2 = 1'b1;
+                    end
+                end
+
+                {7'h05, 3'b100}: begin
+                    if (ENABLE_Z_B_SMALL) begin
+                        z_hit = 1'b1; z_op = ZOP_MIN;
+                        z_uses_rs1 = 1'b1; z_uses_rs2 = 1'b1;
+                    end
+                end
+
+                {7'h05, 3'b101}: begin
+                    if (ENABLE_Z_B_SMALL) begin
+                        z_hit = 1'b1; z_op = ZOP_MINU;
+                        z_uses_rs1 = 1'b1; z_uses_rs2 = 1'b1;
+                    end
+                end
+
+                {7'h05, 3'b110}: begin
+                    if (ENABLE_Z_B_SMALL) begin
+                        z_hit = 1'b1; z_op = ZOP_MAX;
+                        z_uses_rs1 = 1'b1; z_uses_rs2 = 1'b1;
+                    end
+                end
+
+                {7'h05, 3'b111}: begin
+                    if (ENABLE_Z_B_SMALL) begin
+                        z_hit = 1'b1; z_op = ZOP_MAXU;
+                        z_uses_rs1 = 1'b1; z_uses_rs2 = 1'b1;
+                    end
+                end
+
+                {7'h30, 3'b001}: begin
+                    if (ENABLE_Z_B_SMALL) begin
+                        z_hit = 1'b1; z_op = ZOP_ROL;
+                        z_uses_rs1 = 1'b1; z_uses_rs2 = 1'b1;
+                    end
+                end
+
+                {7'h30, 3'b101}: begin
+                    if (ENABLE_Z_B_SMALL) begin
+                        z_hit = 1'b1; z_op = ZOP_ROR;
+                        z_uses_rs1 = 1'b1; z_uses_rs2 = 1'b1;
+                    end
+                end
+
                 default: begin end
             endcase
         end
@@ -179,7 +261,14 @@ module z_light_decode (
                 z_hit = 1'b1; z_op = ZOP_BSETI;
                 z_uses_rs1 = 1'b1; z_uses_rs2 = 1'b0;
             end
+
+            if (ENABLE_Z_B_SMALL && (funct7 == 7'h30) && (funct3 == 3'b101)) begin
+                z_hit = 1'b1; z_op = ZOP_RORI;
+                z_uses_rs1 = 1'b1; z_uses_rs2 = 1'b0;
+            end
         end
     end
 
 endmodule
+
+`undef Z_LIGHT_DECODE_ENABLE_Z_B_SMALL_DEFAULT
