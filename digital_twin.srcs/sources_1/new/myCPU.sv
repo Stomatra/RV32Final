@@ -7,11 +7,13 @@ module myCPU #(
 	input  logic         cpu_clk,
 
 	output logic [11:0]  irom_addr,
+	output logic         irom_en,
 	input  logic [31:0]  irom_data,
 
 	output logic [31:0]  perip_addr,
 	output logic         perip_wen,
 	output logic [1:0]   perip_mask,
+	output logic [3:0]   perip_wstrb,
 	output logic [31:0]  perip_wdata,
 	input  logic [31:0]  perip_rdata
 );
@@ -105,6 +107,8 @@ module myCPU #(
 	localparam logic [1:0]  MEM_MASK_BYTE = 2'b00;// 数据口写掩码选择字节。
 	localparam logic [1:0]  MEM_MASK_HALF = 2'b01;// 数据口写掩码选择半字。
 	localparam logic [1:0]  MEM_MASK_WORD = 2'b10;// 数据口写掩码选择整字。
+	// 0x8010_0000--0x8013_FFFF 是 256 KiB 对齐的 DRAM 区域。
+	localparam logic [13:0] DRAM_REGION_TAG = 14'h2004;
 
 	//CSR地址常量
 	localparam logic [11:0] CSR_MSTATUS = 12'h300;// CSR 寄存器 MSTATUS 地址，用于保存处理器状态。
@@ -138,10 +142,15 @@ module myCPU #(
 	// IF 级与 IF/ID 流水寄存器 表示取指令阶段的 PC、指令和有效位。
 	// =========================
 	// 板级 ILA 抓跑飞时只保留少量控制面探针，避免拖累 200MHz 路径。
-	logic [31:0] pc_q;      // 当前 PC 寄存器，表示当前正在执行的指令的地址。
-	logic [31:0] pc_next;   // 下一拍 PC 值，表示下一条指令的地址。
-	logic [31:0] fetch_pc_q;    // 同步 IROM 当前返回指令所对应的请求 PC。
-	logic        fetch_valid; // 同步 IROM 当前返回指令是否有效。
+	// 强制“暂停时保持 PC”实现为 D 输入反馈选择，避免复杂 fetch_stall
+	// 直接成为 32 位 PC 寄存器的高扇出 CE。仅用于时序对比实验。
+	(* extract_enable = "no" *) logic [31:0] if1_pc_q; // IF1：当前发送给 IROM 的 PC。
+	logic [31:0] if1_pc_next;    // IF1：下一拍 PC。
+	logic [31:0] if2_pc_q;       // IF2：与同步 IROM 读请求对齐的 PC。
+	logic        if2_valid;      // IF2：IROM 读请求有效位。
+	logic [31:0] if3_pc_q;       // IF3：与寄存后 IROM 数据对齐的 PC。
+	logic [31:0] if3_instr_q;    // IF3：IROM 输出指令寄存器。
+	logic        if3_valid;      // IF3：指令有效位。
 	logic [31:0] fetch_hold_pc;
 	logic [31:0] fetch_hold_instr;
 	logic        fetch_hold_valid;
@@ -176,10 +185,21 @@ module myCPU #(
 	logic        hazard_uses_rs2;
 	logic        hazard_is_branch;
 	logic        hazard_is_jalr;
+	// 保留 hazard 专用比较网络，避免综合器将它与 forwarding 比较器合并。
+	// 合并后 fetch_stall 会穿过 forwarding LUT，形成译码到前端 CE 的长路径。
+	(* keep = "true" *) logic dep_ex1_rs1; // ID 的 rs1 依赖 EX1 的 rd。
+	(* keep = "true" *) logic dep_ex1_rs2; // ID 的 rs2 依赖 EX1 的 rd。
+	(* keep = "true" *) logic dep_ex1;     // ID 与 EX1 之间存在任一源寄存器依赖。
+	(* keep = "true" *) logic dep_ex2_rs1; // ID 的 rs1 依赖 EX2 的 rd。
+	(* keep = "true" *) logic dep_ex2_rs2; // ID 的 rs2 依赖 EX2 的 rd。
+	(* keep = "true" *) logic dep_ex2;     // ID 与 EX2 之间存在任一源寄存器依赖。
+	(* keep = "true" *) logic dep_mem_rs1; // ID 的 rs1 依赖 MEM 的 rd。
+	(* keep = "true" *) logic dep_mem_rs2; // ID 的 rs2 依赖 MEM 的 rd。
+	(* keep = "true" *) logic dep_mem;     // ID 与 MEM 之间存在任一源寄存器依赖。
 	logic        load_use_ex1_hazard;// 译码阶段是否存在 load-use 冒险，表示当前指令是否依赖于前一条 load 指令的结果。
 	logic        load_use_hazard;
 	logic        load_use_ex2_hazard;
-	logic        m_issue_hazard;
+	logic        slow_result_ex1_hazard;
 	logic        id_fwd_rs1_from_wb;
 	logic        id_fwd_rs2_from_wb;
 	logic        pc_ex1_hazard;// 译码阶段是否存在 PC 与 EX 阶段的冒险，表示当前指令是否与 EX 阶段的指令存在数据依赖。
@@ -278,21 +298,24 @@ module myCPU #(
 	logic [31:0] ex1ex2_instr;
 	logic [4:0]  ex1ex2_rs1;
 	logic [4:0]  ex1ex2_rs2;
-	logic [31:0] ex1ex2_rs1_val;
+	// Keep only the non-critical payloads on local D-input feedback muxing.
+	// Timing-critical ALU/rs2 registers may use CE extraction to shorten their D paths.
+	(* extract_enable = "no" *) logic [31:0] ex1ex2_rs1_val;
 	logic [31:0] ex1ex2_rs2_val;
 	logic [31:0] ex1ex2_alu_a;
 	logic [31:0] ex1ex2_alu_b;
-	logic [31:0] ex1ex2_store_data;
+	(* extract_enable = "no" *) logic [31:0] ex1ex2_store_data;
 	logic [4:0]  ex1ex2_rd;
 	logic [31:0] ex1ex2_imm;
 	logic [2:0]  ex1ex2_funct3;
+	logic        ex1ex2_br_take;
 	logic        ex1ex2_mul_helper;
 	logic [31:0] ex1ex2_mul_helper_ra;
 	logic [31:0] ex1ex2_mul_helper_lhs;
 	logic [31:0] ex1ex2_mul_helper_rhs;
 	logic        ex1ex2_rf_we;
 	logic [2:0]  ex1ex2_wb_sel;
-	logic [3:0]  ex1ex2_alu_op;
+	(* max_fanout = 16 *) logic [3:0] ex1ex2_alu_op;
 	logic [1:0]  ex1ex2_pc_sel;
 	logic        ex1ex2_mem_req;
 	logic        ex1ex2_mem_write;
@@ -306,7 +329,7 @@ module myCPU #(
 	logic        ex1ex2_is_m_ext;
 	logic [3:0]  ex1ex2_m_op;
 	logic        ex1ex2_is_z_light;
-	logic [5:0]  ex1ex2_z_op;
+	(* max_fanout = 32 *) logic [5:0] ex1ex2_z_op;
 	logic [4:0]  ex1ex2_z_shamt;
 	logic [31:0] ex1_rs1_val;      // EX 级寄存器中的 rs1 值，表示执行阶段的指令 rs1 操作数。
 	logic [31:0] ex1_rs2_val;      // EX 级寄存器中的 rs2 值，表示执行阶段的指令 rs2 操作数。
@@ -383,9 +406,6 @@ module myCPU #(
 	logic [31:0] ex2_alu_y;        // EX 级寄存器中的 ALU 结果，表示执行阶段的指令 ALU 计算结果。
 	logic        ex2_br_take;      // EX 级寄存器中的分支判断结果，表示执行阶段的指令是否采取分支。
 	logic        ex2_alu_is_true;  // EX 级寄存器中的 ALU 是否为真标志，表示执行阶段的指令 ALU 结果是否为真。
-	logic        ex2_cmp_eq;       // EX 级寄存器中的比较结果标志，表示执行阶段的指令是否相等。
-	logic        ex2_cmp_lt_signed; // EX 级寄存器中的有符号比较结果标志，表示执行阶段的指令是否小于。
-	logic        ex2_cmp_lt_unsigned; // EX 级寄存器中的无符号比较结果标志，表示执行阶段的指令是否小于。
 	logic [31:0] ex2_pc4;          // EX 级寄存器中的 PC+4 值，表示执行阶段的指令 PC+4。
 	logic [31:0] ex2_pc_plus_imm;  // EX 级寄存器中的 PC+立即数值，表示执行阶段的指令 PC+立即数。
 	logic [31:0] ex2_jalr_sum;     // EX 级寄存器中的 JALR 和，表示执行阶段的指令 JALR 计算结果。
@@ -395,6 +415,9 @@ module myCPU #(
 	logic        ex2_pc_redirect;  // EX 级寄存器中的 PC 重定向标志，表示执行阶段的指令是否需要重定向 PC。
 	logic [31:0] ex2_pc_target;    // EX 级寄存器中的 PC 目标地址，表示执行阶段的指令 PC 目标地址。
 	logic [31:0] ex2_wb_data;      // EX 级寄存器中的写回数据，表示执行阶段的指令写回数据。
+	logic [31:0] ex2_slow_wb_data; // PC4/IMM/CSR/Z/M 等非普通 ALU 写回结果。
+	logic [31:0] ex2_mem_addr;     // LOAD/STORE 独立地址加法器结果，不经过通用 ALU 选择器。
+	logic [31:0] ex2_z_wb_data;       // Z 扩展的已验证写回结果。
 	logic [31:0] ex2_store_data;   // EX 级寄存器中的存储数据，表示执行阶段的指令存储数据。
 	logic [31:0] ex2_csr_rdata; // EX 级寄存器中的 CSR 读取数据，表示执行阶段的指令 CSR 读取数据。
 	logic [31:0] ex2_csr_wdata; // EX 级寄存器中的 CSR 写入数据，表示执行阶段的指令 CSR 写入数据。
@@ -431,11 +454,14 @@ module myCPU #(
 	// EX2/MEM 流水寄存器 表示执行阶段的结果和控制信号传递到访存阶段。 
 	// =========================
 	logic [31:0] ex2mem_alu_y      = 32'h0;          // EX/MEM 流水寄存器中的 ALU 结果，表示执行阶段的指令 ALU 计算结果传递到访存阶段。
+	logic [31:0] ex2mem_mem_addr   = 32'h0;          // EX/MEM 流水寄存器中的独立访存地址。
 	logic [31:0] ex2mem_store_data = 32'h0;          // EX/MEM 流水寄存器中的存储数据，表示执行阶段的指令存储数据传递到访存阶段。
 	logic [4:0]  ex2mem_rd         = 5'h0;           // EX/MEM 流水寄存器中的目标寄存器，表示执行阶段的指令目标寄存器传递到访存阶段。
 	logic [2:0]  ex2mem_funct3     = 3'h0;           // EX/MEM 流水寄存器中的 funct3，表示执行阶段的指令 funct3 传递到访存阶段。
 	logic        ex2mem_valid      = 1'b0;           // EX/MEM 流水寄存器中的有效标志，表示执行阶段的指令是否有效传递到访存阶段。
-	logic [31:0] ex2mem_wb_data    = 32'h0;          // EX/MEM 流水寄存器中的写回数据，表示执行阶段的指令写回数据传递到访存阶段。
+	logic [31:0] ex2mem_wb_data;                     // MEM 阶段在已寄存的 ALU/慢结果之间选择。
+	logic [31:0] ex2mem_slow_wb_data = 32'h0;        // 与 ALU 结果分开寄存的慢写回结果。
+	logic        ex2mem_use_slow_wb  = 1'b0;         // 当前非 LOAD 写回是否选择慢结果。
 	logic        ex2mem_rf_we      = 1'b0;           // EX/MEM 流水寄存器中的寄存器写使能标志，表示执行阶段的指令是否写回寄存器。
 	logic [2:0]  ex2mem_wb_sel     = WB_SRC_ALU;     // EX/MEM 流水寄存器中的写回选择，表示执行阶段的指令写回数据来源。
 	logic        ex2mem_mem_req    = 1'b0;                     // EX/MEM 流水寄存器中的存储请求标志，表示执行阶段的指令是否发起存储请求。
@@ -444,8 +470,12 @@ module myCPU #(
 	logic [31:0] ex2mem_pc         = 32'h0;          // EX/MEM 流水寄存器中的程序计数器，表示执行阶段的指令程序计数器传递到访存阶段。
 	logic [31:0] ex2mem_addr_base  = 32'h0;          // EX/MEM 流水寄存器中的基地址，表示执行阶段的指令基地址传递到访存阶段。
 	logic [31:0] ex2mem_addr_off   = 32'h0;          // EX/MEM 流水寄存器中的偏移地址，表示执行阶段的指令偏移地址传递到访存阶段。
-	logic        ex2mem_is_load;                     // EX/MEM 流水寄存器中的加载标志，表示执行阶段的指令是否为加载指令。
-	logic        load_in_mem;
+	logic        ex2mem_is_load = 1'b0;              // EX/MEM 流水寄存器中的加载标志，进入 MEM 时直接寄存。
+	logic [3:0]  ex2mem_store_wstrb = 4'h0;
+	logic [31:0] ex2_store_data_aligned;
+	logic [3:0]  ex2_store_wstrb;
+	logic        ex2_is_dram;
+	logic        ex2mem_is_dram = 1'b0;
 
 	// =========================
 	// MEM / MEMWB 级 表示访存阶段的结果和控制信号传递到写回阶段。
@@ -475,6 +505,17 @@ module myCPU #(
 	// ========================
 	logic        m_mul_pp_valid;
 	logic [31:0] m_mul_pp_ll, m_mul_pp_lh, m_mul_pp_hl, m_mul_pp_hh;
+	(* keep = "true", max_fanout = 1 *) logic [15:0] m_mul_ll_a, m_mul_ll_b;
+	(* keep = "true", max_fanout = 1 *) logic [15:0] m_mul_lh_a, m_mul_lh_b;
+	(* keep = "true", max_fanout = 1 *) logic [15:0] m_mul_hl_a, m_mul_hl_b;
+	(* keep = "true", max_fanout = 1 *) logic [15:0] m_mul_hh_a, m_mul_hh_b;
+	// Second operand stage is intentionally not KEEP'ed so Vivado can pack it
+	// into the DSP48 AREG/BREG input registers.
+	logic [15:0] m_dsp_ll_a, m_dsp_ll_b;
+	logic [15:0] m_dsp_lh_a, m_dsp_lh_b;
+	logic [15:0] m_dsp_hl_a, m_dsp_hl_b;
+	logic [15:0] m_dsp_hh_a, m_dsp_hh_b;
+	logic        m_mul_inputs_valid;
 
 	logic [63:0] m_mul_uu_reg;
 	logic        mul_start;
@@ -487,6 +528,7 @@ module myCPU #(
 	logic [3:0]  m_op_reg;
 	logic [31:0] m_rs1_reg;
 	logic [31:0] m_rs2_reg;
+	logic [31:0] m_mul_high_correction;
 	logic        div_start;
 	logic        div_busy;
 	logic        div_done;
@@ -552,12 +594,16 @@ module myCPU #(
 	endfunction
 
 	// 对外总线连接：真正发起访存的是 EX/MEM 级。
-	assign irom_addr   = pc_q[13:2];
+	assign irom_addr   = if1_pc_q[13:2];
 	// PC 在 fetch_stall 时保持不变，因此 BRAM 可以始终使能并重复读取同一地址。
 	// 避免“译码/冒险判断 -> fetch_stall -> BRAM ENARDEN”的长组合路径。
-	assign perip_addr  = ex2mem_alu_y;
+	assign irom_en     = 1'b1;
+	assign perip_addr  = ex2mem_mem_addr;
 	assign perip_wen   = ex2mem_valid && ex2mem_mem_req && ex2mem_mem_write;
 	assign perip_mask  = ex2mem_mem_mask;
+	// ex2mem_store_wstrb 已在 EX2 按 valid/mem_req/mem_write 生成；
+	// 此处只需进行 DRAM 区域门控，避免重复的 perip_wen 进入 BRAM 写使能路径。
+	assign perip_wstrb = ex2mem_is_dram ? ex2mem_store_wstrb : 4'b0000;
 	assign perip_wdata = ex2mem_store_data;
 
 	// 指令字段译码。
@@ -639,6 +685,26 @@ module myCPU #(
 
 	// store 数据只在 store 指令时有效，其余时间清零有利于减少无关逻辑传播。
 	assign ex2_store_data    = ex1ex2_mem_write ? ex1ex2_store_data : 32'h0;
+	assign ex2_mem_addr = ex1ex2_alu_a + ex1ex2_alu_b;
+	assign ex2_is_dram = (ex2_mem_addr[31:18] == DRAM_REGION_TAG);
+	always_comb begin
+		ex2_store_data_aligned = ex2_store_data;
+		ex2_store_wstrb = 4'b0000;
+		if (ex1ex2_valid && ex1ex2_mem_req && ex1ex2_mem_write) begin
+			unique case (ex1ex2_mem_mask)
+				MEM_MASK_BYTE: begin
+					ex2_store_data_aligned = {4{ex2_store_data[7:0]}};
+					ex2_store_wstrb = 4'b0001 << ex2_mem_addr[1:0];
+				end
+				MEM_MASK_HALF: begin
+					ex2_store_data_aligned = {2{ex2_store_data[15:0]}};
+					ex2_store_wstrb = ex2_mem_addr[1] ? 4'b1100 : 4'b0011;
+				end
+				MEM_MASK_WORD: ex2_store_wstrb = 4'b1111;
+				default: ex2_store_wstrb = 4'b0000;
+			endcase
+		end
+	end
 	assign ex2_pc4           = ex1ex2_pc + 32'd4;
 	assign ex2_pc_plus_imm   = ex1ex2_pc + ex1ex2_imm;
 
@@ -676,10 +742,13 @@ module myCPU #(
 
 	// ID 阶段提前记录消费者下一拍进入 EX1 时应使用的来源：EX2、MEM 或 WB。
 	// 三条 EX1 前递的优先级在 EX1 组合逻辑中固定为 EX2 > MEM > WB。
+	// Change 3: only ordinary ALU results use the EX2 -> EX1 fast bypass.
+	// PC+4, IMM_U, CSR, M-extension and helper results wait for EX2/MEM.
 	assign idex1_can_forward_to_ex1ex2 = idex1_valid && idex1_rf_we &&
 									  (idex1_rd != 5'h0) &&
-									  (idex1_wb_sel != WB_SRC_MEM) &&
-									  !idex1_is_m_ext;
+									  (idex1_wb_sel == WB_SRC_ALU) &&
+									  !idex1_is_m_ext &&
+									  !idex1_mul_helper;
 	assign ex1ex2_can_forward_to_ex2mem = ex1ex2_valid && ex1ex2_rf_we &&
 										 (ex1ex2_rd != 5'h0) &&
 										 (ex1ex2_wb_sel != WB_SRC_MEM) &&
@@ -704,7 +773,6 @@ module myCPU #(
 	assign id_fwd_rs2_from_wb = ifid_valid && id_uses_rs2 &&
 								 ex2mem_can_forward_to_memwb &&
 								 (id_rs2 == ex2mem_rd);
-	assign ex2mem_is_load = ex2mem_valid && ex2mem_mem_req && !ex2mem_mem_write;
 	//现在关闭forwarding，避免 timing 过长，load-branch冒险的解决方案为再等一拍。
 	//assign ex2_pc_fwd_rs1_from_exmem = 1'b0;
 	//assign ex2_pc_fwd_rs1_from_memwb = 1'b0;
@@ -718,8 +786,9 @@ module myCPU #(
 		ex2_trap_return ? csr_mepc :
 						 32'h0;
 	assign csr_rs1_is_x0 = (ex1ex2_rs1 == 5'd0);
-	assign csr_write_operand_nonzero = (ex1ex2_csr_imm ? (ex1ex2_csr_wdata != 32'h0)
-                                                 : !csr_rs1_is_x0);// CSR 写入操作数非零条件。
+	// CSRRS/CSRRC 的 rs1 与 CSRRSI/CSRRCI 的 uimm 都位于指令 rs1 字段。
+	// 直接比较这5位即可，避免32位 csr_wdata 非零检测落入 CSR 寄存器 CE 路径。
+	assign csr_write_operand_nonzero = !csr_rs1_is_x0;
 	// 乘法统一先做无符号 32x32，高位带符号的修正在下一拍完成，
 	// 用寄存器把 DSP 乘法链和后面的高位修正链拆开。
 	assign ex2_m_is_div = ex1ex2_valid && ex1ex2_is_m_ext &&
@@ -745,18 +814,6 @@ module myCPU #(
 		endcase
 	end
 
-	// 比较器只在 branch 时真正工作，避免平时把比较链白白挂在关键路径上。
-	always_comb begin
-		ex2_cmp_eq = 1'b0;
-		ex2_cmp_lt_signed = 1'b0;
-		ex2_cmp_lt_unsigned = 1'b0;
-		if (ex1ex2_pc_sel == PC_SRC_BRANCH) begin
-			ex2_cmp_eq = (ex1ex2_rs1_val == ex1ex2_rs2_val);
-			ex2_cmp_lt_signed = ($signed(ex1ex2_rs1_val) < $signed(ex1ex2_rs2_val));
-			ex2_cmp_lt_unsigned = (ex1ex2_rs1_val < ex1ex2_rs2_val);
-		end
-	end
-
 	// ID 级允许从 MEMWB 做“同拍旁路读取”，减少读后写停顿。
 	always_comb begin
 		if (id_rs1 == 5'd0) begin
@@ -780,11 +837,9 @@ module myCPU #(
 	always_comb begin
 		case (m_op_reg)
 			M_OP_MUL:    ex2_mul_result_comb = m_mul_uu_reg[31:0];
-			M_OP_MULH:   ex2_mul_result_comb = m_mul_uu_reg[63:32]
-										 - (m_rs1_reg[31] ? m_rs2_reg : 32'h0)
-										 - (m_rs2_reg[31] ? m_rs1_reg : 32'h0);
+			M_OP_MULH,
 			M_OP_MULHSU: ex2_mul_result_comb = m_mul_uu_reg[63:32]
-										 - (m_rs1_reg[31] ? m_rs2_reg : 32'h0);
+										 - m_mul_high_correction;
 			M_OP_MULHU:  ex2_mul_result_comb = m_mul_uu_reg[63:32];
 			default:     ex2_mul_result_comb = 32'h0;
 		endcase
@@ -798,10 +853,20 @@ module myCPU #(
 			m_div_started <= 1'b0;
 			m_is_div_reg <= 1'b0;
 			m_mul_pp_valid <= 1'b0;
+			m_mul_inputs_valid <= 1'b0;
 			m_mul_raw_valid <= 1'b0;
 			m_op_reg     <= M_OP_NONE;
 			m_rs1_reg    <= 32'h0;
 			m_rs2_reg    <= 32'h0;
+			m_mul_high_correction <= 32'h0;
+			m_mul_ll_a   <= 16'h0;
+			m_mul_ll_b   <= 16'h0;
+			m_mul_lh_a   <= 16'h0;
+			m_mul_lh_b   <= 16'h0;
+			m_mul_hl_a   <= 16'h0;
+			m_mul_hl_b   <= 16'h0;
+			m_mul_hh_a   <= 16'h0;
+			m_mul_hh_b   <= 16'h0;
 			m_mul_pp_ll  <= 32'h0;
 			m_mul_pp_lh  <= 32'h0;
 			m_mul_pp_hl  <= 32'h0;
@@ -814,10 +879,34 @@ module myCPU #(
 			m_div_started  <= 1'b0;
 			m_is_div_reg   <= ex2_m_is_div;
 			m_mul_pp_valid <= 1'b0;
+			m_mul_inputs_valid <= 1'b0;
 			m_mul_raw_valid <= 1'b0;
 			m_op_reg       <= ex1ex2_m_op;
 			m_rs1_reg      <= ex1ex2_rs1_val;
 			m_rs2_reg      <= ex1ex2_rs2_val;
+			unique case (ex1ex2_m_op)
+				M_OP_MULH: begin
+					m_mul_high_correction <=
+						(ex1ex2_rs1_val[31] ? ex1ex2_rs2_val : 32'h0) +
+						(ex1ex2_rs2_val[31] ? ex1ex2_rs1_val : 32'h0);
+				end
+				M_OP_MULHSU: begin
+					m_mul_high_correction <=
+						ex1ex2_rs1_val[31] ? ex1ex2_rs2_val : 32'h0;
+				end
+				default: begin
+					m_mul_high_correction <= 32'h0;
+				end
+			endcase
+			// Give each partial-product DSP its own local operand registers.
+			m_mul_ll_a     <= ex1ex2_rs1_val[15:0];
+			m_mul_ll_b     <= ex1ex2_rs2_val[15:0];
+			m_mul_lh_a     <= ex1ex2_rs1_val[15:0];
+			m_mul_lh_b     <= ex1ex2_rs2_val[31:16];
+			m_mul_hl_a     <= ex1ex2_rs1_val[31:16];
+			m_mul_hl_b     <= ex1ex2_rs2_val[15:0];
+			m_mul_hh_a     <= ex1ex2_rs1_val[31:16];
+			m_mul_hh_b     <= ex1ex2_rs2_val[31:16];
 		end else if (m_inflight && m_is_div_reg) begin
 			if (!m_div_started) begin
 				m_div_started <= 1'b1;
@@ -828,12 +917,15 @@ module myCPU #(
 				m_inflight <= 1'b0;
 				m_div_started <= 1'b0;
 			end
+		end else if (m_inflight && !m_mul_inputs_valid) begin
+			// This extra cycle lets the following registers map to DSP48 AREG/BREG.
+			m_mul_inputs_valid <= 1'b1;
 		end else if (m_inflight && !m_mul_pp_valid) begin
 			// Four independent 16x16 products avoid a cascaded 32x32 DSP path.
-			m_mul_pp_ll <= $unsigned(m_rs1_reg[15:0])  * $unsigned(m_rs2_reg[15:0]);
-			m_mul_pp_lh <= $unsigned(m_rs1_reg[15:0])  * $unsigned(m_rs2_reg[31:16]);
-			m_mul_pp_hl <= $unsigned(m_rs1_reg[31:16]) * $unsigned(m_rs2_reg[15:0]);
-			m_mul_pp_hh <= $unsigned(m_rs1_reg[31:16]) * $unsigned(m_rs2_reg[31:16]);
+			m_mul_pp_ll <= $unsigned(m_dsp_ll_a) * $unsigned(m_dsp_ll_b);
+			m_mul_pp_lh <= $unsigned(m_dsp_lh_a) * $unsigned(m_dsp_lh_b);
+			m_mul_pp_hl <= $unsigned(m_dsp_hl_a) * $unsigned(m_dsp_hl_b);
+			m_mul_pp_hh <= $unsigned(m_dsp_hh_a) * $unsigned(m_dsp_hh_b);
 			m_mul_pp_valid <= 1'b1;
 		end else if (m_inflight && !m_mul_raw_valid) begin
 			m_mul_uu_reg <= {32'h0, m_mul_pp_ll}
@@ -846,6 +938,7 @@ module myCPU #(
 			m_result_ready <= 1'b1;
 			m_inflight <= 1'b0;
 			m_mul_pp_valid <= 1'b0;
+			m_mul_inputs_valid <= 1'b0;
 			m_mul_raw_valid <= 1'b0;
 		end else if (m_result_ready && !m_stall) begin
 			m_result_ready <= 1'b0;
@@ -901,46 +994,88 @@ module myCPU #(
 
 	// IF1/IF2 共用的暂停条件。同步 BRAM 停止读地址时，配套的 PC/valid 也必须保持。
 	assign fetch_stall = load_use_ex1_hazard || load_use_ex2_hazard ||
+						 slow_result_ex1_hazard ||
 						 pc_ex1_hazard || pc_ex2_hazard || pc_mem_hazard ||
-						 m_issue_hazard || mem_load_stall || m_stall;
+						 mem_load_stall || m_stall;
 
 	// IF 级 PC 更新优先级：redirect > stall/hold > 顺序 +4。
 	always_comb begin
 		if (ex2_pc_redirect) begin
 			//如果 EX 阶段要求跳转，PC = 跳转目标
 			//包括：branch_taken jal jalr ecall mret mul_helper
-			pc_next = ex2_pc_target;
+			if1_pc_next = ex2_pc_target;
 		end else if (fetch_stall) begin
 			//如果存在相关冒险或停顿，PC 保持不变
-			pc_next = pc_q;
+			if1_pc_next = if1_pc_q;
 		end else begin
 			//顺序执行，PC + 4
-			pc_next = pc_q + 32'd4;
+			if1_pc_next = if1_pc_q + 32'd4;
 		end
 	end
 
 	// IF 级 PC 寄存器，在 reset 时初始化为 RESET_PC。
 	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
 		if (cpu_rst) begin
-			pc_q <= RESET_PC;
+			if1_pc_q <= RESET_PC;
 		end else begin
-			pc_q <= pc_next;
+			if1_pc_q <= if1_pc_next;
 		end
 	end
 
 	// IF1：记录本拍送入同步 BRAM 的 PC。BRAM 下一拍返回数据时用它完成 PC/指令配对。
+	// IF2 PC payload: IF1 is already frozen during a stall, so writing the same
+	// value every cycle is safe and keeps fetch_stall away from these 32 CE pins.
 	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
 		if (cpu_rst) begin
-			fetch_pc_q    <= RESET_PC;
-			fetch_valid <= 1'b0;
-		end else if (ex2_pc_redirect) begin
-			// redirect 发生时，BRAM 管线中的顺序路径请求已经无效。
-			fetch_valid <= 1'b0;
-		end else if (fetch_stall) begin
-			// 保留尚未送入 IF/ID 的请求信息；对应指令由 fetch_hold_* 暂存。
+			if2_pc_q <= RESET_PC;
 		end else begin
-			fetch_pc_q    <= pc_q;
-			fetch_valid <= 1'b1;
+			if2_pc_q <= if1_pc_q;
+		end
+	end
+
+	// Only the scalar valid bit needs stall/redirect control.
+	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
+		if (cpu_rst) begin
+			if2_valid <= 1'b0;
+		end else if (ex2_pc_redirect) begin
+			if2_valid <= 1'b0;
+		end else if (fetch_stall) begin
+			// Hold the outstanding request state while the frontend is stalled.
+		end else begin
+			if2_valid <= 1'b1;
+		end
+	end
+
+	// IF2：将 IROM 输出直接寄存，把 BRAM 读取与后续 IF/ID 选择分成两个周期。
+	// stall 时现有 fetch_hold_* 会保存尚未送入 IF/ID 的这一项。
+	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
+		if (cpu_rst) begin
+			if3_pc_q    <= RESET_PC;
+			if3_instr_q <= NOP_INSTR;
+			if3_valid   <= 1'b0;
+		end else if (ex2_pc_redirect) begin
+			if3_valid <= 1'b0;
+		end else if (fetch_hold_full) begin
+			// IF3 不能接收时，把已经返回的下一条指令固定在 IF2。
+		end else begin
+			if3_pc_q    <= if2_pc_q;
+			if3_instr_q <= irom_data;
+			if3_valid   <= if2_valid;
+		end
+	end
+
+	// No asynchronous reset here: DSP48 AREG/BREG only need these operands
+	// after m_mul_inputs_valid is asserted, and can therefore absorb this stage.
+	always_ff @(posedge cpu_clk) begin
+		if (m_inflight && !m_is_div_reg && !m_mul_inputs_valid) begin
+			m_dsp_ll_a <= m_mul_ll_a;
+			m_dsp_ll_b <= m_mul_ll_b;
+			m_dsp_lh_a <= m_mul_lh_a;
+			m_dsp_lh_b <= m_mul_lh_b;
+			m_dsp_hl_a <= m_mul_hl_a;
+			m_dsp_hl_b <= m_mul_hl_b;
+			m_dsp_hh_a <= m_mul_hh_a;
+			m_dsp_hh_b <= m_mul_hh_b;
 		end
 	end
 
@@ -956,9 +1091,9 @@ module myCPU #(
 			// 数据寄存器只由本地 full 标志控制，不再由长路径 fetch_stall 驱动 CE。
 			// stall 第一拍到来时旧 full 仍为 0，因此会恰好保存尚未进入 IF/ID 的请求。
 			if (!fetch_hold_full) begin
-				fetch_hold_pc    <= fetch_pc_q;
-				fetch_hold_instr <= irom_data;
-				fetch_hold_valid <= fetch_valid;
+				fetch_hold_pc    <= if3_pc_q;
+				fetch_hold_instr <= if3_instr_q;
+				fetch_hold_valid <= if3_valid;
 			end
 
 			// 复杂的冒险判断现在只驱动这一个标志寄存器。
@@ -966,26 +1101,36 @@ module myCPU #(
 		end
 	end
 
-	// IF2：接收 BRAM 返回的上一拍指令，并与上一拍保存的 PC/valid 一起写入 IF/ID。
+	// IF3 valid/control: redirect only invalidates the entry.  The wide
+	// PC/instruction payload does not need to be cleared when valid is zero.
+	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
+		if (cpu_rst) begin
+			ifid_valid <= 1'b0;
+		end else if (ex2_pc_redirect) begin
+			ifid_valid <= 1'b0;
+		end else if (fetch_stall) begin
+			// Hold the current valid state while the consumer waits.
+		end else if (fetch_hold_full) begin
+			ifid_valid <= fetch_hold_valid;
+		end else begin
+			ifid_valid <= if3_valid;
+		end
+	end
+
+	// IF3 payload: its value is don't-care whenever ifid_valid is zero, so the
+	// branch redirect signal is kept out of these 64 wide-register data paths.
 	always_ff @(posedge cpu_clk or posedge cpu_rst) begin
 		if (cpu_rst) begin
 			ifid_pc    <= RESET_PC;
 			ifid_instr <= NOP_INSTR;
-			ifid_valid <= 1'b0;
-		end else if (ex2_pc_redirect) begin
-			ifid_pc    <= RESET_PC;
-			ifid_instr <= NOP_INSTR;
-			ifid_valid <= 1'b0;
 		end else if (fetch_stall) begin
-			// 保持当前 IF/ID 指令，等待冒险或长延迟操作结束。
+			// Hold the current payload while the consumer waits.
 		end else if (fetch_hold_full) begin
 			ifid_pc    <= fetch_hold_pc;
 			ifid_instr <= fetch_hold_instr;
-			ifid_valid <= fetch_hold_valid;
 		end else begin
-			ifid_pc    <= fetch_pc_q;
-			ifid_instr <= irom_data;
-			ifid_valid <= fetch_valid;
+			ifid_pc    <= if3_pc_q;
+			ifid_instr <= if3_instr_q;
 		end
 	end
 
@@ -1273,35 +1418,44 @@ module myCPU #(
 		end
 	end
 
-	assign load_use_ex1_hazard = ifid_valid && idex1_valid && idex1_rf_we &&
-							 (idex1_wb_sel == WB_SRC_MEM) && (idex1_rd != 5'h0) &&
-							 ((hazard_uses_rs1 && (id_rs1 == idex1_rd)) ||
-							  (hazard_uses_rs2 && (id_rs2 == idex1_rd)));
+	// 统一计算 ID 对 EX1 的寄存器依赖，供各类 hazard 复用。
+	assign dep_ex1_rs1 = ifid_valid && idex1_valid && idex1_rf_we &&
+						 (idex1_rd != 5'h0) && hazard_uses_rs1 &&
+						 (id_rs1 == idex1_rd);
+	assign dep_ex1_rs2 = ifid_valid && idex1_valid && idex1_rf_we &&
+						 (idex1_rd != 5'h0) && hazard_uses_rs2 &&
+						 (id_rs2 == idex1_rd);
+	assign dep_ex1 = dep_ex1_rs1 || dep_ex1_rs2;
+	assign dep_ex2_rs1 = ifid_valid && ex1ex2_valid && ex1ex2_rf_we &&
+						 (ex1ex2_rd != 5'h0) && hazard_uses_rs1 &&
+						 (id_rs1 == ex1ex2_rd);
+	assign dep_ex2_rs2 = ifid_valid && ex1ex2_valid && ex1ex2_rf_we &&
+						 (ex1ex2_rd != 5'h0) && hazard_uses_rs2 &&
+						 (id_rs2 == ex1ex2_rd);
+	assign dep_ex2 = dep_ex2_rs1 || dep_ex2_rs2;
+	assign dep_mem_rs1 = ifid_valid && ex2mem_valid && ex2mem_rf_we &&
+						 (ex2mem_rd != 5'h0) && hazard_uses_rs1 &&
+						 (id_rs1 == ex2mem_rd);
+	assign dep_mem_rs2 = ifid_valid && ex2mem_valid && ex2mem_rf_we &&
+						 (ex2mem_rd != 5'h0) && hazard_uses_rs2 &&
+						 (id_rs2 == ex2mem_rd);
+	assign dep_mem = dep_mem_rs1 || dep_mem_rs2;
 
-	assign load_use_ex2_hazard = ifid_valid && ex1ex2_valid && ex1ex2_rf_we &&
-								(ex1ex2_wb_sel == WB_SRC_MEM) && (ex1ex2_rd != 5'h0) &&
-								((hazard_uses_rs1 && (id_rs1 == ex1ex2_rd)) ||
-								 (hazard_uses_rs2 && (id_rs2 == ex1ex2_rd)));
+	assign load_use_ex1_hazard = dep_ex1 && (idex1_wb_sel == WB_SRC_MEM);
+
+	assign load_use_ex2_hazard = dep_ex2 && (ex1ex2_wb_sel == WB_SRC_MEM);
 
 	assign load_use_hazard = load_use_ex1_hazard || load_use_ex2_hazard;
-	assign m_issue_hazard = idex1_valid && idex1_is_m_ext;
+	// Non-ALU results advance to EX2/MEM before a dependent instruction proceeds.
+	assign slow_result_ex1_hazard = dep_ex1 && !idex1_can_forward_to_ex1ex2;
+	assign pc_ex1_hazard = ((hazard_is_branch || hazard_is_jalr) && dep_ex1_rs1) ||
+						  (hazard_is_branch && dep_ex1_rs2);
 
-	assign pc_ex1_hazard = ifid_valid && idex1_valid && idex1_rf_we &&
-						 (idex1_rd != 5'h0) &&
-						 (((hazard_is_branch || hazard_is_jalr) && (id_rs1 == idex1_rd)) ||
-						  (hazard_is_branch && (id_rs2 == idex1_rd)));
+	assign pc_ex2_hazard = ((hazard_is_branch || hazard_is_jalr) && dep_ex2_rs1) ||
+						  (hazard_is_branch && dep_ex2_rs2);
 
-	assign pc_ex2_hazard = ifid_valid && ex1ex2_valid && ex1ex2_rf_we &&
-						 (ex1ex2_rd != 5'h0) &&
-						 (((hazard_is_branch || hazard_is_jalr) && (id_rs1 == ex1ex2_rd)) ||
-						  (hazard_is_branch && (id_rs2 == ex1ex2_rd)));
-
-	assign pc_mem_hazard = ifid_valid && ex2mem_valid && ex2mem_rf_we &&
-					  (ex2mem_rd != 5'h0) &&
-					  (((hazard_is_branch || hazard_is_jalr) && (id_rs1 == ex2mem_rd)) ||
-					   (hazard_is_branch && (id_rs2 == ex2mem_rd)));
-
-	assign load_in_mem = ex2mem_valid && ex2mem_mem_req && !ex2mem_mem_write;
+	assign pc_mem_hazard = ((hazard_is_branch || hazard_is_jalr) && dep_mem_rs1) ||
+						 (hazard_is_branch && dep_mem_rs2);
 
 	// perip_bridge 的读数据输出再打一拍后，所有 load 在 EX/MEM 保持 2 拍，
 	// 第 3 拍再把稳定的 perip_rdata 捕获进 MEM/WB。
@@ -1373,7 +1527,8 @@ module myCPU #(
 		end else if (mem_load_stall || m_stall) begin
 			// hold IDEX - memory read stall
 		end else if (ex2_pc_redirect || load_use_ex1_hazard || load_use_ex2_hazard ||
-					 pc_ex1_hazard || pc_ex2_hazard || pc_mem_hazard || m_issue_hazard) begin
+					 slow_result_ex1_hazard ||
+					 pc_ex1_hazard || pc_ex2_hazard || pc_mem_hazard) begin
 			// valid=0 表示气泡；payload 仍然写入，避免复杂冒险条件成为宽寄存器的 CE。
 			idex1_valid         <= 1'b0;
 			idex1_pc            <= ifid_pc;
@@ -1511,7 +1666,7 @@ module myCPU #(
 	always_comb begin
 		ex1_rs1_val = idex1_rs1_val;
 		if (idex1_fwd_rs1_from_ex2) begin
-			ex1_rs1_val = ex2_wb_data;
+			ex1_rs1_val = ex2_alu_y;
 		end else if (idex1_fwd_rs1_from_mem) begin
 			ex1_rs1_val = ex2mem_wb_data;
 		end else if (idex1_fwd_rs1_from_wb) begin
@@ -1520,7 +1675,7 @@ module myCPU #(
 
 		ex1_rs2_val = idex1_rs2_val;
 		if (idex1_fwd_rs2_from_ex2) begin
-			ex1_rs2_val = ex2_wb_data;
+			ex1_rs2_val = ex2_alu_y;
 		end else if (idex1_fwd_rs2_from_mem) begin
 			ex1_rs2_val = ex2mem_wb_data;
 		end else if (idex1_fwd_rs2_from_wb) begin
@@ -1528,16 +1683,58 @@ module myCPU #(
 		end
 	end
 	
-	assign ex1_alu_a = (idex1_alu_src_a_sel == ALU_SRC_A_PC) ? idex1_pc : ex1_rs1_val;
-
+	// Resolve the branch in EX1, after operand forwarding, and register the
+	// one-bit decision so the 32-bit comparator is not in the EX2 -> PC path.
 	always_comb begin
-		case (idex1_alu_src_b_sel)
-			ALU_SRC_B_RS2:   ex1_alu_b = ex1_rs2_val;
-			ALU_SRC_B_IMM_I: ex1_alu_b = idex1_imm;
-			ALU_SRC_B_IMM_S: ex1_alu_b = idex1_imm;
-			ALU_SRC_B_IMM_U: ex1_alu_b = idex1_imm;
-			default:         ex1_alu_b = ex1_rs2_val;
-		endcase
+		ex1_cmp_eq          = 1'b0;
+		ex1_cmp_lt_signed   = 1'b0;
+		ex1_cmp_lt_unsigned = 1'b0;
+		ex1_br_take = 1'b0;
+		if (idex1_valid && (idex1_pc_sel == PC_SRC_BRANCH)) begin
+			ex1_cmp_eq          = (idex1_rs1_val == idex1_rs2_val);
+			ex1_cmp_lt_signed   = ($signed(idex1_rs1_val) < $signed(idex1_rs2_val));
+			ex1_cmp_lt_unsigned = (idex1_rs1_val < idex1_rs2_val);
+
+			unique case (idex1_funct3)
+				3'b000: ex1_br_take = ex1_cmp_eq;
+				3'b001: ex1_br_take = !ex1_cmp_eq;
+				3'b100: ex1_br_take = ex1_cmp_lt_signed;
+				3'b101: ex1_br_take = !ex1_cmp_lt_signed;
+				3'b110: ex1_br_take = ex1_cmp_lt_unsigned;
+				3'b111: ex1_br_take = !ex1_cmp_lt_unsigned;
+				default: ex1_br_take = 1'b0;
+			endcase
+		end
+	end
+
+	// 直接把输入类型和前递来源合并到 ALU A 选择中，避免两级选择器串联。
+	always_comb begin
+		if (idex1_alu_src_a_sel == ALU_SRC_A_PC) begin
+			ex1_alu_a = idex1_pc;
+		end else if (idex1_fwd_rs1_from_ex2) begin
+			ex1_alu_a = ex2_alu_y;
+		end else if (idex1_fwd_rs1_from_mem) begin
+			ex1_alu_a = ex2mem_wb_data;
+		end else if (idex1_fwd_rs1_from_wb) begin
+			ex1_alu_a = memwb_wdata;
+		end else begin
+			ex1_alu_a = idex1_rs1_val;
+		end
+	end
+
+	// idex1_imm 已在 ID 阶段完成立即数类型选择；只有使用 RS2 时才需要前递。
+	always_comb begin
+		if (idex1_alu_src_b_sel != ALU_SRC_B_RS2) begin
+			ex1_alu_b = idex1_imm;
+		end else if (idex1_fwd_rs2_from_ex2) begin
+			ex1_alu_b = ex2_alu_y;
+		end else if (idex1_fwd_rs2_from_mem) begin
+			ex1_alu_b = ex2mem_wb_data;
+		end else if (idex1_fwd_rs2_from_wb) begin
+			ex1_alu_b = memwb_wdata;
+		end else begin
+			ex1_alu_b = idex1_rs2_val;
+		end
 	end
 
 	// EX1/EX2 pipeline register: EX1 resolves forwarding and operand selection.
@@ -1556,13 +1753,14 @@ module myCPU #(
 			ex1ex2_rd <= 5'h0;
 			ex1ex2_imm <= 32'h0;
 			ex1ex2_funct3 <= 3'h0;
+			ex1ex2_br_take <= 1'b0;
 			ex1ex2_mul_helper <= 1'b0;
 			ex1ex2_mul_helper_ra <= 32'h0;
 			ex1ex2_mul_helper_lhs <= 32'h0;
 			ex1ex2_mul_helper_rhs <= 32'h0;
 			ex1ex2_rf_we <= 1'b0;
 			ex1ex2_wb_sel <= WB_SRC_ALU;
-			ex1ex2_alu_op <= ALU_ADD;
+			ex1ex2_alu_op   <= ALU_ADD;
 			ex1ex2_pc_sel <= PC_SRC_PC4;
 			ex1ex2_mem_req <= 1'b0;
 			ex1ex2_mem_write <= 1'b0;
@@ -1592,17 +1790,19 @@ module myCPU #(
 			ex1ex2_rs2_val <= ex1_rs2_val;
 			ex1ex2_alu_a <= ex1_alu_a;
 			ex1ex2_alu_b <= ex1_alu_b;
-			ex1ex2_store_data <= idex1_mem_write ? ex1_rs2_val : 32'h0;
+			// mem_write 已随流水线寄存；此处无需再用它给 store 数据增加一级选择器。
+			ex1ex2_store_data <= ex1_rs2_val;
 			ex1ex2_rd <= idex1_rd;
 			ex1ex2_imm <= idex1_imm;
 			ex1ex2_funct3 <= idex1_funct3;
+			ex1ex2_br_take <= ex1_br_take;
 			ex1ex2_mul_helper <= idex1_mul_helper;
 			ex1ex2_mul_helper_ra <= idex1_mul_helper_ra;
 			ex1ex2_mul_helper_lhs <= idex1_mul_helper_lhs;
 			ex1ex2_mul_helper_rhs <= idex1_mul_helper_rhs;
 			ex1ex2_rf_we <= idex1_rf_we;
 			ex1ex2_wb_sel <= idex1_wb_sel;
-			ex1ex2_alu_op <= idex1_alu_op;
+			ex1ex2_alu_op   <= idex1_alu_op;
 			ex1ex2_pc_sel <= idex1_pc_sel;
 			ex1ex2_mem_req <= idex1_mem_req;
 			ex1ex2_mem_write <= idex1_mem_write;
@@ -1624,20 +1824,7 @@ module myCPU #(
 	assign ex2_rs1_val = ex1ex2_rs1_val;
 	assign ex2_rs2_val = ex1ex2_rs2_val;
 
-	always_comb begin
-		ex2_br_take = 1'b0;
-		if (ex1ex2_pc_sel == PC_SRC_BRANCH) begin
-			case (ex1ex2_funct3)
-				3'b000: ex2_br_take = ex2_cmp_eq;
-				3'b001: ex2_br_take = !ex2_cmp_eq;
-				3'b100: ex2_br_take = ex2_cmp_lt_signed;
-				3'b101: ex2_br_take = !ex2_cmp_lt_signed;
-				3'b110: ex2_br_take = ex2_cmp_lt_unsigned;
-				3'b111: ex2_br_take = !ex2_cmp_lt_unsigned;
-				default: ex2_br_take = 1'b0;
-			endcase
-		end
-	end
+	assign ex2_br_take = ex1ex2_br_take;
 
 	// 所有改变 PC 的东西，最后都归到 ex2_pc_redirect + ex2_pc_target
 	always_comb begin
@@ -1655,19 +1842,40 @@ module myCPU #(
 		end
 	end
 
+	// Z 结果的支持性处理在主写回选择器之前完成。
+	assign ex2_z_wb_data = ex2_z_supported ? ex2_z_result : 32'h0;
+
+	// Z/CSR 等候选结果均已提前算好，此处只按 wb_sel 做最终选择。
 	always_comb begin
 		if (ex1ex2_mul_helper) begin
 			ex2_wb_data = ex2_mul_helper_result;
 		end else if (ex1ex2_is_m_ext) begin
 			ex2_wb_data = ex2_m_result;
 		end else begin
-			case (ex1ex2_wb_sel)
+			unique case (ex1ex2_wb_sel)
+				WB_SRC_Z:     ex2_wb_data = ex2_z_wb_data;
+				WB_SRC_CSR:   ex2_wb_data = ex2_csr_rdata;
 				WB_SRC_PC4:   ex2_wb_data = ex2_pc4;
 				WB_SRC_IMM_U: ex2_wb_data = ex1ex2_imm;
-				WB_SRC_CSR:   ex2_wb_data = ex2_csr_rdata;
 				WB_SRC_ALU:   ex2_wb_data = ex2_alu_y;
-				WB_SRC_Z:     ex2_wb_data = ex2_z_supported ? ex2_z_result:32'h0;
 				default:      ex2_wb_data = ex2_alu_y;
+			endcase
+		end
+	end
+
+	// 普通 ALU 结果不进入这个选择器，避免“进位链 + 写回大选择器”落在同一周期。
+	always_comb begin
+		if (ex1ex2_mul_helper) begin
+			ex2_slow_wb_data = ex2_mul_helper_result;
+		end else if (ex1ex2_is_m_ext) begin
+			ex2_slow_wb_data = ex2_m_result;
+		end else begin
+			unique case (ex1ex2_wb_sel)
+				WB_SRC_Z:     ex2_slow_wb_data = ex2_z_wb_data;
+				WB_SRC_CSR:   ex2_slow_wb_data = ex2_csr_rdata;
+				WB_SRC_PC4:   ex2_slow_wb_data = ex2_pc4;
+				WB_SRC_IMM_U: ex2_slow_wb_data = ex1ex2_imm;
+				default:      ex2_slow_wb_data = 32'h0;
 			endcase
 		end
 	end
@@ -1715,11 +1923,16 @@ module myCPU #(
 	always_ff @(posedge cpu_clk) begin
 		if (cpu_rst) begin
 			ex2mem_valid      <= 1'b0;
+			ex2mem_is_load    <= 1'b0;
 			ex2mem_alu_y      <= 32'h0;
+			ex2mem_mem_addr   <= 32'h0;
 			ex2mem_store_data <= 32'h0;
+			ex2mem_store_wstrb <= 4'h0;
+			ex2mem_is_dram <= 1'b0;
 			ex2mem_rd         <= 5'h0;
 			ex2mem_funct3     <= 3'h0;
-			ex2mem_wb_data    <= 32'h0;
+			ex2mem_slow_wb_data <= 32'h0;
+			ex2mem_use_slow_wb  <= 1'b0;
 			ex2mem_rf_we      <= 1'b0;
 			ex2mem_wb_sel     <= WB_SRC_ALU;
 			ex2mem_mem_req    <= 1'b0;
@@ -1732,11 +1945,16 @@ module myCPU #(
 			// hold EXMEM - memory read stall
 		end else if (m_stall) begin
 			ex2mem_valid      <= 1'b0;
+			ex2mem_is_load    <= 1'b0;
 			ex2mem_alu_y      <= 32'h0;
+			ex2mem_mem_addr   <= 32'h0;
 			ex2mem_store_data <= 32'h0;
+			ex2mem_store_wstrb <= 4'h0;
+			ex2mem_is_dram <= 1'b0;
 			ex2mem_rd         <= 5'h0;
 			ex2mem_funct3     <= 3'h0;
-			ex2mem_wb_data    <= 32'h0;
+			ex2mem_slow_wb_data <= 32'h0;
+			ex2mem_use_slow_wb  <= 1'b0;
 			ex2mem_rf_we      <= 1'b0;
 			ex2mem_wb_sel     <= WB_SRC_ALU;
 			ex2mem_mem_req    <= 1'b0;
@@ -1747,11 +1965,20 @@ module myCPU #(
 			ex2mem_addr_off   <= 32'h0;
 		end else begin
 			ex2mem_valid      <= ex1ex2_valid;
+			ex2mem_is_load    <= ex1ex2_valid && ex1ex2_mem_req && !ex1ex2_mem_write;
 			ex2mem_alu_y      <= ex2_alu_y;
-			ex2mem_store_data <= ex2_store_data;
+			ex2mem_mem_addr   <= ex2_mem_addr;
+			ex2mem_store_data <= ex2_store_data_aligned;
+			ex2mem_store_wstrb <= ex2_store_wstrb;
+			ex2mem_is_dram <= ex2_is_dram;
 			ex2mem_rd         <= ex1ex2_rd;
 			ex2mem_funct3     <= ex1ex2_funct3;
-			ex2mem_wb_data    <= ex2_wb_data;
+			ex2mem_slow_wb_data <= ex2_slow_wb_data;
+			ex2mem_use_slow_wb  <= ex1ex2_mul_helper || ex1ex2_is_m_ext ||
+									 (ex1ex2_wb_sel == WB_SRC_Z) ||
+									 (ex1ex2_wb_sel == WB_SRC_CSR) ||
+									 (ex1ex2_wb_sel == WB_SRC_PC4) ||
+									 (ex1ex2_wb_sel == WB_SRC_IMM_U);
 			ex2mem_rf_we      <= ex1ex2_rf_we;
 			ex2mem_wb_sel     <= ex1ex2_wb_sel;
 			ex2mem_mem_req    <= ex1ex2_mem_req;
@@ -1763,27 +1990,30 @@ module myCPU #(
 		end
 	end
 
+	// MEM 前递和最终写回在寄存器之后选择；普通 ALU 路径直接来自 ex2mem_alu_y。
+	assign ex2mem_wb_data = ex2mem_use_slow_wb ? ex2mem_slow_wb_data : ex2mem_alu_y;
+
 	always_comb begin
 		case (ex2mem_funct3)
 			3'b000: begin
-				case (ex2mem_alu_y[1:0])
+				case (ex2mem_mem_addr[1:0])
 					2'b00: mem_load_data = {{24{perip_rdata[7]}}, perip_rdata[7:0]};
 					2'b01: mem_load_data = {{24{perip_rdata[15]}}, perip_rdata[15:8]};
 					2'b10: mem_load_data = {{24{perip_rdata[23]}}, perip_rdata[23:16]};
 					default: mem_load_data = {{24{perip_rdata[31]}}, perip_rdata[31:24]};
 				endcase
 			end
-			3'b001: mem_load_data = ex2mem_alu_y[1] ? {{16{perip_rdata[31]}}, perip_rdata[31:16]} : {{16{perip_rdata[15]}}, perip_rdata[15:0]};
+			3'b001: mem_load_data = ex2mem_mem_addr[1] ? {{16{perip_rdata[31]}}, perip_rdata[31:16]} : {{16{perip_rdata[15]}}, perip_rdata[15:0]};
 			3'b010: mem_load_data = perip_rdata;
 			3'b100: begin
-				case (ex2mem_alu_y[1:0])
+				case (ex2mem_mem_addr[1:0])
 					2'b00: mem_load_data = {24'h0, perip_rdata[7:0]};
 					2'b01: mem_load_data = {24'h0, perip_rdata[15:8]};
 					2'b10: mem_load_data = {24'h0, perip_rdata[23:16]};
 					default: mem_load_data = {24'h0, perip_rdata[31:24]};
 				endcase
 			end
-			3'b101: mem_load_data = ex2mem_alu_y[1] ? {16'h0, perip_rdata[31:16]} : {16'h0, perip_rdata[15:0]};
+			3'b101: mem_load_data = ex2mem_mem_addr[1] ? {16'h0, perip_rdata[31:16]} : {16'h0, perip_rdata[15:0]};
 			default: mem_load_data = perip_rdata;
 		endcase
 	end

@@ -31,21 +31,16 @@ module student_top#(
     parameter                           P_SW_CNT            = 64,
     parameter                           P_LED_CNT           = 32,
     parameter                           P_SEG_CNT           = 40,
-    parameter                           P_KEY_CNT           = 8,
-    parameter integer                   CPU_CLK_FREQ_HZ     = 260_000_000,
-    parameter integer                   UART_BAUD_RATE      = 115200
+    parameter                           P_KEY_CNT           = 8
 ) (
     input                                       w_cpu_clk     ,
     input                                       w_clk_50Mhz   ,
     input                                       w_clk_rst     ,
     input  [P_KEY_CNT - 1:0]                    virtual_key   ,
     input  [P_SW_CNT  - 1:0]                    virtual_sw    ,
-    input                                       uart_rx_i     ,
 
     output [P_LED_CNT - 1:0]                    virtual_led   ,
-    output [P_SEG_CNT - 1:0]                    virtual_seg   ,
-    output logic [31:0]                         virtual_seg_value ,
-    output logic                                uart_tx_o
+    output [P_SEG_CNT - 1:0]                    virtual_seg   
 );
 	// student_top 是“CPU 子系统”顶层：
 	// - 连接 CPU / IROM / 外设桥
@@ -54,15 +49,16 @@ module student_top#(
 
     // IROM
     logic [11:0] inst_addr;
+    logic        inst_en;
     logic [31:0] instruction;
 
     // perip
     logic [31:0] perip_addr, perip_wdata, perip_rdata;
     logic perip_wen;
     logic [1:0] perip_mask;
+    logic [3:0] perip_wstrb;
     logic [31:0] bridge_virtual_led;
     logic [39:0] bridge_virtual_seg;
-    logic [31:0] bridge_virtual_seg_value;
 
 `ifdef DEBUG_BRIDGE_CYCLE
     localparam logic [28:0] BRIDGE_DEBUG_PAGE_LAST = 29'd499_999_999;
@@ -108,7 +104,7 @@ module student_top#(
 
     logic [31:0] debug_pc_q;
     logic        debug_load_use_hazard;
-    logic        debug_pc_ex_hazard;
+    logic        debug_pc_ex1_hazard;
     logic        debug_pc_mem_hazard;
     logic        debug_mem_load_stall;
     logic        debug_m_stall;
@@ -140,20 +136,22 @@ module student_top#(
         .cpu_clk            (w_cpu_clk),
 
         // Interface to IROM
-        .irom_addr          (inst_addr),      
-        .irom_data          (instruction),   
+		.irom_addr          (inst_addr),
+		.irom_en            (inst_en),
+		.irom_data          (instruction),   
 
         // Interface to DRAM & periphera
         .perip_addr         (perip_addr),     
         .perip_wen          (perip_wen),     
         .perip_mask         (perip_mask),   
+        .perip_wstrb        (perip_wstrb),
         .perip_wdata        (perip_wdata),    
         .perip_rdata        (perip_rdata)
 `ifdef STUDENT_TOP_DEBUG_MMIO
         ,
         .dbg_pc_q           (debug_pc_q),
         .dbg_load_use_hazard(debug_load_use_hazard),
-        .dbg_pc_ex_hazard   (debug_pc_ex_hazard),
+        .dbg_pc_ex1_hazard   (debug_pc_ex1_hazard),
         .dbg_pc_mem_hazard  (debug_pc_mem_hazard),
         .dbg_mem_load_stall (debug_mem_load_stall),
         .dbg_m_stall        (debug_m_stall),
@@ -162,17 +160,16 @@ module student_top#(
 `endif
     );
 
-	// 指令 ROM：CPU 只按字地址取指。
-    IROM Mem_IROM (
-        .a          (inst_addr),
-        .spo        (instruction)
+	// 同步 Block RAM 指令 ROM：CPU 只按字地址取指。
+    IROM_BRAM Mem_IROM (
+		.clka       (w_cpu_clk),
+		.ena        (inst_en),
+		.addra      (inst_addr),
+		.douta      (instruction)
     );
     
 	// 数据访存与 MMIO 统一桥接。
-    perip_bridge #(
-        .CLK_FREQ_HZ        (CPU_CLK_FREQ_HZ),
-        .UART_BAUD_RATE     (UART_BAUD_RATE)
-    ) bridge_inst (
+    perip_bridge bridge_inst (
         .clk				(w_cpu_clk),
         .cnt_clk            (w_clk_50Mhz),
         .rst                (w_clk_rst),
@@ -180,18 +177,12 @@ module student_top#(
         .perip_wdata		(perip_wdata),
         .perip_wen			(perip_wen),
         .perip_mask			(perip_mask),
+        .perip_wstrb			(perip_wstrb),
         .perip_rdata		(perip_rdata),
         .virtual_sw_input	(virtual_sw),
         .virtual_key_input	(virtual_key),	
-        .uart_rx_i          (uart_rx_i),
         .virtual_seg_output	(bridge_virtual_seg),
-        .virtual_seg_value_output (bridge_virtual_seg_value),
-        .virtual_led_output (bridge_virtual_led),
-        .uart_tx_o          (uart_tx_o),
-        .uart_tx_ready_o    (),
-        .uart_rx_valid_o    (),
-        .uart_rx_overrun_o  (),
-        .uart_rx_data_o     ()
+        .virtual_led_output (bridge_virtual_led)
 `ifdef DEBUG_BRIDGE_CYCLE
         ,
         .dbg_seg_wdata          (bridge_dbg_seg_wdata),
@@ -304,7 +295,7 @@ module student_top#(
             debug_sticky[8]  <= debug_sticky[8]  | (perip_wen && (perip_addr == CNT_ADDR));
             debug_sticky[9]  <= debug_sticky[9]  | debug_ex_pc_redirect;
             debug_sticky[10] <= debug_sticky[10] | debug_load_use_hazard;
-            debug_sticky[11] <= debug_sticky[11] | debug_pc_ex_hazard;
+            debug_sticky[11] <= debug_sticky[11] | debug_pc_ex1_hazard;
             debug_sticky[12] <= debug_sticky[12] | debug_pc_mem_hazard;
             debug_sticky[13] <= debug_sticky[13] | 1'b0;
             debug_sticky[14] <= debug_sticky[14] | debug_mem_load_stall;
@@ -351,7 +342,7 @@ module student_top#(
         debug_mem_load_stall,
         1'b0,
         debug_pc_mem_hazard,
-        debug_pc_ex_hazard,
+        debug_pc_ex1_hazard,
         debug_load_use_hazard,
         perip_wen
     };
@@ -410,8 +401,6 @@ module student_top#(
     assign virtual_led = bridge_virtual_led;
     assign virtual_seg = bridge_virtual_seg;
 `endif
-
-    assign virtual_seg_value = bridge_virtual_seg_value;
 
 endmodule
 
